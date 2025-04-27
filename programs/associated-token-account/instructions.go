@@ -50,10 +50,16 @@ func (inst *Instruction) EncodeToTree(parent treeout.Branches) {
 }
 
 var InstructionImplDef = bin.NewVariantDefinition(
-	bin.NoTypeIDEncoding, // NOTE: the associated-token-account program has no ID encoding.
+	bin.Uint8TypeIDEncoding, // Changed from NoTypeIDEncoding to support multiple instruction types
 	[]bin.VariantType{
 		{
 			"Create", (*Create)(nil),
+		},
+		{
+			"CreateIdempotent", (*CreateIdempotent)(nil),
+		},
+		{
+			"RecoverNested", (*RecoverNested)(nil),
 		},
 	},
 )
@@ -67,7 +73,21 @@ func (inst *Instruction) Accounts() (out []*solana.AccountMeta) {
 }
 
 func (inst *Instruction) Data() ([]byte, error) {
-	return []byte{}, nil
+	if inst.Impl == nil {
+		return nil, fmt.Errorf("no instruction implementation")
+	}
+
+	// Return the appropriate instruction data based on the implementation type
+	switch impl := inst.Impl.(type) {
+	case *Create:
+		return []byte{0}, nil
+	case *CreateIdempotent:
+		return []byte{1}, nil
+	case *RecoverNested:
+		return []byte{2}, nil
+	default:
+		return nil, fmt.Errorf("unknown instruction implementation: %T", impl)
+	}
 }
 
 func (inst *Instruction) TextEncode(encoder *text.Encoder, option *text.Option) error {
