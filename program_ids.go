@@ -71,6 +71,10 @@ var (
 	// and know they were approved by zero or more addresses
 	// by inspecting the transaction log from a trusted provider.
 	MemoProgramID = MustPublicKeyFromBase58("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
+
+	// A Solend program on the Solana blockchain.
+	// This program defines a lending protocol for the Token program on the Solana blockchain inspired by Aave and Compound.
+	SolendProgramID = MustPublicKeyFromBase58("So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo")
 )
 
 var (
