@@ -41,6 +41,9 @@ type SimulateTransactionResult struct {
 	// Array of accounts with the same length as the accounts.addresses array in the request.
 	Accounts []*Account `json:"accounts"`
 
+	// Array of parsed inner instructions
+	InnerInstructions []SimulatedInnerInstructions `json:"innerInstructions"`
+
 	// The number of compute budget units consumed during the processing of this transaction.
 	UnitsConsumed *uint64 `json:"unitsConsumed,omitempty"`
 }
@@ -69,6 +72,10 @@ type SimulateTransactionOpts struct {
 	// If true the transaction recent blockhash will be replaced with the most recent blockhash.
 	// (default: false, conflicts with SigVerify)
 	ReplaceRecentBlockhash bool
+
+	// If true the response will include inner instructions.
+	// These inner instructions will be jsonParsed where possible, otherwise json.
+	InnerInstructions bool
 
 	Accounts *SimulateTransactionAccountsOpts
 }
@@ -117,6 +124,9 @@ func (cl *Client) SimulateRawTransactionWithOpts(
 		}
 		if opts.ReplaceRecentBlockhash {
 			obj["replaceRecentBlockhash"] = opts.ReplaceRecentBlockhash
+		}
+		if opts.InnerInstructions {
+			obj["innerInstructions"] = opts.InnerInstructions
 		}
 		if opts.Accounts != nil {
 			obj["accounts"] = M{
