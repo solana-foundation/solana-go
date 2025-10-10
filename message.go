@@ -349,22 +349,19 @@ func (mx *Message) MarshalV0() ([]byte, error) {
 	}
 	buf = append([]byte{byte(versionNum + 127)}, buf...)
 
-	if mx.AddressTableLookups != nil && len(mx.AddressTableLookups) > 0 {
-		// wite length of address table lookups as u8
-		buf = append(buf, byte(len(mx.AddressTableLookups)))
-		for _, lookup := range mx.AddressTableLookups {
-			// write account pubkey
-			buf = append(buf, lookup.AccountKey[:]...)
-			// write writable indexes
-			bin.EncodeCompactU16Length(&buf, len(lookup.WritableIndexes))
-			buf = append(buf, lookup.WritableIndexes...)
-			// write readonly indexes
-			bin.EncodeCompactU16Length(&buf, len(lookup.ReadonlyIndexes))
-			buf = append(buf, lookup.ReadonlyIndexes...)
-		}
-	} else {
-		buf = append(buf, 0)
+	// wite length of address table lookups as u8
+	buf = append(buf, byte(len(mx.AddressTableLookups)))
+	for _, lookup := range mx.AddressTableLookups {
+		// write account pubkey
+		buf = append(buf, lookup.AccountKey[:]...)
+		// write writable indexes
+		bin.EncodeCompactU16Length(&buf, len(lookup.WritableIndexes))
+		buf = append(buf, lookup.WritableIndexes...)
+		// write readonly indexes
+		bin.EncodeCompactU16Length(&buf, len(lookup.ReadonlyIndexes))
+		buf = append(buf, lookup.ReadonlyIndexes...)
 	}
+
 	return buf, nil
 }
 

@@ -25,6 +25,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 type testTransactionInstructions struct {
@@ -313,6 +314,54 @@ func TestTransactionVerifySignatures(t *testing.T) {
 		require.NoError(t, tx.VerifySignatures())
 		require.Equal(t, len(tx.Signatures), len(tx.Message.Signers()))
 	}
+}
+
+func TestTransactionSerializeExisting(t *testing.T) {
+	// random pump amm swap transaction (3HWKcTbnAMXt3TZDi8LitZCAT5ht7tYqXCroQgNkEnRuvjWCAhmx4UAFnKTWzxS2JXxhbfTiKEdXeU3VHWKzEkNY)
+	trueEncoded := "AXJEirR5ePYXWIemCsSrRB3kTOxBQvJ8pZ4Of+vs75/Lw4NgNf0jr+eyI+2CAZZcwEQ54v/tcIh0p5qisd6ZfQWAAQAHDuIP6DQ7XgVvZzx4ZyZS5BjxS0s5JIGa893M/2foLj/N9tJulKNTEJ+CcURWZpXddGLJc0niyvBs8fADaZXWBStZSYulGfGwKCcEVhAem2vYiJnZnDQHW8EbXuli2pgFPcs4OJAtX+MJFvqNDoxBApNOXVmhOPi+s+Xj5G6dipCzZIG9Det/kYMpmklt7LaKvckpmIhAC+cygPT/H7L6uDUm47unlLqsWvR0JhT3lhSFUnSWfDsT92IHGjplDB07Bwa4Mppngp8gB0rx3o6jx3q5zZqJ7jaF//YA5f9pM0rWAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAACMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkMFN78gl7GdpQlCBi7ZUBl9CmNMVbVcbTU+AkMGOmoY2CQL4wWkL0iw2m16tD4VGZ2ZSCn9Rr5uDY8UTDVNj2KSwXRBHtnMBytk20Zd1LAlKbsLUEcQ8RupHeXS0aTLV9S0zqFMcANe7dmXMUOgO/qYKWak7hGKVjQNpnUxyaEPQgHAAUCkHwBAAcACQNkjocBAAAAAAgGAAEAEAkKAQELEQwADg0QAgEDBBEPCgoJCBILGDPmhaQBf4OtOLwvMTcAAABscskIAAAAAAoDAQAAAQkKAwIAAAEJCQIABQwCAAAAQEtMAAAAAAAJAgAGDAIAAABAQg8AAAAAAAEcQpjY9205kUMXxtRgI8+U286AVT/u2xYmbclxYfAs+QJDZQMS0kc="
+
+	tx, err := TransactionFromBase64(trueEncoded)
+	require.NoError(t, err)
+
+	encoded, err := tx.ToBase64()
+	require.NoError(t, err)
+	require.Equal(t, trueEncoded, encoded)
+}
+
+func TestTransactionSerializePumpFunSwap(t *testing.T) {
+	expectedEncoded := "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAcMC8/60geEHarnEMtcmE3t7lADNe2/gxa7NAhBe5Ufe5mtEeak/ClEpPqCUb74FUJuG/soxrZkZndgfGrZ9WamRvj7gB4Ax7akKlldX2HW0ZpscDlcG0xgSGrm4qPYLjpXha3ZyoEhdb0urZWzhcxyIVTkHNfJDlRkaaaZumtUuJid6LnvUOa256MT0Ym0MG/y6Uqt2PX3ijrL9vC9eTaGKzqGXmnuD1SAyrz2Y1fk3C8Y1Y1Fwep0ifs3I9l5PHKm6c4nvkyiO9V3lgShoznE+kfvld5CoS4qMMKpnUOErY8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAACs8TbrAfwcTog9I8i1hEq1mjf2at1XxemsO1PgWdNcZAFW4PaTZlrPRNsVaL8XW6pRicuX9dL/O2VdK7b9bRiw0WlzNBoKArNIcmjqJI0o+XoQGnMjSEA/HZqyYrSJgLkBCwwFAQYCAwQABwgJCgsYZgY9EgHa6+pMR9bEaRkAAHg1HjQAAAAA"
+	instruction := &testTransactionInstructions{
+		programID: MPK("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
+		accounts: []*AccountMeta{
+			{PublicKey: MPK("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"), IsSigner: false, IsWritable: false},
+			{PublicKey: MPK("CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM"), IsSigner: false, IsWritable: true},
+			{PublicKey: MPK("GjgKTqtzDei5E3uZyA2CN29KQgugF564K1hoc1jHpump"), IsSigner: false, IsWritable: false},
+			{PublicKey: MPK("HkvYAZV1Mg6kt5KMaA5YBQazZECg21zaZdQEMUiLrjKc"), IsSigner: false, IsWritable: true},
+			{PublicKey: MPK("9zpyjwrYdRWNMyqicoiuL3gUcrbvrkd5Kq9nxui1znw1"), IsSigner: false, IsWritable: true},
+			{PublicKey: MPK("BdQqJnuqqFhNZUNYGEEsuhBidpf8qHqfjDQvcjDN3nti"), IsSigner: false, IsWritable: true},
+			{PublicKey: MPK("o7RY6P2vQMuGSu1TrLM81weuzgDjaCRTXYRaXJwWcvc"), IsSigner: true, IsWritable: true},
+			{PublicKey: MPK("11111111111111111111111111111111"), IsSigner: false, IsWritable: false},
+			{PublicKey: MPK("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), IsSigner: false, IsWritable: false},
+			{PublicKey: MPK("SysvarRent111111111111111111111111111111111"), IsSigner: false, IsWritable: false},
+			{PublicKey: MPK("Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1"), IsSigner: false, IsWritable: false},
+			{PublicKey: MPK("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"), IsSigner: false, IsWritable: false},
+		},
+		data: []byte{102, 6, 61, 18, 1, 218, 235, 234, 76, 71, 214, 196, 105, 25, 0, 0, 120, 53, 30, 52, 0, 0, 0, 0},
+	}
+
+	tx, err := NewTransactionBuilder().
+		AddInstruction(instruction).
+		SetFeePayer(MPK("o7RY6P2vQMuGSu1TrLM81weuzgDjaCRTXYRaXJwWcvc")).
+		SetRecentBlockHash(MustHashFromBase58("F6TUDvYPMwDLP1MW4BUWTNm6S94XR1UZ2nGVyubqo6oi")).
+		Build()
+	require.NoError(t, err)
+	require.NotNil(t, tx)
+
+	encoded, err := tx.ToBase64()
+	require.NoError(t, err)
+
+	zlog.Debug("encoded", zap.String("encoded", encoded))
+	require.Equal(t, expectedEncoded, encoded)
 }
 
 func BenchmarkTransactionFromDecoder(b *testing.B) {

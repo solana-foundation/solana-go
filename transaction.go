@@ -484,16 +484,24 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 		return nil, fmt.Errorf("failed to encode tx.Message to binary: %w", err)
 	}
 
-	var signatureCount []byte
-	bin.EncodeCompactU16Length(&signatureCount, len(tx.Signatures))
-	output := make([]byte, 0, len(signatureCount)+len(signatureCount)*64+len(messageContent))
-	output = append(output, signatureCount...)
-	for _, sig := range tx.Signatures {
-		output = append(output, sig[:]...)
+	signatures := tx.Signatures
+	for i := len(signatures); i < int(tx.Message.Header.NumRequiredSignatures); i++ {
+		// append dummy signatures to the transaction, without it serialized transaction will be invalid
+		// reference: https://github.com/solana-labs/solana-web3.js/blob/4e9988cfc561f3ed11f4c5016a29090a61d129a8/src/transaction/versioned.ts#L36
+		signatures = append(signatures, SignatureFromBytes(make([]byte, SignatureLength)))
 	}
-	output = append(output, messageContent...)
 
-	return output, nil
+	var signaturesCountBytes []byte
+	bin.EncodeCompactU16Length(&signaturesCountBytes, len(signatures))
+
+	binaryTx := make([]byte, 0, len(signaturesCountBytes)+len(signatures)*64+len(messageContent))
+	binaryTx = append(binaryTx, signaturesCountBytes...)
+	for _, sig := range signatures {
+		binaryTx = append(binaryTx, sig[:]...)
+	}
+
+	binaryTx = append(binaryTx, messageContent...)
+	return binaryTx, nil
 }
 
 func (tx Transaction) MarshalWithEncoder(encoder *bin.Encoder) error {

@@ -46,9 +46,6 @@ type Create struct {
 	//
 	// [5] = [] TokenProgram
 	// ··········· SPL token program ID
-	//
-	// [6] = [] SysVarRent
-	// ··········· SysVarRentPubkey
 	solana.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 }
 
@@ -73,8 +70,18 @@ func (inst *Create) SetMint(mint solana.PublicKey) *Create {
 	return inst
 }
 
-func (inst Create) Build() *Instruction {
+func (inst *Create) SetAccounts(accounts []*solana.AccountMeta) error {
+	inst.AccountMetaSlice = accounts
+	if len(accounts) < 6 {
+		return fmt.Errorf("insufficient accounts, Create requires at-least 6 accounts not %d", len(accounts))
+	}
+	inst.Payer = accounts[0].PublicKey
+	inst.Wallet = accounts[2].PublicKey
+	inst.Mint = accounts[3].PublicKey
+	return nil
+}
 
+func (inst Create) Build() *Instruction {
 	// Find the associatedTokenAddress;
 	associatedTokenAddress, _, _ := solana.FindAssociatedTokenAddress(
 		inst.Wallet,
@@ -112,11 +119,6 @@ func (inst Create) Build() *Instruction {
 			IsSigner:   false,
 			IsWritable: false,
 		},
-		{
-			PublicKey:  solana.SysVarRentPubkey,
-			IsSigner:   false,
-			IsWritable: false,
-		},
 	}
 
 	inst.AccountMetaSlice = keys
@@ -139,13 +141,13 @@ func (inst Create) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *Create) Validate() error {
 	if inst.Payer.IsZero() {
-		return errors.New("Payer not set")
+		return errors.New("payer not set")
 	}
 	if inst.Wallet.IsZero() {
-		return errors.New("Wallet not set")
+		return errors.New("wallet not set")
 	}
 	if inst.Mint.IsZero() {
-		return errors.New("Mint not set")
+		return errors.New("mint not set")
 	}
 	_, _, err := solana.FindAssociatedTokenAddress(
 		inst.Wallet,
@@ -164,19 +166,17 @@ func (inst *Create) EncodeToTree(parent treeout.Branches) {
 			programBranch.Child(format.Instruction("Create")).
 				//
 				ParentFunc(func(instructionBranch treeout.Branches) {
-
 					// Parameters of the instruction:
 					instructionBranch.Child("Params[len=0]").ParentFunc(func(paramsBranch treeout.Branches) {})
 
 					// Accounts of the instruction:
-					instructionBranch.Child("Accounts[len=7").ParentFunc(func(accountsBranch treeout.Branches) {
+					instructionBranch.Child("Accounts[len=6").ParentFunc(func(accountsBranch treeout.Branches) {
 						accountsBranch.Child(format.Meta("                 payer", inst.AccountMetaSlice.Get(0)))
 						accountsBranch.Child(format.Meta("associatedTokenAddress", inst.AccountMetaSlice.Get(1)))
 						accountsBranch.Child(format.Meta("                wallet", inst.AccountMetaSlice.Get(2)))
 						accountsBranch.Child(format.Meta("             tokenMint", inst.AccountMetaSlice.Get(3)))
 						accountsBranch.Child(format.Meta("         systemProgram", inst.AccountMetaSlice.Get(4)))
 						accountsBranch.Child(format.Meta("          tokenProgram", inst.AccountMetaSlice.Get(5)))
-						accountsBranch.Child(format.Meta("            sysVarRent", inst.AccountMetaSlice.Get(6)))
 					})
 				})
 		})
@@ -199,4 +199,20 @@ func NewCreateInstruction(
 		SetPayer(payer).
 		SetWallet(walletAddress).
 		SetMint(splTokenMintAddress)
+}
+
+func (inst *Create) GetPayerAccount() *solana.AccountMeta {
+	return inst.AccountMetaSlice.Get(0)
+}
+
+func (inst *Create) GetAssociatedTokenAddressAccount() *solana.AccountMeta {
+	return inst.AccountMetaSlice.Get(1)
+}
+
+func (inst *Create) GetWalletAccount() *solana.AccountMeta {
+	return inst.AccountMetaSlice.Get(2)
+}
+
+func (inst *Create) GetMintAccount() *solana.AccountMeta {
+	return inst.AccountMetaSlice.Get(3)
 }
