@@ -49,6 +49,9 @@ var (
 	// A Token program on the Solana blockchain.
 	// This program defines a common implementation for Fungible and Non Fungible tokens.
 	TokenProgramID = MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+	// Superset of Token Program
+	// https://spl.solana.com/token-2022
+	Token2022ProgramID = MustPublicKeyFromBase58("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
 
 	Token2022ProgramID = MustPublicKeyFromBase58("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
 

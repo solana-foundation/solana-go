@@ -24,7 +24,7 @@ import (
 	treeout "github.com/gagliardetto/treeout"
 )
 
-type Create struct {
+type CreateIdempotent struct {
 	Payer  solana.PublicKey `bin:"-" borsh_skip:"true"`
 	Wallet solana.PublicKey `bin:"-" borsh_skip:"true"`
 	Mint   solana.PublicKey `bin:"-" borsh_skip:"true"`
@@ -46,42 +46,35 @@ type Create struct {
 	//
 	// [5] = [] TokenProgram
 	// ··········· SPL token program ID
+	//
+	// [6] = [] SysVarRent
+	// ··········· SysVarRentPubkey
 	solana.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 }
 
-// NewCreateInstructionBuilder creates a new `Create` instruction builder.
-func NewCreateInstructionBuilder() *Create {
-	nd := &Create{}
+// NewCreateIdempotentInstructionBuilder creates a new `CreateIdempotent` instruction builder.
+func NewCreateIdempotentInstructionBuilder() *CreateIdempotent {
+	nd := &CreateIdempotent{}
 	return nd
 }
 
-func (inst *Create) SetPayer(payer solana.PublicKey) *Create {
+func (inst *CreateIdempotent) SetPayer(payer solana.PublicKey) *CreateIdempotent {
 	inst.Payer = payer
 	return inst
 }
 
-func (inst *Create) SetWallet(wallet solana.PublicKey) *Create {
+func (inst *CreateIdempotent) SetWallet(wallet solana.PublicKey) *CreateIdempotent {
 	inst.Wallet = wallet
 	return inst
 }
 
-func (inst *Create) SetMint(mint solana.PublicKey) *Create {
+func (inst *CreateIdempotent) SetMint(mint solana.PublicKey) *CreateIdempotent {
 	inst.Mint = mint
 	return inst
 }
 
-func (inst *Create) SetAccounts(accounts []*solana.AccountMeta) error {
-	inst.AccountMetaSlice = accounts
-	if len(accounts) < 6 {
-		return fmt.Errorf("insufficient accounts, Create requires at-least 6 accounts not %d", len(accounts))
-	}
-	inst.Payer = accounts[0].PublicKey
-	inst.Wallet = accounts[2].PublicKey
-	inst.Mint = accounts[3].PublicKey
-	return nil
-}
+func (inst CreateIdempotent) Build() *Instruction {
 
-func (inst Create) Build() *Instruction {
 	// Find the associatedTokenAddress;
 	associatedTokenAddress, _, _ := solana.FindAssociatedTokenAddress(
 		inst.Wallet,
@@ -120,35 +113,40 @@ func (inst Create) Build() *Instruction {
 			IsSigner:   false,
 			IsWritable: false,
 		},
+		{
+			PublicKey:  solana.SysVarRentPubkey,
+			IsSigner:   false,
+			IsWritable: false,
+		},
 	}
 
 	inst.AccountMetaSlice = keys
 
 	return &Instruction{BaseVariant: bin.BaseVariant{
 		Impl:   inst,
-		TypeID: bin.TypeIDFromUint8(Instruction_Create),
+		TypeID: bin.TypeIDFromUint8(Instruction_CreateIdempotent),
 	}}
 }
 
 // ValidateAndBuild validates the instruction accounts.
 // If there is a validation error, return the error.
 // Otherwise, build and return the instruction.
-func (inst Create) ValidateAndBuild() (*Instruction, error) {
+func (inst CreateIdempotent) ValidateAndBuild() (*Instruction, error) {
 	if err := inst.Validate(); err != nil {
 		return nil, err
 	}
 	return inst.Build(), nil
 }
 
-func (inst *Create) Validate() error {
+func (inst *CreateIdempotent) Validate() error {
 	if inst.Payer.IsZero() {
-		return errors.New("payer not set")
+		return errors.New("Payer not set")
 	}
 	if inst.Wallet.IsZero() {
-		return errors.New("wallet not set")
+		return errors.New("Wallet not set")
 	}
 	if inst.Mint.IsZero() {
-		return errors.New("mint not set")
+		return errors.New("Mint not set")
 	}
 	_, _, err := solana.FindAssociatedTokenAddress(
 		inst.Wallet,
@@ -161,60 +159,46 @@ func (inst *Create) Validate() error {
 	return nil
 }
 
-func (inst *Create) EncodeToTree(parent treeout.Branches) {
+func (inst *CreateIdempotent) EncodeToTree(parent treeout.Branches) {
 	parent.Child(format.Program(ProgramName, ProgramID)).
 		//
 		ParentFunc(func(programBranch treeout.Branches) {
-			programBranch.Child(format.Instruction("Create")).
+			programBranch.Child(format.Instruction("CreateIdempotent")).
 				//
 				ParentFunc(func(instructionBranch treeout.Branches) {
+
 					// Parameters of the instruction:
 					instructionBranch.Child("Params[len=0]").ParentFunc(func(paramsBranch treeout.Branches) {})
 
 					// Accounts of the instruction:
-					instructionBranch.Child("Accounts[len=6").ParentFunc(func(accountsBranch treeout.Branches) {
+					instructionBranch.Child("Accounts[len=7").ParentFunc(func(accountsBranch treeout.Branches) {
 						accountsBranch.Child(format.Meta("                 payer", inst.AccountMetaSlice.Get(0)))
 						accountsBranch.Child(format.Meta("associatedTokenAddress", inst.AccountMetaSlice.Get(1)))
 						accountsBranch.Child(format.Meta("                wallet", inst.AccountMetaSlice.Get(2)))
 						accountsBranch.Child(format.Meta("             tokenMint", inst.AccountMetaSlice.Get(3)))
 						accountsBranch.Child(format.Meta("         systemProgram", inst.AccountMetaSlice.Get(4)))
 						accountsBranch.Child(format.Meta("          tokenProgram", inst.AccountMetaSlice.Get(5)))
+						accountsBranch.Child(format.Meta("            sysVarRent", inst.AccountMetaSlice.Get(6)))
 					})
 				})
 		})
 }
 
-func (inst Create) MarshalWithEncoder(encoder *bin.Encoder) error {
+func (inst CreateIdempotent) MarshalWithEncoder(encoder *bin.Encoder) error {
 	return encoder.WriteBytes([]byte{}, false)
 }
 
-func (inst *Create) UnmarshalWithDecoder(decoder *bin.Decoder) error {
+func (inst *CreateIdempotent) UnmarshalWithDecoder(decoder *bin.Decoder) error {
 	return nil
 }
 
-func NewCreateInstruction(
+func NewCreateIdempotentInstruction(
 	payer solana.PublicKey,
 	walletAddress solana.PublicKey,
 	splTokenMintAddress solana.PublicKey,
-) *Create {
-	return NewCreateInstructionBuilder().
+) *CreateIdempotent {
+	return NewCreateIdempotentInstructionBuilder().
 		SetPayer(payer).
 		SetWallet(walletAddress).
 		SetMint(splTokenMintAddress)
-}
-
-func (inst *Create) GetPayerAccount() *solana.AccountMeta {
-	return inst.AccountMetaSlice.Get(0)
-}
-
-func (inst *Create) GetAssociatedTokenAddressAccount() *solana.AccountMeta {
-	return inst.AccountMetaSlice.Get(1)
-}
-
-func (inst *Create) GetWalletAccount() *solana.AccountMeta {
-	return inst.AccountMetaSlice.Get(2)
-}
-
-func (inst *Create) GetMintAccount() *solana.AccountMeta {
-	return inst.AccountMetaSlice.Get(3)
 }
