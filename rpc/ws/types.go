@@ -70,6 +70,7 @@ type params struct {
 }
 
 type Options struct {
+	Proxy            string
 	HttpHeader       http.Header
 	HandshakeTimeout time.Duration
 	ShortID          bool // some RPC do not support int63/uint64 id, so need to enable it to rand a int31/uint32 id
