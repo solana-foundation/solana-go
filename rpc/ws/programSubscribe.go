@@ -42,7 +42,7 @@ func (cl *Client) ProgramSubscribe(
 	)
 }
 
-// ProgramSubscribe subscribes to a program to receive notifications
+// ProgramSubscribeWithOpts subscribes to a program to receive notifications
 // when the lamports or data for a given account owned by the program changes.
 func (cl *Client) ProgramSubscribeWithOpts(
 	programID solana.PublicKey,

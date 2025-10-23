@@ -148,7 +148,7 @@ func (dt *TransactionResultEnvelope) GetData() solana.Data {
 	return dt.asDecodedBinary
 }
 
-// GetRawJSON returns a *solana.Transaction when the data
+// GetTransaction returns a *solana.Transaction when the data
 // encoding is EncodingJSON.
 func (dt *TransactionResultEnvelope) GetTransaction() (*solana.Transaction, error) {
 	if dt.asDecodedBinary.Content != nil {
