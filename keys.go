@@ -691,14 +691,21 @@ func FindProgramAddress(seed [][]byte, programID PublicKey) (PublicKey, uint8, e
 	return PublicKey{}, bumpSeed, errors.New("unable to find a valid program address")
 }
 
-func FindAssociatedTokenAddress(
-	wallet PublicKey,
-	mint PublicKey,
-) (PublicKey, uint8, error) {
+func FindAssociatedTokenAddress(wallet PublicKey, mint PublicKey) (PublicKey, uint8, error) {
 	return findAssociatedTokenAddressAndBumpSeed(
 		wallet,
 		mint,
 		SPLAssociatedTokenAccountProgramID,
+		TokenProgramID,
+	)
+}
+
+func FindAssociatedToken2022Address(wallet PublicKey, mint PublicKey) (PublicKey, uint8, error) {
+	return findAssociatedTokenAddressAndBumpSeed(
+		wallet,
+		mint,
+		SPLAssociatedTokenAccountProgramID,
+		Token2022ProgramID,
 	)
 }
 
@@ -706,10 +713,11 @@ func findAssociatedTokenAddressAndBumpSeed(
 	walletAddress PublicKey,
 	splTokenMintAddress PublicKey,
 	programID PublicKey,
+	tokenProgramID PublicKey,
 ) (PublicKey, uint8, error) {
 	return FindProgramAddress([][]byte{
 		walletAddress[:],
-		TokenProgramID[:],
+		tokenProgramID[:],
 		splTokenMintAddress[:],
 	},
 		programID,
