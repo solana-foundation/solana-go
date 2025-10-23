@@ -66,7 +66,7 @@ type response struct {
 
 type params struct {
 	Result       *stdjson.RawMessage `json:"result"`
-	Subscription int                 `json:"subscription"`
+	Subscription uint64              `json:"subscription"`
 }
 
 type Options struct {
