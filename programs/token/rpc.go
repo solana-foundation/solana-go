@@ -28,7 +28,6 @@ import (
 const MINT_SIZE = 82
 
 func (mint *Mint) Decode(data []byte) error {
-	mint = new(Mint)
 	dec := bin.NewBinDecoder(data)
 	if err := dec.Decode(&mint); err != nil {
 		return fmt.Errorf("unable to decode mint: %w", err)
