@@ -163,8 +163,9 @@ type TransactionOption interface {
 }
 
 type transactionOptions struct {
-	payer         PublicKey
-	addressTables map[PublicKey]PublicKeySlice // [tablePubkey]addresses
+	payer                 PublicKey
+	addressTables         map[PublicKey]PublicKeySlice // [tablePubkey]addresses
+	deterministicOrdering bool                         // sort lookup tables for deterministic serialization
 }
 
 type transactionOptionFunc func(opts *transactionOptions)
@@ -179,6 +180,14 @@ func TransactionPayer(payer PublicKey) TransactionOption {
 
 func TransactionAddressTables(tables map[PublicKey]PublicKeySlice) TransactionOption {
 	return transactionOptionFunc(func(opts *transactionOptions) { opts.addressTables = tables })
+}
+
+// TransactionDeterministicOrdering ensures deterministic transaction serialization
+// when using multiple address lookup tables. Without this option, map iteration
+// order may cause account indices to vary between runs. Enable this for testing,
+// caching, or any scenario requiring consistent transaction bytes.
+func TransactionDeterministicOrdering() TransactionOption {
+	return transactionOptionFunc(func(opts *transactionOptions) { opts.deterministicOrdering = true })
 }
 
 var debugNewTransaction = false
@@ -233,6 +242,21 @@ type addressTablePubkeyWithIndex struct {
 	index        uint8
 }
 
+// sortedMapKeys returns the keys of a map, optionally sorted by byte comparison.
+// When sortKeys is false, returns keys in arbitrary map iteration order.
+func sortedMapKeys[V any](m map[PublicKey]V, sortKeys bool) []PublicKey {
+	keys := make([]PublicKey, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	if sortKeys {
+		sort.Slice(keys, func(i, j int) bool {
+			return bytes.Compare(keys[i][:], keys[j][:]) < 0
+		})
+	}
+	return keys
+}
+
 func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...TransactionOption) (*Transaction, error) {
 	if len(instructions) == 0 {
 		return nil, fmt.Errorf("requires at-least one instruction to create a transaction")
@@ -259,20 +283,20 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	}
 
 	addressLookupKeysMap := make(map[PublicKey]addressTablePubkeyWithIndex) // all accounts from tables as map
-	for addressTablePubKey, addressTable := range options.addressTables {
+
+	// When deterministicOrdering is enabled, sort keys for consistent behavior
+	// when addresses appear in multiple tables (first table in sorted order wins).
+	for _, addressTablePubKey := range sortedMapKeys(options.addressTables, options.deterministicOrdering) {
+		addressTable := options.addressTables[addressTablePubKey]
 		if len(addressTable) > 256 {
 			return nil, fmt.Errorf("max lookup table index exceeded for %s table", addressTablePubKey)
 		}
-
 		for i, address := range addressTable {
-			_, ok := addressLookupKeysMap[address]
-			if ok {
-				continue
-			}
-
-			addressLookupKeysMap[address] = addressTablePubkeyWithIndex{
-				addressTable: addressTablePubKey,
-				index:        uint8(i),
+			if _, ok := addressLookupKeysMap[address]; !ok {
+				addressLookupKeysMap[address] = addressTablePubkeyWithIndex{
+					addressTable: addressTablePubKey,
+					index:        uint8(i),
+				}
 			}
 		}
 	}
@@ -412,10 +436,12 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	if len(lookupsMap) > 0 {
 		lookups := make([]MessageAddressTableLookup, 0, len(lookupsMap))
 
-		for tablePubKey, l := range lookupsMap {
+		// When deterministicOrdering is enabled, sort keys for consistent
+		// transaction serialization across runs.
+		for _, tablePubKey := range sortedMapKeys(lookupsMap, options.deterministicOrdering) {
+			l := lookupsMap[tablePubKey]
 			lookupsWritableKeys = append(lookupsWritableKeys, l.Writable...)
 			lookupsReadOnlyKeys = append(lookupsReadOnlyKeys, l.Readonly...)
-
 			lookups = append(lookups, MessageAddressTableLookup{
 				AccountKey:      tablePubKey,
 				WritableIndexes: l.WritableIndexes,
