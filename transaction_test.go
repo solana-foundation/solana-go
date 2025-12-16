@@ -399,3 +399,69 @@ func BenchmarkTransactionVerifySignatures(b *testing.B) {
 		tx.VerifySignatures()
 	}
 }
+
+// TestNewTransactionWithAddressLookupTables_Deterministic verifies that transaction
+// serialization is deterministic when using TransactionDeterministicOrdering with
+// multiple address lookup tables.
+func TestNewTransactionWithAddressLookupTables_Deterministic(t *testing.T) {
+	// Define two lookup tables with different addresses
+	lookupTable1 := MustPublicKeyFromBase58("8Vaso6eE1pWktDHwy2qQBB1fhjmBgwzhoXQKe1sxtFjn")
+	lookupTable2 := MustPublicKeyFromBase58("FqtwFavD9v99FvoaZrY14bGatCQa9ChsMVphEUNAWHeG")
+
+	// Addresses in lookup table 1
+	addr1InTable1 := MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+	addr2InTable1 := MustPublicKeyFromBase58("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4")
+
+	// Addresses in lookup table 2
+	addr1InTable2 := MustPublicKeyFromBase58("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+	addr2InTable2 := MustPublicKeyFromBase58("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+
+	// Fee payer and program
+	feePayer := MustPublicKeyFromBase58("7KxrPswMgoVFwC1K7KmudEW9KzmVUCdBnLBMaSAjYQGp")
+	programID := MustPublicKeyFromBase58("11111111111111111111111111111111")
+
+	addressTables := map[PublicKey]PublicKeySlice{
+		lookupTable1: {addr1InTable1, addr2InTable1},
+		lookupTable2: {addr1InTable2, addr2InTable2},
+	}
+
+	// Create instruction that uses accounts from both lookup tables
+	instruction := &testTransactionInstructions{
+		accounts: []*AccountMeta{
+			{PublicKey: feePayer, IsSigner: true, IsWritable: true},
+			{PublicKey: addr1InTable1, IsSigner: false, IsWritable: false},
+			{PublicKey: addr2InTable1, IsSigner: false, IsWritable: true},
+			{PublicKey: addr1InTable2, IsSigner: false, IsWritable: false},
+			{PublicKey: addr2InTable2, IsSigner: false, IsWritable: true},
+		},
+		data:      []byte{0x01, 0x02, 0x03},
+		programID: programID,
+	}
+
+	blockhash := MustHashFromBase58("4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZAMdL4VZHirAn")
+
+	// Build the transaction multiple times WITH deterministic ordering
+	// and verify consistent serialization
+	var firstSerialized []byte
+	for i := 0; i < 100; i++ {
+		tx, err := NewTransaction(
+			[]Instruction{instruction},
+			blockhash,
+			TransactionPayer(feePayer),
+			TransactionAddressTables(addressTables),
+			TransactionDeterministicOrdering(), // Enable deterministic ordering
+		)
+		require.NoError(t, err)
+
+		serialized, err := tx.MarshalBinary()
+		require.NoError(t, err)
+
+		if i == 0 {
+			firstSerialized = serialized
+		} else {
+			// Every iteration should produce identical bytes
+			assert.Equal(t, firstSerialized, serialized,
+				"Transaction serialization should be deterministic (iteration %d)", i)
+		}
+	}
+}
