@@ -404,33 +404,38 @@ func BenchmarkTransactionVerifySignatures(b *testing.B) {
 // serialization is deterministic when using TransactionDeterministicOrdering with
 // multiple address lookup tables.
 func TestNewTransactionWithAddressLookupTables_Deterministic(t *testing.T) {
-	// Define two lookup tables with different addresses
+	// Define two lookup tables
 	lookupTable1 := MustPublicKeyFromBase58("8Vaso6eE1pWktDHwy2qQBB1fhjmBgwzhoXQKe1sxtFjn")
 	lookupTable2 := MustPublicKeyFromBase58("FqtwFavD9v99FvoaZrY14bGatCQa9ChsMVphEUNAWHeG")
 
-	// Addresses in lookup table 1
+	// Addresses unique to lookup table 1
 	addr1InTable1 := MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
 	addr2InTable1 := MustPublicKeyFromBase58("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4")
 
-	// Addresses in lookup table 2
+	// Addresses unique to lookup table 2
 	addr1InTable2 := MustPublicKeyFromBase58("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
 	addr2InTable2 := MustPublicKeyFromBase58("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+
+	// Shared address that exists in BOTH tables - tests that deterministic
+	// ordering consistently picks the same table when an address appears in multiple
+	sharedAddr := MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
 
 	// Fee payer and program
 	feePayer := MustPublicKeyFromBase58("7KxrPswMgoVFwC1K7KmudEW9KzmVUCdBnLBMaSAjYQGp")
 	programID := MustPublicKeyFromBase58("11111111111111111111111111111111")
 
 	addressTables := map[PublicKey]PublicKeySlice{
-		lookupTable1: {addr1InTable1, addr2InTable1},
-		lookupTable2: {addr1InTable2, addr2InTable2},
+		lookupTable1: {addr1InTable1, addr2InTable1, sharedAddr},
+		lookupTable2: {sharedAddr, addr1InTable2, addr2InTable2}, // sharedAddr at different index
 	}
 
-	// Create instruction that uses accounts from both lookup tables
+	// Create instruction that uses accounts from both lookup tables, including the shared address
 	instruction := &testTransactionInstructions{
 		accounts: []*AccountMeta{
 			{PublicKey: feePayer, IsSigner: true, IsWritable: true},
 			{PublicKey: addr1InTable1, IsSigner: false, IsWritable: false},
 			{PublicKey: addr2InTable1, IsSigner: false, IsWritable: true},
+			{PublicKey: sharedAddr, IsSigner: false, IsWritable: true}, // shared address
 			{PublicKey: addr1InTable2, IsSigner: false, IsWritable: false},
 			{PublicKey: addr2InTable2, IsSigner: false, IsWritable: true},
 		},
