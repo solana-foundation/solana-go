@@ -446,6 +446,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 			l := lookupsMap[tablePubKey]
 			lookupsWritableKeys = append(lookupsWritableKeys, l.Writable...)
 			lookupsReadOnlyKeys = append(lookupsReadOnlyKeys, l.Readonly...)
+
 			lookups = append(lookups, MessageAddressTableLookup{
 				AccountKey:      tablePubKey,
 				WritableIndexes: l.WritableIndexes,
