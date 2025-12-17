@@ -250,7 +250,7 @@ func sortedMapKeys[V any](m map[PublicKey]V, sortKeys bool) []PublicKey {
 		keys = append(keys, k)
 	}
 	if sortKeys {
-		sort.Slice(keys, func(i, j int) bool {
+		sort.SliceStable(keys, func(i, j int) bool {
 			return bytes.Compare(keys[i][:], keys[j][:]) < 0
 		})
 	}
