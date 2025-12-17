@@ -291,12 +291,16 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		if len(addressTable) > 256 {
 			return nil, fmt.Errorf("max lookup table index exceeded for %s table", addressTablePubKey)
 		}
+
 		for i, address := range addressTable {
-			if _, ok := addressLookupKeysMap[address]; !ok {
-				addressLookupKeysMap[address] = addressTablePubkeyWithIndex{
-					addressTable: addressTablePubKey,
-					index:        uint8(i),
-				}
+			_, ok := addressLookupKeysMap[address]
+			if ok {
+				continue
+			}
+
+			addressLookupKeysMap[address] = addressTablePubkeyWithIndex{
+				addressTable: addressTablePubKey,
+				index:        uint8(i),
 			}
 		}
 	}
