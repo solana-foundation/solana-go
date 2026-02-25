@@ -140,7 +140,7 @@ type CompiledInstruction struct {
 
 	// Invocation stack height of this instruction. Instruction stack height
 	// starts at 1 for transaction instructions.
-	StackHeight uint8 `json:"stackHeight,omitempty"`
+	StackHeight uint16 `json:"stackHeight,omitempty"`
 }
 
 func (ci *CompiledInstruction) ResolveInstructionAccounts(message *Message) ([]*AccountMeta, error) {
