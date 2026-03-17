@@ -27,6 +27,7 @@ import (
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/treeout"
 	"github.com/mr-tron/base58"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"go.uber.org/zap"
 
 	"github.com/gagliardetto/solana-go/text"
@@ -164,7 +165,7 @@ type TransactionOption interface {
 
 type transactionOptions struct {
 	payer         PublicKey
-	addressTables map[PublicKey]PublicKeySlice // [tablePubkey]addresses
+	addressTables *orderedmap.OrderedMap[PublicKey, PublicKeySlice] // [tablePubkey]addresses, sorted for determinism
 }
 
 type transactionOptionFunc func(opts *transactionOptions)
@@ -178,7 +179,23 @@ func TransactionPayer(payer PublicKey) TransactionOption {
 }
 
 func TransactionAddressTables(tables map[PublicKey]PublicKeySlice) TransactionOption {
-	return transactionOptionFunc(func(opts *transactionOptions) { opts.addressTables = tables })
+	return transactionOptionFunc(func(opts *transactionOptions) { opts.addressTables = addressTableMapFromMap(tables) })
+}
+
+// AddressTableEntry is a single address lookup table entry used with
+// TransactionAddressTablesOrdered.
+type AddressTableEntry struct {
+	TableKey  PublicKey
+	Addresses PublicKeySlice
+}
+
+// TransactionAddressTablesSlice sets address lookup tables in the exact order
+// provided, giving the caller full control over serialization order and which
+// table takes priority when an address appears in multiple tables.
+func TransactionAddressTablesSlice(tables []AddressTableEntry) TransactionOption {
+	return transactionOptionFunc(func(opts *transactionOptions) {
+		opts.addressTables = addressTableMapFromSlice(tables)
+	})
 }
 
 var debugNewTransaction = false
@@ -259,7 +276,8 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	}
 
 	addressLookupKeysMap := make(map[PublicKey]addressTablePubkeyWithIndex) // all accounts from tables as map
-	for addressTablePubKey, addressTable := range options.addressTables {
+	for pair := options.addressTables.Oldest(); pair != nil; pair = pair.Next() {
+		addressTablePubKey, addressTable := pair.Key, pair.Value
 		if len(addressTable) > 256 {
 			return nil, fmt.Errorf("max lookup table index exceeded for %s table", addressTablePubKey)
 		}
@@ -359,13 +377,13 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	message := Message{
 		RecentBlockhash: recentBlockHash,
 	}
-	lookupsMap := make(map[PublicKey]struct { // extended MessageAddressTableLookup
+	lookupsMap := orderedmap.New[PublicKey, struct { // extended MessageAddressTableLookup
 		AccountKey      PublicKey // The account key of the address table.
 		WritableIndexes []uint8
 		Writable        []PublicKey
 		ReadonlyIndexes []uint8
 		Readonly        []PublicKey
-	})
+	}]()
 	for idx, acc := range allKeys {
 
 		if debugNewTransaction {
@@ -379,7 +397,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		_, isInvoked := programIDsMap[acc.PublicKey]
 		// skip fee payer
 		if isPresentedInTables && idx != 0 && !acc.IsSigner && !isInvoked {
-			lookup := lookupsMap[addressLookupKeyEntry.addressTable]
+			lookup, _ := lookupsMap.Get(addressLookupKeyEntry.addressTable)
 			if acc.IsWritable {
 				lookup.WritableIndexes = append(lookup.WritableIndexes, addressLookupKeyEntry.index)
 				lookup.Writable = append(lookup.Writable, acc.PublicKey)
@@ -388,7 +406,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 				lookup.Readonly = append(lookup.Readonly, acc.PublicKey)
 			}
 
-			lookupsMap[addressLookupKeyEntry.addressTable] = lookup
+			lookupsMap.Set(addressLookupKeyEntry.addressTable, lookup)
 			continue // prevent changing message.Header properties
 		}
 
@@ -409,10 +427,11 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 
 	var lookupsWritableKeys []PublicKey
 	var lookupsReadOnlyKeys []PublicKey
-	if len(lookupsMap) > 0 {
-		lookups := make([]MessageAddressTableLookup, 0, len(lookupsMap))
+	if lookupsMap.Len() > 0 {
+		lookups := make([]MessageAddressTableLookup, 0, lookupsMap.Len())
 
-		for tablePubKey, l := range lookupsMap {
+		for pair := lookupsMap.Oldest(); pair != nil; pair = pair.Next() {
+			tablePubKey, l := pair.Key, pair.Value
 			lookupsWritableKeys = append(lookupsWritableKeys, l.Writable...)
 			lookupsReadOnlyKeys = append(lookupsReadOnlyKeys, l.Readonly...)
 
@@ -424,7 +443,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		}
 
 		// prevent error created in ResolveLookups
-		err := message.SetAddressTables(options.addressTables)
+		err := message.setAddressTablesOrdered(options.addressTables)
 		if err != nil {
 			return nil, fmt.Errorf("SetAddressTables: %s", err)
 		}
