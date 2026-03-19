@@ -377,13 +377,13 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	message := Message{
 		RecentBlockhash: recentBlockHash,
 	}
-	lookupsMap := orderedmap.New[PublicKey, struct { // extended MessageAddressTableLookup
+	lookupsMap := make(map[PublicKey]struct { // extended MessageAddressTableLookup
 		AccountKey      PublicKey // The account key of the address table.
 		WritableIndexes []uint8
 		Writable        []PublicKey
 		ReadonlyIndexes []uint8
 		Readonly        []PublicKey
-	}]()
+	})
 	for idx, acc := range allKeys {
 
 		if debugNewTransaction {
@@ -397,7 +397,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		_, isInvoked := programIDsMap[acc.PublicKey]
 		// skip fee payer
 		if isPresentedInTables && idx != 0 && !acc.IsSigner && !isInvoked {
-			lookup, _ := lookupsMap.Get(addressLookupKeyEntry.addressTable)
+			lookup := lookupsMap[addressLookupKeyEntry.addressTable]
 			if acc.IsWritable {
 				lookup.WritableIndexes = append(lookup.WritableIndexes, addressLookupKeyEntry.index)
 				lookup.Writable = append(lookup.Writable, acc.PublicKey)
@@ -406,7 +406,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 				lookup.Readonly = append(lookup.Readonly, acc.PublicKey)
 			}
 
-			lookupsMap.Set(addressLookupKeyEntry.addressTable, lookup)
+			lookupsMap[addressLookupKeyEntry.addressTable] = lookup
 			continue // prevent changing message.Header properties
 		}
 
@@ -427,11 +427,18 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 
 	var lookupsWritableKeys []PublicKey
 	var lookupsReadOnlyKeys []PublicKey
-	if lookupsMap.Len() > 0 {
-		lookups := make([]MessageAddressTableLookup, 0, lookupsMap.Len())
+	if len(lookupsMap) > 0 {
+		lookups := make([]MessageAddressTableLookup, 0, len(lookupsMap))
 
-		for pair := lookupsMap.Oldest(); pair != nil; pair = pair.Next() {
-			tablePubKey, l := pair.Key, pair.Value
+		// Iterate options.addressTables (not lookupsMap) so that both
+		// shared-address priority and final serialization order are controlled
+		// by the same caller-specified source.
+		for pair := options.addressTables.Oldest(); pair != nil; pair = pair.Next() {
+			tablePubKey := pair.Key
+			l, ok := lookupsMap[tablePubKey]
+			if !ok {
+				continue // table provided but no accounts used from it
+			}
 			lookupsWritableKeys = append(lookupsWritableKeys, l.Writable...)
 			lookupsReadOnlyKeys = append(lookupsReadOnlyKeys, l.Readonly...)
 
