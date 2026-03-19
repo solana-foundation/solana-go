@@ -23,6 +23,7 @@ import (
 
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/treeout"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 
 	"github.com/gagliardetto/solana-go/text"
 )
@@ -110,7 +111,7 @@ type Message struct {
 	// The actual tables that contain the list of account pubkeys.
 	// NOTE: you need to fetch these from the chain, and then call `SetAddressTables`
 	// before you use this transaction -- otherwise, you will get a panic.
-	addressTables map[PublicKey]PublicKeySlice
+	addressTables *orderedmap.OrderedMap[PublicKey, PublicKeySlice]
 
 	resolved bool // if true, the lookups have been resolved, and the `AccountKeys` slice contains all the accounts (static + dynamic).
 }
@@ -122,14 +123,40 @@ func (mx *Message) SetAddressTables(tables map[PublicKey]PublicKeySlice) error {
 	if mx.addressTables != nil {
 		return fmt.Errorf("address tables already set")
 	}
+	mx.addressTables = addressTableMapFromMap(tables)
+	return nil
+}
+
+// SetAddressTablesSlice sets the actual address tables from a slice, preserving the
+// provided order. Use this when insertion order matters, e.g. to control which table
+// takes priority when an address appears in multiple tables.
+// NOTE: you can call this once.
+func (mx *Message) SetAddressTablesSlice(tables []AddressTableEntry) error {
+	if mx.addressTables != nil {
+		return fmt.Errorf("address tables already set")
+	}
+	mx.addressTables = addressTableMapFromSlice(tables)
+	return nil
+}
+
+func (mx *Message) setAddressTablesOrdered(tables *orderedmap.OrderedMap[PublicKey, PublicKeySlice]) error {
+	if mx.addressTables != nil {
+		return fmt.Errorf("address tables already set")
+	}
 	mx.addressTables = tables
 	return nil
 }
 
 // GetAddressTables returns the actual address tables used by this message.
-// NOTE: you must have called `SetAddressTable` before being able to use this method.
+// NOTE: you must have called `SetAddressTables` before being able to use this method.
 func (mx *Message) GetAddressTables() map[PublicKey]PublicKeySlice {
-	return mx.addressTables
+	return addressTableMapToMap(mx.addressTables)
+}
+
+// GetAddressTablesSlice returns the address tables as a slice in their insertion order.
+// NOTE: you must have called `SetAddressTables` before being able to use this method.
+func (mx *Message) GetAddressTablesSlice() []AddressTableEntry {
+	return addressTableMapToSlice(mx.addressTables)
 }
 
 var _ bin.EncoderDecoder = &Message{}
@@ -421,7 +448,7 @@ func (mx Message) GetAddressTableLookupAccounts() (PublicKeySlice, error) {
 	var readonly PublicKeySlice
 
 	for _, lookup := range mx.AddressTableLookups {
-		table, ok := mx.addressTables[lookup.AccountKey]
+		table, ok := mx.addressTables.Get(lookup.AccountKey)
 		if !ok {
 			return writable, fmt.Errorf("address table lookup not found for account: %s", lookup.AccountKey)
 		}
@@ -657,7 +684,7 @@ func (m Message) checkPreconditions() error {
 	// and there are > 0 lookups,
 	// but the address table is empty,
 	// then we can't build the account meta list:
-	if m.IsVersioned() && m.AddressTableLookups.NumLookups() > 0 && (m.addressTables == nil || len(m.addressTables) == 0) {
+	if m.IsVersioned() && m.AddressTableLookups.NumLookups() > 0 && m.addressTables.Len() == 0 {
 		return fmt.Errorf("cannot build account meta list without address tables")
 	}
 

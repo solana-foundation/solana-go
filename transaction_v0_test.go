@@ -39,7 +39,6 @@ func TestTransactionV0(t *testing.T) {
 		tables,
 	)
 	require.NoError(t, err)
-	require.Equal(t, tables, tx.Message.addressTables)
 	require.Equal(t, tables, tx.Message.GetAddressTables())
 
 	require.Equal(t, MessageVersionV0, tx.Message.GetVersion())

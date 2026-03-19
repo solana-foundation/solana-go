@@ -399,3 +399,80 @@ func BenchmarkTransactionVerifySignatures(b *testing.B) {
 		tx.VerifySignatures()
 	}
 }
+
+// TestNewTransactionWithAddressLookupTables_Deterministic verifies two ordering
+// guarantees of TransactionAddressTablesSlice:
+//  1. Byte-identical serialization across repeated builds (determinism).
+//  2. The slice position controls both shared-address priority AND the order of
+//     MessageAddressTableLookups in the serialized message.
+func TestNewTransactionWithAddressLookupTables_Deterministic(t *testing.T) {
+	lookupTable1 := MustPublicKeyFromBase58("8Vaso6eE1pWktDHwy2qQBB1fhjmBgwzhoXQKe1sxtFjn")
+	lookupTable2 := MustPublicKeyFromBase58("FqtwFavD9v99FvoaZrY14bGatCQa9ChsMVphEUNAWHeG")
+
+	addr1InTable1 := MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+	addr2InTable1 := MustPublicKeyFromBase58("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4")
+
+	// addr1InTable2 sorts before anything in table1 in the account priority
+	// ordering, so without the fix table2 would appear first in the serialized
+	// lookups even though table1 is listed first in the slice.
+	addr1InTable2 := MustPublicKeyFromBase58("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+	addr2InTable2 := MustPublicKeyFromBase58("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+
+	// sharedAddr exists in both tables at different indices; table1 wins because
+	// it is listed first in the AddressTableEntry slice.
+	sharedAddr := MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
+
+	feePayer := MustPublicKeyFromBase58("7KxrPswMgoVFwC1K7KmudEW9KzmVUCdBnLBMaSAjYQGp")
+	programID := MustPublicKeyFromBase58("11111111111111111111111111111111")
+
+	addressTables := []AddressTableEntry{
+		{TableKey: lookupTable1, Addresses: PublicKeySlice{addr1InTable1, addr2InTable1, sharedAddr}},
+		{TableKey: lookupTable2, Addresses: PublicKeySlice{sharedAddr, addr1InTable2, addr2InTable2}},
+	}
+
+	instruction := &testTransactionInstructions{
+		accounts: []*AccountMeta{
+			{PublicKey: feePayer, IsSigner: true, IsWritable: true},
+			{PublicKey: addr1InTable1, IsSigner: false, IsWritable: false},
+			{PublicKey: addr2InTable1, IsSigner: false, IsWritable: true},
+			{PublicKey: sharedAddr, IsSigner: false, IsWritable: true},
+			{PublicKey: addr1InTable2, IsSigner: false, IsWritable: false},
+			{PublicKey: addr2InTable2, IsSigner: false, IsWritable: true},
+		},
+		data:      []byte{0x01, 0x02, 0x03},
+		programID: programID,
+	}
+
+	blockhash := MustHashFromBase58("4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZAMdL4VZHirAn")
+
+	var firstSerialized []byte
+	for i := 0; i < 100; i++ {
+		tx, err := NewTransaction(
+			[]Instruction{instruction},
+			blockhash,
+			TransactionPayer(feePayer),
+			TransactionAddressTablesSlice(addressTables),
+		)
+		require.NoError(t, err)
+
+		// Lookup serialization order must match slice order: table1 first.
+		require.Len(t, tx.Message.AddressTableLookups, 2)
+		assert.Equal(t, lookupTable1, tx.Message.AddressTableLookups[0].AccountKey,
+			"table1 must be serialized first (slice position controls lookup order)")
+		assert.Equal(t, lookupTable2, tx.Message.AddressTableLookups[1].AccountKey)
+
+		// sharedAddr must be assigned to table1 (first wins).
+		assert.Equal(t, uint8(2), tx.Message.AddressTableLookups[0].WritableIndexes[1],
+			"sharedAddr index in table1 is 2")
+
+		serialized, err := tx.MarshalBinary()
+		require.NoError(t, err)
+
+		if i == 0 {
+			firstSerialized = serialized
+		} else {
+			assert.Equal(t, firstSerialized, serialized,
+				"Transaction serialization must be deterministic (iteration %d)", i)
+		}
+	}
+}
