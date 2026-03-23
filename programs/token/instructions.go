@@ -173,6 +173,34 @@ const (
 
 	// Like InitializeMint, but does not require the Rent sysvar to be provided.
 	Instruction_InitializeMint2
+
+	// Gets the required size of an account for the given mint as a little-endian u64.
+	Instruction_GetAccountDataSize
+
+	// Initialize the Immutable Owner extension for the given token account.
+	// No-ops in this version of the program, but is included for compatibility
+	// with the Associated Token Account program.
+	Instruction_InitializeImmutableOwner
+
+	// Convert an Amount of tokens to a UiAmount string, using the given mint.
+	Instruction_AmountToUiAmount
+
+	// Convert a UiAmount of tokens to a little-endian u64 raw Amount, using the given mint.
+	Instruction_UiAmountToAmount
+)
+
+const (
+	// Withdraw excess lamports from a token account, mint, or multisig.
+	// Only available in the p-token (Pinocchio) implementation.
+	Instruction_WithdrawExcessLamports uint8 = 38
+
+	// Unwrap lamports from a native SOL token account directly to a destination.
+	// Only available in the p-token (Pinocchio) implementation.
+	Instruction_UnwrapLamports uint8 = 45
+
+	// Execute multiple token instructions in a single call.
+	// Only available in the p-token (Pinocchio) implementation.
+	Instruction_Batch uint8 = 255
 )
 
 // InstructionIDToName returns the name of the instruction given its ID.
@@ -220,6 +248,20 @@ func InstructionIDToName(id uint8) string {
 		return "InitializeMultisig2"
 	case Instruction_InitializeMint2:
 		return "InitializeMint2"
+	case Instruction_GetAccountDataSize:
+		return "GetAccountDataSize"
+	case Instruction_InitializeImmutableOwner:
+		return "InitializeImmutableOwner"
+	case Instruction_AmountToUiAmount:
+		return "AmountToUiAmount"
+	case Instruction_UiAmountToAmount:
+		return "UiAmountToAmount"
+	case Instruction_WithdrawExcessLamports:
+		return "WithdrawExcessLamports"
+	case Instruction_UnwrapLamports:
+		return "UnwrapLamports"
+	case Instruction_Batch:
+		return "Batch"
 	default:
 		return ""
 	}
@@ -237,74 +279,51 @@ func (inst *Instruction) EncodeToTree(parent ag_treeout.Branches) {
 	}
 }
 
+// instructionImplDefs contains the variant types for instruction IDs 0-24.
+// IDs 0-20 are the original SPL Token instructions, IDs 21-24 are additional
+// instructions added for Token-2022 compatibility.
+var instructionImplDefs = []ag_binary.VariantType{
+	{"InitializeMint", (*InitializeMint)(nil)},           // 0
+	{"InitializeAccount", (*InitializeAccount)(nil)},     // 1
+	{"InitializeMultisig", (*InitializeMultisig)(nil)},   // 2
+	{"Transfer", (*Transfer)(nil)},                       // 3
+	{"Approve", (*Approve)(nil)},                         // 4
+	{"Revoke", (*Revoke)(nil)},                           // 5
+	{"SetAuthority", (*SetAuthority)(nil)},               // 6
+	{"MintTo", (*MintTo)(nil)},                           // 7
+	{"Burn", (*Burn)(nil)},                               // 8
+	{"CloseAccount", (*CloseAccount)(nil)},               // 9
+	{"FreezeAccount", (*FreezeAccount)(nil)},             // 10
+	{"ThawAccount", (*ThawAccount)(nil)},                 // 11
+	{"TransferChecked", (*TransferChecked)(nil)},         // 12
+	{"ApproveChecked", (*ApproveChecked)(nil)},           // 13
+	{"MintToChecked", (*MintToChecked)(nil)},             // 14
+	{"BurnChecked", (*BurnChecked)(nil)},                 // 15
+	{"InitializeAccount2", (*InitializeAccount2)(nil)},   // 16
+	{"SyncNative", (*SyncNative)(nil)},                   // 17
+	{"InitializeAccount3", (*InitializeAccount3)(nil)},   // 18
+	{"InitializeMultisig2", (*InitializeMultisig2)(nil)}, // 19
+	{"InitializeMint2", (*InitializeMint2)(nil)},         // 20
+	{"GetAccountDataSize", (*GetAccountDataSize)(nil)},           // 21
+	{"InitializeImmutableOwner", (*InitializeImmutableOwner)(nil)}, // 22
+	{"AmountToUiAmount", (*AmountToUiAmount)(nil)},       // 23
+	{"UiAmountToAmount", (*UiAmountToAmount)(nil)},       // 24
+}
+
+// InstructionImplDef is the variant definition for instruction IDs 0-24.
+// For p-token instructions with non-contiguous IDs (38, 45, 255),
+// use DecodeInstruction which handles them via custom dispatch.
 var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint8TypeIDEncoding,
-	[]ag_binary.VariantType{
-		{
-			"InitializeMint", (*InitializeMint)(nil),
-		},
-		{
-			"InitializeAccount", (*InitializeAccount)(nil),
-		},
-		{
-			"InitializeMultisig", (*InitializeMultisig)(nil),
-		},
-		{
-			"Transfer", (*Transfer)(nil),
-		},
-		{
-			"Approve", (*Approve)(nil),
-		},
-		{
-			"Revoke", (*Revoke)(nil),
-		},
-		{
-			"SetAuthority", (*SetAuthority)(nil),
-		},
-		{
-			"MintTo", (*MintTo)(nil),
-		},
-		{
-			"Burn", (*Burn)(nil),
-		},
-		{
-			"CloseAccount", (*CloseAccount)(nil),
-		},
-		{
-			"FreezeAccount", (*FreezeAccount)(nil),
-		},
-		{
-			"ThawAccount", (*ThawAccount)(nil),
-		},
-		{
-			"TransferChecked", (*TransferChecked)(nil),
-		},
-		{
-			"ApproveChecked", (*ApproveChecked)(nil),
-		},
-		{
-			"MintToChecked", (*MintToChecked)(nil),
-		},
-		{
-			"BurnChecked", (*BurnChecked)(nil),
-		},
-		{
-			"InitializeAccount2", (*InitializeAccount2)(nil),
-		},
-		{
-			"SyncNative", (*SyncNative)(nil),
-		},
-		{
-			"InitializeAccount3", (*InitializeAccount3)(nil),
-		},
-		{
-			"InitializeMultisig2", (*InitializeMultisig2)(nil),
-		},
-		{
-			"InitializeMint2", (*InitializeMint2)(nil),
-		},
-	},
+	instructionImplDefs,
 )
+
+// pTokenInstructionMap maps non-contiguous p-token instruction IDs to their types.
+var pTokenInstructionMap = map[uint8]ag_binary.VariantType{
+	Instruction_WithdrawExcessLamports: {"WithdrawExcessLamports", (*WithdrawExcessLamports)(nil)},
+	Instruction_UnwrapLamports:         {"UnwrapLamports", (*UnwrapLamports)(nil)},
+	Instruction_Batch:                  {"Batch", (*Batch)(nil)},
+}
 
 func (inst *Instruction) ProgramID() ag_solanago.PublicKey {
 	return ProgramID
@@ -347,6 +366,16 @@ func registryDecodeInstruction(accounts []*ag_solanago.AccountMeta, data []byte)
 }
 
 func DecodeInstruction(accounts []*ag_solanago.AccountMeta, data []byte) (*Instruction, error) {
+	if len(data) < 1 {
+		return nil, fmt.Errorf("instruction data is empty")
+	}
+
+	discriminator := data[0]
+
+	if vt, ok := pTokenInstructionMap[discriminator]; ok {
+		return decodePTokenInstruction(accounts, data, discriminator, vt)
+	}
+
 	inst := new(Instruction)
 	if err := ag_binary.NewBinDecoder(data).Decode(inst); err != nil {
 		return nil, fmt.Errorf("unable to decode instruction: %w", err)
@@ -354,6 +383,44 @@ func DecodeInstruction(accounts []*ag_solanago.AccountMeta, data []byte) (*Instr
 	if v, ok := inst.Impl.(ag_solanago.AccountsSettable); ok {
 		err := v.SetAccounts(accounts)
 		if err != nil {
+			return nil, fmt.Errorf("unable to set accounts for instruction: %w", err)
+		}
+	}
+	return inst, nil
+}
+
+func decodePTokenInstruction(accounts []*ag_solanago.AccountMeta, data []byte, discriminator uint8, vt ag_binary.VariantType) (*Instruction, error) {
+	inst := new(Instruction)
+	inst.TypeID = ag_binary.TypeIDFromUint8(discriminator)
+
+	switch impl := vt.Type.(type) {
+	case *WithdrawExcessLamports:
+		_ = impl
+		obj := new(WithdrawExcessLamports)
+		if err := ag_binary.NewBinDecoder(data[1:]).Decode(obj); err != nil {
+			return nil, fmt.Errorf("unable to decode WithdrawExcessLamports: %w", err)
+		}
+		inst.Impl = obj
+	case *UnwrapLamports:
+		_ = impl
+		obj := new(UnwrapLamports)
+		if err := ag_binary.NewBinDecoder(data[1:]).Decode(obj); err != nil {
+			return nil, fmt.Errorf("unable to decode UnwrapLamports: %w", err)
+		}
+		inst.Impl = obj
+	case *Batch:
+		_ = impl
+		obj := new(Batch)
+		if err := ag_binary.NewBinDecoder(data[1:]).Decode(obj); err != nil {
+			return nil, fmt.Errorf("unable to decode Batch: %w", err)
+		}
+		inst.Impl = obj
+	default:
+		return nil, fmt.Errorf("unknown p-token instruction type for discriminator %d", discriminator)
+	}
+
+	if v, ok := inst.Impl.(ag_solanago.AccountsSettable); ok {
+		if err := v.SetAccounts(accounts); err != nil {
 			return nil, fmt.Errorf("unable to set accounts for instruction: %w", err)
 		}
 	}
