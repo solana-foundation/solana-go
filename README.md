@@ -19,24 +19,25 @@ More contracts to come.
 ## Contents
 
 - [Solana SDK library for Go](#solana-sdk-library-for-go)
-  - [Contents' Index](#contents)
+  - [Contents](#contents)
   - [Features](#features)
   - [Current development status](#current-development-status)
+  - [Note](#note)
   - [Requirements](#requirements)
   - [Installation](#installation)
   - [Pretty-Print transactions/instructions](#pretty-print-transactionsinstructions)
   - [SendAndConfirmTransaction](#sendandconfirmtransaction)
   - [Address Lookup Tables](#address-lookup-tables)
-  - [Decode an instruction data](#parsedecode-an-instruction-from-a-transaction)
+  - [Parse/decode an instruction from a transaction](#parsedecode-an-instruction-from-a-transaction)
   - [Borsh encoding/decoding](#borsh-encodingdecoding)
   - [ZSTD account data encoding](#zstd-account-data-encoding)
-  - [Custom Headers for authenticating with RPC providers](#custom-headers-for-authenticating-with-rpc-providers)
   - [Working with rate-limited RPC providers](#working-with-rate-limited-rpc-providers)
+  - [Custom Headers for authenticating with RPC providers](#custom-headers-for-authenticating-with-rpc-providers)
   - [Timeouts and Custom HTTP Clients](#timeouts-and-custom-http-clients)
   - [Examples](#examples)
-    - [Create Account/Wallet](#create-account-wallet)
-    - [Load/parse keys](#loadparse-private-and-public-keys)
-    - [Transfer SOL from a wallet to another](#transfer-sol-from-one-wallet-to-another-wallet)
+    - [Create account (wallet)](#create-account-wallet)
+    - [Load/parse private and public keys](#loadparse-private-and-public-keys)
+    - [Transfer Sol from one wallet to another wallet](#transfer-sol-from-one-wallet-to-another-wallet)
   - [RPC Methods](#rpc-methods)
   - [WebSocket Subscriptions](#websocket-subscriptions)
   - [Contributing](#contributing)
@@ -818,26 +819,6 @@ All RPC methods from the [Solana JSON RPC API](https://solana.com/docs/rpc) are 
 Each method has a testable example in [`rpc/example_test.go`](rpc/example_test.go) that is rendered on
 [pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0/rpc#pkg-examples).
 
-| Method | Method | Method |
-|---|---|---|
-| `GetAccountInfo` | `GetInflationGovernor` | `GetSlotLeaders` |
-| `GetBalance` | `GetInflationRate` | `GetStakeMinimumDelegation` |
-| `GetBlock` | `GetInflationReward` | `GetSupply` |
-| `GetBlockCommitment` | `GetLargestAccounts` | `GetTokenAccountBalance` |
-| `GetBlockHeight` | `GetLatestBlockhash` | `GetTokenAccountsByDelegate` |
-| `GetBlockProduction` | `GetLeaderSchedule` | `GetTokenAccountsByOwner` |
-| `GetBlockTime` | `GetMaxRetransmitSlot` | `GetTokenLargestAccounts` |
-| `GetBlocks` | `GetMaxShredInsertSlot` | `GetTokenSupply` |
-| `GetBlocksWithLimit` | `GetMinimumBalanceForRentExemption` | `GetTransaction` |
-| `GetClusterNodes` | `GetMultipleAccounts` | `GetTransactionCount` |
-| `GetEpochInfo` | `GetProgramAccounts` | `GetVersion` |
-| `GetEpochSchedule` | `GetRecentPerformanceSamples` | `GetVoteAccounts` |
-| `GetFeeForMessage` | `GetRecentPrioritizationFees` | `IsBlockhashValid` |
-| `GetFirstAvailableBlock` | `GetSignatureStatuses` | `MinimumLedgerSlot` |
-| `GetGenesisHash` | `GetSignaturesForAddress` | `RequestAirdrop` |
-| `GetHealth` | `GetSlot` | `SendTransaction` |
-| `GetHighestSnapshotSlot` | `GetSlotLeader` | `SimulateTransaction` |
-| `GetIdentity` | | |
 
 ## WebSocket Subscriptions
 
@@ -845,11 +826,6 @@ All WebSocket subscriptions from the [Solana WebSocket API](https://solana.com/d
 Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/example_test.go) that is rendered on
 [pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0/rpc/ws#pkg-examples).
 
-| Subscription | Subscription | Subscription |
-|---|---|---|
-| `AccountSubscribe` | `ProgramSubscribe` | `SlotSubscribe` |
-| `BlockSubscribe` | `RootSubscribe` | `SlotsUpdatesSubscribe` |
-| `LogsSubscribe` | `SignatureSubscribe` | `VoteSubscribe` |
 
 ## Contributing
 
