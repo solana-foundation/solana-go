@@ -431,7 +431,7 @@ if err != nil {
 spew.Dump(resp)
 
 var mint token.Mint
-err = bin.NewDecoder(resp.GetBinary()).Decode(&mint)
+err = bin.NewBinDecoder(resp.GetBinary()).Decode(&mint)
 if err != nil {
   panic(err)
 }
@@ -933,7 +933,7 @@ func main() {
     var mint token.Mint
     // Account{}.Data.GetBinary() returns the *decoded* binary data
     // regardless the original encoding (it can handle them all).
-    err = bin.NewDecoder(resp.GetBinary()).Decode(&mint)
+    err = bin.NewBinDecoder(resp.GetBinary()).Decode(&mint)
     if err != nil {
       panic(err)
     }
@@ -995,7 +995,7 @@ func main() {
     spew.Dump(resp)
 
     var mint token.Mint
-    err = bin.NewDecoder(resp.GetBinary()).Decode(&mint)
+    err = bin.NewBinDecoder(resp.GetBinary()).Decode(&mint)
     if err != nil {
       panic(err)
     }
