@@ -20,6 +20,7 @@ import (
 
 	bin "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/token"
 	format "github.com/gagliardetto/solana-go/text/format"
 	treeout "github.com/gagliardetto/treeout"
 )
@@ -86,6 +87,7 @@ func (inst Create) Build() *Instruction {
 	associatedTokenAddress, _, _ := solana.FindAssociatedTokenAddress(
 		inst.Wallet,
 		inst.Mint,
+		token.ProgramID,
 	)
 
 	keys := []*solana.AccountMeta{
@@ -152,6 +154,7 @@ func (inst *Create) Validate() error {
 	_, _, err := solana.FindAssociatedTokenAddress(
 		inst.Wallet,
 		inst.Mint,
+		token.ProgramID,
 	)
 	if err != nil {
 		return fmt.Errorf("error while FindAssociatedTokenAddress: %w", err)

@@ -108,7 +108,7 @@ func (inst *InitializeMultisig2) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.M == nil {
-			return errors.New("M parameter is not set")
+			return errors.New("`M` parameter is not set")
 		}
 	}
 

@@ -64,6 +64,9 @@ var (
 	// the user's wallet address to the associated token accounts they hold.
 	SPLAssociatedTokenAccountProgramID = MustPublicKeyFromBase58("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
 
+	// The associated token account program ID for the Token 2022 program.
+	SPLAssociatedTokenAccount2022ProgramID = MustPublicKeyFromBase58("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
+
 	// The Memo program is a simple program that validates a string of UTF-8 encoded characters
 	// and verifies that any accounts provided are signers of the transaction.
 	// The program also logs the memo, as well as any verified signer addresses,

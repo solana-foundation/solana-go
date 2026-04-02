@@ -58,6 +58,7 @@ require (
 	github.com/google/go-cmp v0.5.2
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.13.6
 	github.com/logrusorgru/aurora v2.0.3+incompatible
