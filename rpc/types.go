@@ -41,6 +41,11 @@ type GetBalanceResult struct {
 	Value uint64 `json:"value"`
 }
 
+type GetStakeMinimumDelegationResult struct {
+	RPCContext
+	Value uint64 `json:"value"`
+}
+
 type FeeCalculator struct {
 	LamportsPerSignature uint64 `json:"lamportsPerSignature"`
 }
