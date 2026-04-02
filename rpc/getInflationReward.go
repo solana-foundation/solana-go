@@ -38,7 +38,7 @@ func (cl *Client) GetInflationReward(
 	opts *GetInflationRewardOpts,
 
 ) (out []*GetInflationRewardResult, err error) {
-	params := []interface{}{addresses}
+	params := []any{addresses}
 	if opts != nil {
 		obj := M{}
 		if opts.Commitment != "" {

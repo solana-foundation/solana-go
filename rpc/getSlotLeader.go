@@ -25,7 +25,7 @@ func (cl *Client) GetSlotLeader(
 	ctx context.Context,
 	commitment CommitmentType, // optional
 ) (out solana.PublicKey, err error) {
-	params := []interface{}{}
+	params := []any{}
 	if commitment != "" {
 		params = append(params, M{"commitment": commitment})
 	}

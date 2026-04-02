@@ -39,7 +39,7 @@ func TestData_base64_zstd(t *testing.T) {
 		data.asDecodedBinary.Encoding,
 	)
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			val,
 			"base64+zstd",
 		},
@@ -63,7 +63,7 @@ func TestData_base64_zstd_empty(t *testing.T) {
 		data.asDecodedBinary.Encoding,
 	)
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			"",
 			"base64+zstd",
 		},
@@ -83,7 +83,7 @@ func TestData_jsonParsed(t *testing.T) {
 		data.GetRawJSON(),
 	)
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"hello": "world",
 		},
 		mustJSONToInterface(mustAnyToJSON(data)),
@@ -102,7 +102,7 @@ func TestData_jsonParsed_empty(t *testing.T) {
 		data.GetRawJSON(),
 	)
 	assert.Equal(t,
-		map[string]interface{}{},
+		map[string]any{},
 		mustJSONToInterface(mustAnyToJSON(data)),
 	)
 }

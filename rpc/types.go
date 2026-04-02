@@ -161,7 +161,7 @@ type LoadedAddresses struct {
 type TransactionMeta struct {
 	// Error if transaction failed, null if transaction succeeded.
 	// https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L24
-	Err interface{} `json:"err"`
+	Err any `json:"err"`
 
 	// Fee this transaction was charged
 	Fee uint64 `json:"fee"`
@@ -237,7 +237,7 @@ type DeprecatedTransactionMetaStatus M
 
 type TransactionSignature struct {
 	// Error if transaction failed, nil if transaction succeeded.
-	Err interface{} `json:"err"`
+	Err any `json:"err"`
 
 	// Memo associated with the transaction, nil if no memo is present.
 	Memo *string `json:"memo"`
@@ -446,7 +446,7 @@ type ParsedTransaction struct {
 type ParsedTransactionMeta struct {
 	// Error if transaction failed, null if transaction succeeded.
 	// https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L24
-	Err interface{} `json:"err"`
+	Err any `json:"err"`
 
 	// Fee this transaction was charged
 	Fee uint64 `json:"fee"`
@@ -506,8 +506,8 @@ type InstructionInfoEnvelope struct {
 }
 
 type InstructionInfo struct {
-	Info            map[string]interface{} `json:"info"`
-	InstructionType string                 `json:"type"`
+	Info            map[string]any `json:"info"`
+	InstructionType string         `json:"type"`
 }
 
 type TransactionOpts struct {
@@ -545,4 +545,4 @@ func (opts *TransactionOpts) ToMap() M {
 	return obj
 }
 
-type M map[string]interface{}
+type M map[string]any

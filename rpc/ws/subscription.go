@@ -34,7 +34,7 @@ type Subscription struct {
 	decoderFunc       decoderFunc
 }
 
-type decoderFunc func([]byte) (interface{}, error)
+type decoderFunc func([]byte) (any, error)
 
 func newSubscription(
 	req *request,
@@ -53,7 +53,7 @@ func newSubscription(
 	}
 }
 
-func (s *Subscription) Recv(ctx context.Context) (interface{}, error) {
+func (s *Subscription) Recv(ctx context.Context) (any, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()

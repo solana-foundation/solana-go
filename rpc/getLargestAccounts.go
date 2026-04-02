@@ -34,7 +34,7 @@ func (cl *Client) GetLargestAccounts(
 	commitment CommitmentType,
 	filter LargestAccountsFilterType, // filter results by account type; currently supported: circulating|nonCirculating
 ) (out *GetLargestAccountsResult, err error) {
-	params := []interface{}{}
+	params := []any{}
 	obj := M{}
 	if commitment != "" {
 		obj["commitment"] = commitment

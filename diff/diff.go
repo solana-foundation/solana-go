@@ -25,7 +25,7 @@ import (
 )
 
 type Diffeable interface {
-	Diff(right interface{}, options ...Option)
+	Diff(right any, options ...Option)
 }
 
 type Option interface {
@@ -192,7 +192,7 @@ func reflectValueCanIsNil(value reflect.Value) bool {
 	}
 }
 
-func Diff(left interface{}, right interface{}, opts ...Option) {
+func Diff(left any, right any, opts ...Option) {
 	options := options{}
 	for _, opt := range opts {
 		opt.apply(&options)

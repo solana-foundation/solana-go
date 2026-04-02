@@ -35,7 +35,7 @@ func (cl *Client) GetSignatureStatuses(
 	// Transaction signatures to confirm.
 	transactionSignatures ...solana.Signature,
 ) (out *GetSignatureStatusesResult, err error) {
-	params := []interface{}{transactionSignatures}
+	params := []any{transactionSignatures}
 	if searchTransactionHistory {
 		params = append(params, M{"searchTransactionHistory": searchTransactionHistory})
 	}
@@ -65,7 +65,7 @@ type SignatureStatusesResult struct {
 	Confirmations *uint64 `json:"confirmations"`
 
 	// Error if transaction failed, null if transaction succeeded.
-	Err interface{} `json:"err"`
+	Err any `json:"err"`
 
 	// The transaction's cluster confirmation status; either processed, confirmed, or finalized.
 	ConfirmationStatus ConfirmationStatusType `json:"confirmationStatus"`

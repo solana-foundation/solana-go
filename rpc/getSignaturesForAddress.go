@@ -62,7 +62,7 @@ func (cl *Client) GetSignaturesForAddressWithOpts(
 	account solana.PublicKey,
 	opts *GetSignaturesForAddressOpts,
 ) (out []*TransactionSignature, err error) {
-	params := []interface{}{account}
+	params := []any{account}
 	if opts != nil {
 		obj := M{}
 		if opts.Limit != nil {

@@ -31,7 +31,7 @@ type SimulateTransactionResponse struct {
 
 type SimulateTransactionResult struct {
 	// Error if transaction failed, null if transaction succeeded.
-	Err interface{} `json:"err,omitempty"`
+	Err any `json:"err,omitempty"`
 
 	// Array of log messages the transaction instructions output during execution,
 	// null if simulation failed before the transaction was able to execute
@@ -127,7 +127,7 @@ func (cl *Client) SimulateRawTransactionWithOpts(
 	}
 
 	b64Data := base64.StdEncoding.EncodeToString(txData)
-	params := []interface{}{
+	params := []any{
 		b64Data,
 		obj,
 	}

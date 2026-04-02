@@ -26,7 +26,7 @@ func (cl *Client) GetRecentPrioritizationFees(
 	ctx context.Context,
 	accounts solana.PublicKeySlice, // optional
 ) (out []PriorizationFeeResult, err error) {
-	params := []interface{}{accounts}
+	params := []any{accounts}
 	err = cl.rpcClient.CallForInto(ctx, &out, "getRecentPrioritizationFees", params)
 
 	return

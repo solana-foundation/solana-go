@@ -49,8 +49,8 @@ func (cl *Client) AccountSubscribeWithOpts(
 	encoding solana.EncodingType,
 ) (*AccountSubscription, error) {
 
-	params := []interface{}{account.String()}
-	conf := map[string]interface{}{
+	params := []any{account.String()}
+	conf := map[string]any{
 		"encoding": "base64",
 	}
 	if commitment != "" {
@@ -65,7 +65,7 @@ func (cl *Client) AccountSubscribeWithOpts(
 		conf,
 		"accountSubscribe",
 		"accountUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res AccountResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

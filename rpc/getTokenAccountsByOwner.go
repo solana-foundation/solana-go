@@ -28,7 +28,7 @@ func (cl *Client) GetTokenAccountsByOwner(
 	conf *GetTokenAccountsConfig,
 	opts *GetTokenAccountsOpts,
 ) (out *GetTokenAccountsResult, err error) {
-	params := []interface{}{owner}
+	params := []any{owner}
 	if conf == nil {
 		return nil, errors.New("conf is nil")
 	}

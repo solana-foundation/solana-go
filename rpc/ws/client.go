@@ -35,7 +35,7 @@ import (
 
 var ErrSubscriptionClosed = errors.New("subscription closed")
 
-type result interface{}
+type result any
 
 type Client struct {
 	rpcURL                  string
@@ -296,7 +296,7 @@ func (c *Client) closeSubscription(reqID uint64, err error) {
 }
 
 func (c *Client) unsubscribe(subID uint64, method string) error {
-	req := newRequest([]interface{}{subID}, method, nil, c.shortID)
+	req := newRequest([]any{subID}, method, nil, c.shortID)
 	data, err := req.encode()
 	if err != nil {
 		return fmt.Errorf("unable to encode unsubscription message for subID %d and method %s", subID, method)
@@ -311,8 +311,8 @@ func (c *Client) unsubscribe(subID uint64, method string) error {
 }
 
 func (c *Client) subscribe(
-	params []interface{},
-	conf map[string]interface{},
+	params []any,
+	conf map[string]any,
 	subscriptionMethod string,
 	unsubscribeMethod string,
 	decoderFunc decoderFunc,
@@ -349,7 +349,7 @@ func (c *Client) subscribe(
 	return sub, nil
 }
 
-func decodeResponseFromReader(r io.Reader, reply interface{}) (err error) {
+func decodeResponseFromReader(r io.Reader, reply any) (err error) {
 	var c *response
 	if err := json.NewDecoder(r).Decode(&c); err != nil {
 		return err
@@ -373,7 +373,7 @@ func decodeResponseFromReader(r io.Reader, reply interface{}) (err error) {
 	return json.Unmarshal(*c.Params.Result, &reply)
 }
 
-func decodeResponseFromMessage(r []byte, reply interface{}) (err error) {
+func decodeResponseFromMessage(r []byte, reply any) (err error) {
 	var c *response
 	if err := json.Unmarshal(r, &c); err != nil {
 		return err

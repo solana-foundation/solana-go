@@ -54,7 +54,7 @@ func isNil(rv reflect.Value) (b bool) {
 	return rv.IsNil()
 }
 
-func (e *Encoder) Encode(v interface{}, option *Option) (err error) {
+func (e *Encoder) Encode(v any, option *Option) (err error) {
 	if option == nil {
 		option = &Option{}
 	}

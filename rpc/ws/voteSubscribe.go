@@ -43,7 +43,7 @@ func (cl *Client) VoteSubscribe() (*VoteSubscription, error) {
 		nil,
 		"voteSubscribe",
 		"voteUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res VoteResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

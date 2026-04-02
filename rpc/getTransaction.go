@@ -39,7 +39,7 @@ func (cl *Client) GetTransaction(
 	txSig solana.Signature, // transaction signature
 	opts *GetTransactionOpts,
 ) (out *GetTransactionResult, err error) {
-	params := []interface{}{txSig}
+	params := []any{txSig}
 	if opts != nil {
 		obj := M{}
 		if opts.Encoding != "" {

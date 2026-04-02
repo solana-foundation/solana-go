@@ -30,7 +30,7 @@ func init() {
 }
 
 type reflectType struct {
-	in interface{}
+	in any
 }
 
 func (r reflectType) String() string {

@@ -84,7 +84,7 @@ func (inst MemoInstruction) MarshalWithEncoder(encoder *ag_binary.Encoder) error
 	return encoder.Encode(inst.Impl)
 }
 
-func registryDecodeInstruction(accounts []*ag_solanago.AccountMeta, data []byte) (interface{}, error) {
+func registryDecodeInstruction(accounts []*ag_solanago.AccountMeta, data []byte) (any, error) {
 	inst, err := DecodeInstruction(accounts, data)
 	if err != nil {
 		return nil, err

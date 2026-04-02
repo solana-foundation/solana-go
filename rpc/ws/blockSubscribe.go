@@ -28,7 +28,7 @@ type BlockResult struct {
 	} `json:"context"`
 	Value struct {
 		Slot  uint64              `json:"slot"`
-		Err   interface{}         `json:"err,omitempty"`
+		Err   any                 `json:"err,omitempty"`
 		Block *rpc.GetBlockResult `json:"block,omitempty"`
 	} `json:"value"`
 }
@@ -85,7 +85,7 @@ func (cl *Client) BlockSubscribe(
 	filter BlockSubscribeFilter,
 	opts *BlockSubscribeOpts,
 ) (*BlockSubscription, error) {
-	var params []interface{}
+	var params []any
 	if filter != nil {
 		switch v := filter.(type) {
 		case BlockSubscribeFilterAll:
@@ -131,7 +131,7 @@ func (cl *Client) BlockSubscribe(
 		nil,
 		"blockSubscribe",
 		"blockUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res BlockResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

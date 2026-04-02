@@ -25,25 +25,25 @@ import (
 
 var DisableColors = false
 
-func S(a ...interface{}) string {
+func S(a ...any) string {
 	return fmt.Sprint(a...)
 }
 
-func Sf(format string, a ...interface{}) string {
+func Sf(format string, a ...any) string {
 	return fmt.Sprintf(format, a...)
 }
 
-func Ln(a ...interface{}) string {
+func Ln(a ...any) string {
 	return fmt.Sprintln(a...)
 }
 
 // Lnsf is alias of fmt.Sprintln(fmt.Sprintf())
-func Lnsf(format string, a ...interface{}) string {
+func Lnsf(format string, a ...any) string {
 	return Ln(Sf(format, a...))
 }
 
 // LnsfI is alias of fmt.Sprintln(fmt.Sprintf())
-func LnsfI(indent int, format string, a ...interface{}) string {
+func LnsfI(indent int, format string, a ...any) string {
 	return Ln(Sf(strings.Repeat("	", indent)+format, a...))
 }
 
@@ -276,7 +276,7 @@ var hasherPool *sync.Pool
 
 func init() {
 	hasherPool = &sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return fnv.New64a()
 		},
 	}

@@ -19,7 +19,7 @@ package rpc
 
 import (
 	stdjson "encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,11 +32,11 @@ type mockJSONRPCServer struct {
 	body []byte
 }
 
-func mockJSONRPC(t *testing.T, response interface{}) (mock *mockJSONRPCServer, close func()) {
+func mockJSONRPC(t *testing.T, response any) (mock *mockJSONRPCServer, close func()) {
 	mock = &mockJSONRPCServer{
 		Server: httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			var err error
-			mock.body, err = ioutil.ReadAll(req.Body)
+			mock.body, err = io.ReadAll(req.Body)
 			require.NoError(t, err)
 
 			var responseBody []byte
@@ -58,7 +58,7 @@ func (s *mockJSONRPCServer) RequestBodyAsJSON(t *testing.T) (out string) {
 	return string(s.body)
 }
 
-func (s *mockJSONRPCServer) RequestBody(t *testing.T) (out map[string]interface{}) {
+func (s *mockJSONRPCServer) RequestBody(t *testing.T) (out map[string]any) {
 	err := json.Unmarshal(s.body, &out)
 	require.NoError(t, err)
 

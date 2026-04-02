@@ -25,7 +25,7 @@ func (cl *Client) GetRecentPerformanceSamples(
 	ctx context.Context,
 	limit *uint,
 ) (out []*GetRecentPerformanceSamplesResult, err error) {
-	params := []interface{}{}
+	params := []any{}
 	if limit != nil {
 		params = append(params, limit)
 	}

@@ -63,7 +63,7 @@ func (cl *Client) SlotsUpdatesSubscribe() (*SlotsUpdatesSubscription, error) {
 		nil,
 		"slotsUpdatesSubscribe",
 		"slotsUpdatesUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res SlotsUpdatesResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

@@ -26,13 +26,13 @@ import (
 )
 
 type request struct {
-	Version string      `json:"jsonrpc"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
-	ID      uint64      `json:"id"`
+	Version string `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
+	ID      uint64 `json:"id"`
 }
 
-func newRequest(params []interface{}, method string, configuration map[string]interface{}, shortID bool) *request {
+func newRequest(params []any, method string, configuration map[string]any, shortID bool) *request {
 	if params != nil && configuration != nil {
 		params = append(params, configuration)
 	}

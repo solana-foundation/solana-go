@@ -30,7 +30,7 @@ func (cl *Client) GetParsedTransaction(
 	txSig solana.Signature,
 	opts *GetParsedTransactionOpts,
 ) (out *GetParsedTransactionResult, err error) {
-	params := []interface{}{txSig}
+	params := []any{txSig}
 	obj := M{}
 	if opts != nil {
 		if opts.Commitment != "" {

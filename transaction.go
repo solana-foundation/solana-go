@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/davecgh/go-spew/spew"
 	bin "github.com/gagliardetto/binary"
@@ -263,8 +263,8 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	for k := range options.addressTables {
 		sortedTableKeys = append(sortedTableKeys, k)
 	}
-	sort.Slice(sortedTableKeys, func(i, j int) bool {
-		return bytes.Compare(sortedTableKeys[i][:], sortedTableKeys[j][:]) < 0
+	slices.SortFunc(sortedTableKeys, func(a, b PublicKey) int {
+		return bytes.Compare(a[:], b[:])
 	})
 	for _, addressTablePubKey := range sortedTableKeys {
 		addressTable := options.addressTables[addressTablePubKey]
@@ -306,8 +306,14 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	}
 
 	// Sort. Prioritizing first by signer, then by writable
-	sort.SliceStable(accounts, func(i, j int) bool {
-		return accounts[i].less(accounts[j])
+	slices.SortStableFunc(accounts, func(a, b *AccountMeta) int {
+		if a.less(b) {
+			return -1
+		}
+		if b.less(a) {
+			return 1
+		}
+		return 0
 	})
 
 	uniqAccountsMap := map[PublicKey]uint64{}
@@ -424,8 +430,8 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		for k := range lookupsMap {
 			sortedLookupKeys = append(sortedLookupKeys, k)
 		}
-		sort.Slice(sortedLookupKeys, func(i, j int) bool {
-			return bytes.Compare(sortedLookupKeys[i][:], sortedLookupKeys[j][:]) < 0
+		slices.SortFunc(sortedLookupKeys, func(a, b PublicKey) int {
+			return bytes.Compare(a[:], b[:])
 		})
 		for _, tablePubKey := range sortedLookupKeys {
 			l := lookupsMap[tablePubKey]

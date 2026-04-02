@@ -29,7 +29,7 @@ func (cl *Client) SlotSubscribe() (*SlotSubscription, error) {
 		nil,
 		"slotSubscribe",
 		"slotUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res SlotResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

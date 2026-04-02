@@ -38,7 +38,7 @@ func (cl *Client) GetAccountInfo(ctx context.Context, account solana.PublicKey) 
 
 // GetAccountDataInto decodes the binary data and populates
 // the provided `inVar` parameter with all data associated with the account of provided publicKey.
-func (cl *Client) GetAccountDataInto(ctx context.Context, account solana.PublicKey, inVar interface{}) (err error) {
+func (cl *Client) GetAccountDataInto(ctx context.Context, account solana.PublicKey, inVar any) (err error) {
 	resp, err := cl.GetAccountInfo(ctx, account)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (cl *Client) GetAccountDataInto(ctx context.Context, account solana.PublicK
 
 // GetAccountDataBorshInto decodes the borsh binary data and populates
 // the provided `inVar` parameter with all data associated with the account of provided publicKey.
-func (cl *Client) GetAccountDataBorshInto(ctx context.Context, account solana.PublicKey, inVar interface{}) (err error) {
+func (cl *Client) GetAccountDataBorshInto(ctx context.Context, account solana.PublicKey, inVar any) (err error) {
 	resp, err := cl.GetAccountInfo(ctx, account)
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (cl *Client) getAccountInfoWithOpts(
 		}
 	}
 
-	params := []interface{}{account}
+	params := []any{account}
 	if len(obj) > 0 {
 		params = append(params, obj)
 	}
