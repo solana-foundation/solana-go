@@ -29,7 +29,7 @@ type LogResult struct {
 		// The transaction signature.
 		Signature solana.Signature `json:"signature"`
 		// Error if transaction failed, null if transaction succeeded.
-		Err interface{} `json:"err"`
+		Err any `json:"err"`
 		// Array of log messages the transaction instructions output
 		// during execution, null if simulation failed before the transaction
 		// was able to execute (for example due to an invalid blockhash
@@ -76,12 +76,12 @@ func (cl *Client) LogsSubscribeMentions(
 
 // LogsSubscribe subscribes to transaction logging.
 func (cl *Client) logsSubscribe(
-	filter interface{},
+	filter any,
 	commitment rpc.CommitmentType,
 ) (*LogSubscription, error) {
 
-	params := []interface{}{filter}
-	conf := map[string]interface{}{}
+	params := []any{filter}
+	conf := map[string]any{}
 	if commitment != "" {
 		conf["commitment"] = commitment
 	}
@@ -91,7 +91,7 @@ func (cl *Client) logsSubscribe(
 		conf,
 		"logsSubscribe",
 		"logsUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res LogResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

@@ -35,7 +35,7 @@ func (cl *Client) GetBlockTime(
 	ctx context.Context,
 	block uint64, // block, identified by Slot
 ) (out *solana.UnixTimeSeconds, err error) {
-	params := []interface{}{block}
+	params := []any{block}
 	err = cl.rpcClient.CallForInto(ctx, &out, "getBlockTime", params)
 	return
 }

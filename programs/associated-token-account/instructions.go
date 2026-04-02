@@ -120,7 +120,7 @@ func (inst Instruction) MarshalWithEncoder(encoder *bin.Encoder) error {
 	return encoder.Encode(inst.Impl)
 }
 
-func registryDecodeInstruction(accounts []*solana.AccountMeta, data []byte) (interface{}, error) {
+func registryDecodeInstruction(accounts []*solana.AccountMeta, data []byte) (any, error) {
 	inst, err := DecodeInstruction(accounts, data)
 	if err != nil {
 		return nil, err

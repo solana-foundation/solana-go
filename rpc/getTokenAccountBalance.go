@@ -26,7 +26,7 @@ func (cl *Client) GetTokenAccountBalance(
 	account solana.PublicKey,
 	commitment CommitmentType, // optional
 ) (out *GetTokenAccountBalanceResult, err error) {
-	params := []interface{}{account}
+	params := []any{account}
 	if commitment != "" {
 		params = append(params,
 			M{"commitment": commitment},

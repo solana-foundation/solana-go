@@ -46,7 +46,7 @@ func (cl *Client) GetMultipleAccountsWithOpts(
 	accounts []solana.PublicKey,
 	opts *GetMultipleAccountsOpts,
 ) (out *GetMultipleAccountsResult, err error) {
-	params := []interface{}{accounts}
+	params := []any{accounts}
 
 	if opts != nil {
 		obj := M{}

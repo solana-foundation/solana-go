@@ -33,7 +33,7 @@ func NewWithRateLimit(
 	}
 }
 
-func (wr *clientWithRateLimiting) CallForInto(ctx context.Context, out interface{}, method string, params []interface{}) error {
+func (wr *clientWithRateLimiting) CallForInto(ctx context.Context, out any, method string, params []any) error {
 	wr.rateLimiter.Take()
 	return wr.rpcClient.CallForInto(ctx, &out, method, params)
 }
@@ -41,7 +41,7 @@ func (wr *clientWithRateLimiting) CallForInto(ctx context.Context, out interface
 func (wr *clientWithRateLimiting) CallWithCallback(
 	ctx context.Context,
 	method string,
-	params []interface{},
+	params []any,
 	callback func(*http.Request, *http.Response) error,
 ) error {
 	wr.rateLimiter.Take()

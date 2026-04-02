@@ -23,7 +23,7 @@ func (cl *Client) GetBlockHeight(
 	ctx context.Context,
 	commitment CommitmentType, // optional
 ) (out uint64, err error) {
-	params := []interface{}{}
+	params := []any{}
 	if commitment != "" {
 		params = append(params, M{"commitment": commitment})
 	}

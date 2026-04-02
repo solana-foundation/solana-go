@@ -257,7 +257,7 @@ type Data struct {
 
 func (t Data) MarshalJSON() ([]byte, error) {
 	return json.Marshal(
-		[]interface{}{
+		[]any{
 			t.String(),
 			t.Encoding,
 		})

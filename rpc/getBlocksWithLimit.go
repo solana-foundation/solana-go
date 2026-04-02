@@ -27,7 +27,7 @@ func (cl *Client) GetBlocksWithLimit(
 	limit uint64,
 	commitment CommitmentType, // optional; "processed" is not supported. If parameter not provided, the default is "finalized".
 ) (out *BlocksResult, err error) {
-	params := []interface{}{startSlot, limit}
+	params := []any{startSlot, limit}
 	if commitment != "" {
 		params = append(params,
 			// TODO: provide commitment as string instead of object?

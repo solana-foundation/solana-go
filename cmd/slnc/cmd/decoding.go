@@ -23,7 +23,7 @@ import (
 	"github.com/gagliardetto/solana-go/programs/token"
 )
 
-func decode(owner solana.PublicKey, data []byte) (interface{}, error) {
+func decode(owner solana.PublicKey, data []byte) (any, error) {
 	bdx, _ := solana.PublicKeyFromBase58("BdxDnkFufu8tjAE5gdPkWdjGfQ3Lz2v6ozfiBDMKxDFW")
 	tkn, _ := solana.PublicKeyFromBase58("TokenSVp5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o")
 	switch owner {
@@ -33,7 +33,7 @@ func decode(owner solana.PublicKey, data []byte) (interface{}, error) {
 	return nil, nil
 }
 
-func decodeAsToken(data []byte) (out interface{}, err error) {
+func decodeAsToken(data []byte) (out any, err error) {
 
 	switch len(data) {
 	case 120:

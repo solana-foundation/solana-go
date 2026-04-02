@@ -42,7 +42,7 @@ func (cl *Client) GetVoteAccounts(
 	ctx context.Context,
 	opts *GetVoteAccountsOpts,
 ) (out *GetVoteAccountsResult, err error) {
-	params := []interface{}{}
+	params := []any{}
 	if opts != nil {
 		obj := M{}
 		if opts.Commitment != "" {

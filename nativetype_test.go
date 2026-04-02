@@ -135,7 +135,7 @@ func TestData_base64(t *testing.T) {
 	)
 
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			val,
 			"base64",
 		},
@@ -162,7 +162,7 @@ func TestData_base64_empty(t *testing.T) {
 	)
 
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			val,
 			"base64",
 		},
@@ -189,7 +189,7 @@ func TestData_base64_zstd(t *testing.T) {
 	)
 
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			val,
 			"base64+zstd",
 		},
@@ -215,7 +215,7 @@ func TestData_base64_zstd_empty(t *testing.T) {
 	)
 
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			"",
 			"base64+zstd",
 		},
@@ -242,7 +242,7 @@ func TestData_base58(t *testing.T) {
 	)
 
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			val,
 			"base58",
 		},
@@ -269,7 +269,7 @@ func TestData_base58_empty(t *testing.T) {
 	)
 
 	assert.Equal(t,
-		[]interface{}{
+		[]any{
 			val,
 			"base58",
 		},
@@ -279,7 +279,7 @@ func TestData_base58_empty(t *testing.T) {
 
 // mustAnyToJSON marshals the provided variable
 // to JSON bytes.
-func mustAnyToJSON(raw interface{}) []byte {
+func mustAnyToJSON(raw any) []byte {
 	out, err := json.Marshal(raw)
 	if err != nil {
 		panic(err)
@@ -289,8 +289,8 @@ func mustAnyToJSON(raw interface{}) []byte {
 
 // mustJSONToInterface unmarshals the provided JSON bytes
 // into an `interface{}` type variable, and returns it.
-func mustJSONToInterface(rawJSON []byte) interface{} {
-	var out interface{}
+func mustJSONToInterface(rawJSON []byte) any {
+	var out any
 	err := json.Unmarshal(rawJSON, &out)
 	if err != nil {
 		panic(err)

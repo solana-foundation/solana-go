@@ -50,7 +50,7 @@ type RPCClient interface {
 	//   Call("setPersonDetails", "Alex", 35, "Germany") -> {"method": "setPersonDetails", "params": ["Alex", 35, "Germany"}}
 	//
 	// for more information, see the examples or the unit tests
-	Call(ctx context.Context, method string, params ...interface{}) (*RPCResponse, error)
+	Call(ctx context.Context, method string, params ...any) (*RPCResponse, error)
 
 	// CallRaw is like Call() but without magic in the requests.Params field.
 	// The RPCRequest object is sent exactly as you provide it.
@@ -72,7 +72,7 @@ type RPCClient interface {
 	// an error is returned. if it was an JSON-RPC error it can be casted
 	// to *RPCError.
 	//
-	CallFor(ctx context.Context, out interface{}, method string, params ...interface{}) error
+	CallFor(ctx context.Context, out any, method string, params ...any) error
 
 	// CallBatch invokes a list of RPCRequests in a single batch request.
 	//
@@ -120,8 +120,8 @@ type RPCClient interface {
 	// - RPCPersponses is enriched with helper functions e.g.: responses.HasError() returns  true if one of the responses holds an RPCError
 	CallBatchRaw(ctx context.Context, requests RPCRequests) (RPCResponses, error)
 
-	CallForInto(ctx context.Context, out interface{}, method string, params []interface{}) error
-	CallWithCallback(ctx context.Context, method string, params []interface{}, callback func(*http.Request, *http.Response) error) error
+	CallForInto(ctx context.Context, out any, method string, params []any) error
+	CallWithCallback(ctx context.Context, method string, params []any, callback func(*http.Request, *http.Response) error) error
 	Close() error
 }
 
@@ -165,16 +165,16 @@ type RPCClient interface {
 //	  Params: []int{2}, <-- invalid since a single primitive value must be wrapped in an array
 //	}
 type RPCRequest struct {
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
-	ID      any         `json:"id"`
-	JSONRPC string      `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
+	ID      any    `json:"id"`
+	JSONRPC string `json:"jsonrpc"`
 }
 
 // NewRequest returns a new RPCRequest that can be created using the same convenient parameter syntax as Call()
 //
 // e.g. NewRequest("myMethod", "Alex", 35, true)
-func NewRequest(method string, params ...interface{}) *RPCRequest {
+func NewRequest(method string, params ...any) *RPCRequest {
 	request := &RPCRequest{
 		Method:  method,
 		Params:  Params(params...),
@@ -212,9 +212,9 @@ type RPCResponse struct {
 //
 // See: http://www.jsonrpc.org/specification#error_object
 type RPCError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
 var spewConf = spew.ConfigState{
@@ -358,7 +358,7 @@ func NewClientWithOpts(endpoint string, opts *RPCClientOpts) RPCClient {
 	return rpcClient
 }
 
-func (client *rpcClient) Call(ctx context.Context, method string, params ...interface{}) (*RPCResponse, error) {
+func (client *rpcClient) Call(ctx context.Context, method string, params ...any) (*RPCResponse, error) {
 	request := &RPCRequest{
 		Method:  method,
 		Params:  Params(params...),
@@ -377,9 +377,9 @@ func (client *rpcClient) Close() error {
 
 func (client *rpcClient) CallForInto(
 	ctx context.Context,
-	out interface{},
+	out any,
 	method string,
-	params []interface{},
+	params []any,
 ) error {
 	request := &RPCRequest{
 		Method:  method,
@@ -405,7 +405,7 @@ func (client *rpcClient) CallForInto(
 func (client *rpcClient) CallWithCallback(
 	ctx context.Context,
 	method string,
-	params []interface{},
+	params []any,
 	callback func(*http.Request, *http.Response) error,
 ) error {
 	request := &RPCRequest{
@@ -428,7 +428,7 @@ func (client *rpcClient) CallRaw(ctx context.Context, request *RPCRequest) (*RPC
 	return client.doCall(ctx, request)
 }
 
-func (client *rpcClient) CallFor(ctx context.Context, out interface{}, method string, params ...interface{}) error {
+func (client *rpcClient) CallFor(ctx context.Context, out any, method string, params ...any) error {
 	rpcResponse, err := client.Call(ctx, method, params...)
 	if err != nil {
 		return err
@@ -462,7 +462,7 @@ func (client *rpcClient) CallBatchRaw(ctx context.Context, requests RPCRequests)
 	return client.doBatchCall(ctx, requests)
 }
 
-func (client *rpcClient) newRequest(ctx context.Context, req interface{}) (*http.Request, error) {
+func (client *rpcClient) newRequest(ctx context.Context, req any) (*http.Request, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -644,8 +644,8 @@ func (client *rpcClient) doBatchCall(ctx context.Context, rpcRequest []*RPCReque
 //	  Method: "myMethod",
 //	  Params: []int{2}, <-- invalid since a single primitive value must be wrapped in an array
 //	}
-func Params(params ...interface{}) interface{} {
-	var finalParams interface{}
+func Params(params ...any) any {
+	var finalParams any
 
 	// if params was nil skip this and p stays nil
 	if params != nil {
@@ -691,7 +691,7 @@ func Params(params ...interface{}) interface{} {
 // GetObject converts the rpc response to an arbitrary type.
 //
 // The function works as you would expect it from json.Unmarshal()
-func (RPCResponse *RPCResponse) GetObject(toType interface{}) error {
+func (RPCResponse *RPCResponse) GetObject(toType any) error {
 	if RPCResponse == nil {
 		return errors.New("rpc response is nil")
 	}

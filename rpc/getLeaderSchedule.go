@@ -47,7 +47,7 @@ func (cl *Client) GetLeaderScheduleWithOpts(
 	ctx context.Context,
 	opts *GetLeaderScheduleOpts,
 ) (out GetLeaderScheduleResult, err error) {
-	params := []interface{}{}
+	params := []any{}
 	if opts != nil {
 		if opts.Epoch != nil {
 			params = append(params, opts.Epoch)

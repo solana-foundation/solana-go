@@ -68,7 +68,7 @@ func (cl *Client) GetBlockProductionWithOpts(
 	ctx context.Context,
 	opts *GetBlockProductionOpts,
 ) (out *GetBlockProductionResult, err error) {
-	params := []interface{}{}
+	params := []any{}
 
 	if opts != nil {
 		obj := M{}

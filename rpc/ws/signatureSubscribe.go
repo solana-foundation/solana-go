@@ -28,7 +28,7 @@ type SignatureResult struct {
 		Slot uint64
 	} `json:"context"`
 	Value struct {
-		Err interface{} `json:"err"`
+		Err any `json:"err"`
 	} `json:"value"`
 }
 
@@ -39,8 +39,8 @@ func (cl *Client) SignatureSubscribe(
 	signature solana.Signature, // Transaction Signature.
 	commitment rpc.CommitmentType, // (optional)
 ) (*SignatureSubscription, error) {
-	params := []interface{}{signature.String()}
-	conf := map[string]interface{}{}
+	params := []any{signature.String()}
+	conf := map[string]any{}
 	if commitment != "" {
 		conf["commitment"] = commitment
 	}
@@ -50,7 +50,7 @@ func (cl *Client) SignatureSubscribe(
 		conf,
 		"signatureSubscribe",
 		"signatureUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res SignatureResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

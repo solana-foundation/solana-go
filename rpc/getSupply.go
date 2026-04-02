@@ -40,7 +40,7 @@ func (cl *Client) GetSupplyWithOpts(
 		obj["excludeNonCirculatingAccountsList"] = opts.ExcludeNonCirculatingAccountsList
 	}
 
-	err = cl.rpcClient.CallForInto(ctx, &out, "getSupply", []interface{}{obj})
+	err = cl.rpcClient.CallForInto(ctx, &out, "getSupply", []any{obj})
 	return
 }
 

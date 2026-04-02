@@ -36,7 +36,7 @@ func NewWithLimiter(
 	}
 }
 
-func (wr *clientWithLimiter) CallForInto(ctx context.Context, out interface{}, method string, params []interface{}) error {
+func (wr *clientWithLimiter) CallForInto(ctx context.Context, out any, method string, params []any) error {
 	err := wr.limiter.Wait(ctx)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func (wr *clientWithLimiter) CallForInto(ctx context.Context, out interface{}, m
 func (wr *clientWithLimiter) CallWithCallback(
 	ctx context.Context,
 	method string,
-	params []interface{},
+	params []any,
 	callback func(*http.Request, *http.Response) error,
 ) error {
 	err := wr.limiter.Wait(ctx)

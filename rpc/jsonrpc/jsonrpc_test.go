@@ -4,7 +4,7 @@ import (
 	"context"
 	stdjson "encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -32,7 +32,7 @@ var httpServer *httptest.Server
 // start the testhttp server and stop it when tests are finished
 func TestMain(m *testing.M) {
 	httpServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		// put request and body to channel for the client to investigate them
 		requestChan <- &RequestData{r, string(data)}
@@ -84,7 +84,7 @@ func TestRpcClient_Call(t *testing.T) {
 	rpcClient.Call(context.Background(), "nullParams", nil, nil)
 	Expect((<-requestChan).body).To(Equal(`{"method":"nullParams","params":[null,null],"id":1,"jsonrpc":"2.0"}`))
 
-	rpcClient.Call(context.Background(), "emptyParams", []interface{}{})
+	rpcClient.Call(context.Background(), "emptyParams", []any{})
 	Expect((<-requestChan).body).To(Equal(`{"method":"emptyParams","params":[],"id":1,"jsonrpc":"2.0"}`))
 
 	rpcClient.Call(context.Background(), "emptyAnyParams", []string{})
@@ -139,10 +139,10 @@ func TestRpcClient_Call(t *testing.T) {
 	rpcClient.Call(context.Background(), "multipleStructs", person, &drink)
 	Expect((<-requestChan).body).To(Equal(`{"method":"multipleStructs","params":[{"name":"Alex","age":35,"country":"Germany"},{"name":"Cuba Libre","ingredients":["rum","cola"]}],"id":1,"jsonrpc":"2.0"}`))
 
-	rpcClient.Call(context.Background(), "singleStructInArray", []interface{}{person})
+	rpcClient.Call(context.Background(), "singleStructInArray", []any{person})
 	Expect((<-requestChan).body).To(Equal(`{"method":"singleStructInArray","params":[{"name":"Alex","age":35,"country":"Germany"}],"id":1,"jsonrpc":"2.0"}`))
 
-	rpcClient.Call(context.Background(), "namedParameters", map[string]interface{}{
+	rpcClient.Call(context.Background(), "namedParameters", map[string]any{
 		"name": "Alex",
 		"age":  35,
 	})
@@ -212,7 +212,7 @@ func TestRpcClient_CallBatch(t *testing.T) {
 	requests := RPCRequests{
 		NewRequest("nullParam", nil),
 		NewRequest("nullParams", nil, nil),
-		NewRequest("emptyParams", []interface{}{}),
+		NewRequest("emptyParams", []any{}),
 		NewRequest("emptyAnyParams", []string{}),
 		NewRequest("emptyObject", struct{}{}),
 		NewRequest("emptyObjectList", []struct{}{{}, {}}),
@@ -229,8 +229,8 @@ func TestRpcClient_CallBatch(t *testing.T) {
 		NewRequest("singleStruct", person),
 		NewRequest("singlePointerToStruct", &person),
 		NewRequest("multipleStructs", person, &drink),
-		NewRequest("singleStructInArray", []interface{}{person}),
-		NewRequest("namedParameters", map[string]interface{}{
+		NewRequest("singleStructInArray", []any{person}),
+		NewRequest("namedParameters", map[string]any{
 			"name": "Alex",
 			"age":  35,
 		}),

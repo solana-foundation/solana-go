@@ -26,7 +26,7 @@ func (cl *Client) GetSlotLeaders(
 	start uint64,
 	limit uint64,
 ) (out []solana.PublicKey, err error) {
-	params := []interface{}{start, limit}
+	params := []any{start, limit}
 	err = cl.rpcClient.CallForInto(ctx, &out, "getSlotLeaders", params)
 	return
 }

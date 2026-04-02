@@ -24,8 +24,8 @@ import (
 
 func TestDiff(t *testing.T) {
 	type pair struct {
-		left  interface{}
-		right interface{}
+		left  any
+		right any
 	}
 
 	tests := []struct {
@@ -159,8 +159,8 @@ func eventToString(event *Event) string {
 func TestDiff_EventMatch(t *testing.T) {
 	tests := []struct {
 		name           string
-		left           interface{}
-		right          interface{}
+		left           any
+		right          any
 		pattern        string
 		expectedMatch  bool
 		expectedGroups []string
@@ -195,14 +195,14 @@ func TestDiff_EventMatch(t *testing.T) {
 // results. I assume it's a Golang thing related to slice and struct as value versus pointers. It works
 // only single event but starts to act weirdly when there > 1, like the Event's Path is all wrong. It's
 // better to try to avoid it when possible.
-func accumulateDiff(left, right interface{}) (out []Event) {
+func accumulateDiff(left, right any) (out []Event) {
 	Diff(left, right, OnEvent(func(event Event) {
 		out = append(out, event)
 	}))
 	return
 }
 
-func accumulateDiffStrings(left, right interface{}) (out []string) {
+func accumulateDiffStrings(left, right any) (out []string) {
 	Diff(left, right, OnEvent(func(event Event) {
 		out = append(out, eventToString(&event))
 	}))

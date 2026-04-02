@@ -8,10 +8,10 @@ import (
 
 func TestRegisterInstructionDecoder(t *testing.T) {
 
-	decoder := func(instructionAccounts []*AccountMeta, data []byte) (interface{}, error) {
+	decoder := func(instructionAccounts []*AccountMeta, data []byte) (any, error) {
 		return nil, nil
 	}
-	decoderAnother := func(instructionAccounts []*AccountMeta, data []byte) (interface{}, error) {
+	decoderAnother := func(instructionAccounts []*AccountMeta, data []byte) (any, error) {
 		return nil, nil
 	}
 

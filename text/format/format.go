@@ -31,7 +31,7 @@ func Instruction(name string) string {
 	return Purple(Bold("Instruction")) + ": " + Bold(name)
 }
 
-func Param(name string, value interface{}) string {
+func Param(name string, value any) string {
 	return Sf(
 		Shakespeare(name)+": %s",
 		strings.TrimSpace(

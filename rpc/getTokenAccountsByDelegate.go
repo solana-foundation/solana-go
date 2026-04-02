@@ -46,7 +46,7 @@ func (cl *Client) GetTokenAccountsByDelegate(
 	conf *GetTokenAccountsConfig,
 	opts *GetTokenAccountsOpts,
 ) (out *GetTokenAccountsResult, err error) {
-	params := []interface{}{account}
+	params := []any{account}
 	if conf == nil {
 		return nil, errors.New("conf is nil")
 	}

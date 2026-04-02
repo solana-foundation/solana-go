@@ -26,7 +26,7 @@ func (cl *Client) RootSubscribe() (*RootSubscription, error) {
 		nil,
 		"rootSubscribe",
 		"rootUnsubscribe",
-		func(msg []byte) (interface{}, error) {
+		func(msg []byte) (any, error) {
 			var res RootResult
 			err := decodeResponseFromMessage(msg, &res)
 			return &res, err

@@ -15,7 +15,7 @@ func (cl *Client) IsBlockhashValid(
 	// Commitment requirement. Optional.
 	commitment CommitmentType,
 ) (out *IsValidBlockhashResult, err error) {
-	params := []interface{}{blockHash}
+	params := []any{blockHash}
 	if commitment != "" {
 		params = append(params, M{"commitment": string(commitment)})
 	}

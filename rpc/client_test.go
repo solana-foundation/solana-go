@@ -51,13 +51,13 @@ func TestClient_GetAccountInfo(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getAccountInfo",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"encoding": "base64",
 				},
 			},
@@ -122,16 +122,16 @@ func TestClient_GetAccountInfoWithOpts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getAccountInfo",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"encoding":   string(solana.EncodingJSON),
 					"commitment": string(CommitmentFinalized),
-					"dataSlice": map[string]interface{}{
+					"dataSlice": map[string]any{
 						"offset": float64(offset),
 						"length": float64(length),
 					},
@@ -143,10 +143,9 @@ func TestClient_GetAccountInfoWithOpts(t *testing.T) {
 	)
 }
 
-
 // mustAnyToJSON marshals the provided variable
 // to JSON bytes.
-func mustAnyToJSON(raw interface{}) []byte {
+func mustAnyToJSON(raw any) []byte {
 	out, err := json.Marshal(raw)
 	if err != nil {
 		panic(err)
@@ -156,8 +155,8 @@ func mustAnyToJSON(raw interface{}) []byte {
 
 // mustJSONToInterface unmarshals the provided JSON bytes
 // into an `interface{}` type variable, and returns it.
-func mustJSONToInterface(rawJSON []byte) interface{} {
-	var out interface{}
+func mustJSONToInterface(rawJSON []byte) any {
+	var out any
 	err := json.Unmarshal(rawJSON, &out)
 	if err != nil {
 		panic(err)
@@ -168,8 +167,8 @@ func mustJSONToInterface(rawJSON []byte) interface{} {
 // mustJSONToInterfaceWithUseNumber unmarshals the provided JSON bytes
 // into an `interface{}` type variable, and returns it.
 // The decoder is configured with `UseNumber()`.
-func mustJSONToInterfaceWithUseNumber(rawJSON []byte) interface{} {
-	var out interface{}
+func mustJSONToInterfaceWithUseNumber(rawJSON []byte) any {
+	var out any
 	dec := json.NewDecoder(bytes.NewReader(rawJSON))
 	dec.UseNumber()
 	err := dec.Decode(&out)
@@ -206,13 +205,13 @@ func TestClient_GetBalance(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBalance",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -249,13 +248,13 @@ func TestClient_GetBlock(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlock",
-			"params": []interface{}{
+			"params": []any{
 				float64(block),
-				map[string]interface{}{
+				map[string]any{
 					"encoding": string(solana.EncodingBase64),
 				},
 			},
@@ -421,13 +420,13 @@ func TestClient_GetBlockWithOpts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlock",
-			"params": []interface{}{
+			"params": []any{
 				float64(block),
-				map[string]interface{}{
+				map[string]any{
 					"encoding":                       string(solana.EncodingBase64),
 					"transactionDetails":             string(TransactionDetailsSignatures),
 					"rewards":                        rewards,
@@ -461,12 +460,12 @@ func TestClient_GetBlockHeight(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlockHeight",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -498,11 +497,11 @@ func TestClient_GetBlockProduction(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlockProduction",
-			"params":  []interface{}{},
+			"params":  []any{},
 		},
 		reqBody,
 	)
@@ -544,14 +543,14 @@ func TestClient_GetBlockProductionWithOpts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlockProduction",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
-					"range": map[string]interface{}{
+					"range": map[string]any{
 						"firstSlot": float64(firstSlot),
 						"lastSlot":  float64(lastSlot),
 					},
@@ -583,19 +582,19 @@ func TestClient_GetBlockCommitment(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlockCommitment",
-			"params": []interface{}{
+			"params": []any{
 				float64(block),
 			},
 		},
 		reqBody,
 	)
 
-	expected := map[string]interface{}{
-		"commitment": []interface{}{
+	expected := map[string]any{
+		"commitment": []any{
 			stdjson.Number("0"),
 			stdjson.Number("0"),
 			stdjson.Number("0"),
@@ -659,14 +658,14 @@ func TestClient_GetBlocks(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlocks",
-			"params": []interface{}{
+			"params": []any{
 				float64(startSlot),
 				float64(endSlot),
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -703,14 +702,14 @@ func TestClient_GetBlocksWithLimit(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlocksWithLimit",
-			"params": []interface{}{
+			"params": []any{
 				float64(startSlot),
 				float64(limit),
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -744,11 +743,11 @@ func TestClient_GetBlockTime(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getBlockTime",
-			"params": []interface{}{
+			"params": []any{
 				float64(block),
 			},
 		},
@@ -779,7 +778,7 @@ func TestClient_GetClusterNodes(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getClusterNodes",
@@ -812,12 +811,12 @@ func TestClient_GetEpochInfo(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getEpochInfo",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -825,7 +824,7 @@ func TestClient_GetEpochInfo(t *testing.T) {
 		reqBody,
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"absoluteSlot":     8.3994151e+07,
 		"blockHeight":      6.9218302e+07,
 		"epoch":            207.0,
@@ -856,7 +855,7 @@ func TestClient_GetEpochSchedule(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getEpochSchedule",
@@ -888,7 +887,7 @@ func TestClient_GetFirstAvailableBlock(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getFirstAvailableBlock",
@@ -920,7 +919,7 @@ func TestClient_GetGenesisHash(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getGenesisHash",
@@ -952,7 +951,7 @@ func TestClient_GetHealth(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getHealth",
@@ -984,7 +983,7 @@ func TestClient_GetIdentity(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getIdentity",
@@ -1017,12 +1016,12 @@ func TestClient_GetInflationGovernor(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getInflationGovernor",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -1054,7 +1053,7 @@ func TestClient_GetInflationRate(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getInflationRate",
@@ -1100,15 +1099,15 @@ func TestClient_GetInflationReward(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getInflationReward",
-			"params": []interface{}{
-				[]interface{}{
+			"params": []any{
+				[]any{
 					pubkeyString,
 				},
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 					"epoch":      float64(epoch),
 				},
@@ -1144,12 +1143,12 @@ func TestClient_GetLargestAccounts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getLargestAccounts",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 					"filter":     string(filter),
 				},
@@ -1278,13 +1277,13 @@ func TestClient_GetLeaderSchedule(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getLeaderSchedule",
-			"params": []interface{}{
+			"params": []any{
 				float64(epoch),
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 					"identity":   string(identity.String()),
 				},
@@ -1317,7 +1316,7 @@ func TestClient_GetMaxRetransmitSlot(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getMaxRetransmitSlot",
@@ -1349,7 +1348,7 @@ func TestClient_GetMaxShredInsertSlot(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getMaxShredInsertSlot",
@@ -1384,13 +1383,13 @@ func TestClient_GetMinimumBalanceForRentExemption(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getMinimumBalanceForRentExemption",
-			"params": []interface{}{
+			"params": []any{
 				float64(dataSize),
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -1425,12 +1424,12 @@ func TestClient_GetMultipleAccounts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getMultipleAccounts",
-			"params": []interface{}{
-				[]interface{}{pubkeyString},
+			"params": []any{
+				[]any{pubkeyString},
 			},
 		},
 		reqBody,
@@ -1503,22 +1502,22 @@ func TestClient_GetProgramAccounts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getProgramAccounts",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"encoding":   string(solana.EncodingBase58),
 					"commitment": string(CommitmentFinalized),
-					"dataSlice": map[string]interface{}{
+					"dataSlice": map[string]any{
 						"offset": float64(offset),
 						"length": float64(length),
 					},
-					"filters": []interface{}{
-						map[string]interface{}{
-							"memcmp": map[string]interface{}{
+					"filters": []any{
+						map[string]any{
+							"memcmp": map[string]any{
 								"bytes":  "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932",
 								"offset": float64(offset),
 							},
@@ -1571,11 +1570,11 @@ func TestClient_GetRecentPerformanceSamples(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getRecentPerformanceSamples",
-			"params": []interface{}{
+			"params": []any{
 				float64(limit),
 			},
 		},
@@ -1623,13 +1622,13 @@ func TestClient_GetSignaturesForAddress(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSignaturesForAddress",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"commitment":     string(CommitmentFinalized),
 					"before":         before.String(),
 					"until":          until.String(),
@@ -1670,16 +1669,16 @@ func TestClient_GetSignatureStatuses(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSignatureStatuses",
-			"params": []interface{}{
-				[]interface{}{
+			"params": []any{
+				[]any{
 					sig1.String(),
 					sig2.String(),
 				},
-				map[string]interface{}{
+				map[string]any{
 					"searchTransactionHistory": true,
 				},
 			},
@@ -1712,12 +1711,12 @@ func TestClient_GetSlot(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSlot",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -1750,12 +1749,12 @@ func TestClient_GetSlotLeader(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSlotLeader",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -1791,11 +1790,11 @@ func TestClient_GetSlotLeaders(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSlotLeaders",
-			"params": []interface{}{
+			"params": []any{
 				float64(start),
 				float64(limit),
 			},
@@ -1825,12 +1824,12 @@ func TestClient_GetSupply(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSupply",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment":                        string(CommitmentFinalized),
 					"excludeNonCirculatingAccountsList": false,
 				},
@@ -1867,12 +1866,12 @@ func TestClient_GetSupply_WithOpts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSupply",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment":                        string(CommitmentFinalized),
 					"excludeNonCirculatingAccountsList": false,
 				},
@@ -1910,12 +1909,12 @@ func TestClient_GetSupply_ExcludeNonCirculatingAccounts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getSupply",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment":                        string(CommitmentConfirmed),
 					"excludeNonCirculatingAccountsList": true,
 				},
@@ -1953,13 +1952,13 @@ func TestClient_GetTokenLargestAccounts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTokenLargestAccounts",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -1996,13 +1995,13 @@ func TestClient_GetTokenSupply(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTokenSupply",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -2044,13 +2043,13 @@ func TestClient_GetTransaction(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTransaction",
-			"params": []interface{}{
+			"params": []any{
 				tx,
-				map[string]interface{}{
+				map[string]any{
 					"encoding":                       string(solana.EncodingBase64),
 					"commitment":                     string(CommitmentFinalized),
 					"maxSupportedTransactionVersion": float64(maxSupportedTransactionVersion),
@@ -2157,13 +2156,13 @@ func TestClient_GetParsedTransaction(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTransaction",
-			"params": []interface{}{
+			"params": []any{
 				tx,
-				map[string]interface{}{
+				map[string]any{
 					"encoding":   string(solana.EncodingJSONParsed),
 					"commitment": string(CommitmentFinalized),
 				},
@@ -2174,7 +2173,7 @@ func TestClient_GetParsedTransaction(t *testing.T) {
 
 	assert.Equal(t, uint64(2), out.Meta.InnerInstructions[0].Index)
 	assert.Equal(t, &InstructionInfo{
-		Info: map[string]interface{}{
+		Info: map[string]any{
 			"account":   "BMnsyyG6S6zkaE3K5X3nbRMKdvBS5dT6HhcMozBVL7Ly",
 			"amount":    "47444666",
 			"authority": "7oPa2PHQdZmjSPqvpZN7MQxnC7Dcf3uL4oLqknGLk2S3",
@@ -2183,7 +2182,7 @@ func TestClient_GetParsedTransaction(t *testing.T) {
 		InstructionType: "burn",
 	}, out.Meta.InnerInstructions[0].Instructions[0].Parsed.asInstructionInfo)
 	assert.Equal(t, &InstructionInfo{
-		Info: map[string]interface{}{
+		Info: map[string]any{
 			"destination": "9bFNrXNb2WTx8fMHXCheaZqkLZ3YCCaiqTftHxeintHy",
 			"lamports":    float64(100),
 			"source":      "G7Hf2J55BAkHtbbXPh94UTGRCQioKPpnb5oKQMBteXo",
@@ -2210,12 +2209,12 @@ func TestClient_GetTransactionCount(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTransactionCount",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -2247,7 +2246,7 @@ func TestClient_GetVersion(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getVersion",
@@ -2284,12 +2283,12 @@ func TestClient_GetVoteAccounts(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getVoteAccounts",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"votePubkey": opts.VotePubkey.String(),
 					"commitment": string(CommitmentFinalized),
 				},
@@ -2322,7 +2321,7 @@ func TestClient_MinimumLedgerSlot(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "minimumLedgerSlot",
@@ -2361,14 +2360,14 @@ func TestClient_RequestAirdrop(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "requestAirdrop",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
 				float64(lamports),
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -2405,13 +2404,13 @@ func TestClient_GetTokenAccountBalance(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTokenAccountBalance",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -2457,16 +2456,16 @@ func TestClient_GetTokenAccountsByDelegate(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTokenAccountsByDelegate",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"programId": string(programIDString),
 				},
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 					"encoding":   string(solana.EncodingJSONParsed),
 				},
@@ -2513,16 +2512,16 @@ func TestClient_GetTokenAccountsByOwner(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getTokenAccountsByOwner",
-			"params": []interface{}{
+			"params": []any{
 				pubkeyString,
-				map[string]interface{}{
+				map[string]any{
 					"programId": string(programIDString),
 				},
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 					"encoding":   string(solana.EncodingJSONParsed),
 				},
@@ -2625,13 +2624,13 @@ func TestClient_IsBlockhashValid(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "isBlockhashValid",
-			"params": []interface{}{
+			"params": []any{
 				blockhashString,
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentFinalized),
 				},
 			},
@@ -2671,13 +2670,13 @@ func TestClient_GetFeeForMessage(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getFeeForMessage",
-			"params": []interface{}{
+			"params": []any{
 				"AQABAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQAA",
-				map[string]interface{}{
+				map[string]any{
 					"commitment": string(CommitmentProcessed),
 				},
 			},
@@ -2709,7 +2708,7 @@ func TestClient_GetHighestSnapshotSlot(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getHighestSnapshotSlot",
@@ -2742,12 +2741,12 @@ func TestClient_GetLatestBlockhash(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getLatestBlockhash",
-			"params": []interface{}{
-				map[string]interface{}{
+			"params": []any{
+				map[string]any{
 					"commitment": string(CommitmentProcessed),
 				},
 			},
@@ -2786,12 +2785,12 @@ func TestClient_GetRecentPrioritizationFees(t *testing.T) {
 	reqBody["id"] = any(nil)
 
 	assert.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"id":      any(nil),
 			"jsonrpc": "2.0",
 			"method":  "getRecentPrioritizationFees",
-			"params": []interface{}{
-				[]interface{}{
+			"params": []any{
+				[]any{
 					accounts[0].String(),
 					accounts[1].String(),
 				},

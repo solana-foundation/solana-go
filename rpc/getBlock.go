@@ -120,7 +120,7 @@ func (cl *Client) GetBlockWithOpts(
 		}
 	}
 
-	params := []interface{}{slot, obj}
+	params := []any{slot, obj}
 
 	err = cl.rpcClient.CallForInto(ctx, &out, "getBlock", params)
 	if err != nil {
@@ -191,7 +191,7 @@ func (cl *Client) GetParsedBlockWithOpts(
 		}
 	}
 
-	params := []interface{}{slot, obj}
+	params := []any{slot, obj}
 
 	err = cl.rpcClient.CallForInto(ctx, &out, "getBlock", params)
 	if err != nil {
