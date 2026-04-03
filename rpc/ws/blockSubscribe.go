@@ -81,7 +81,7 @@ type BlockSubscribeOpts struct {
 // **This subscription is unstable and only available if the validator was started
 // with the `--rpc-pubsub-enable-block-subscription` flag. The format of this
 // subscription may change in the future**
-func (cl *Client) BlockSubscribe(
+func (c *Client) BlockSubscribe(
 	filter BlockSubscribeFilter,
 	opts *BlockSubscribeOpts,
 ) (*BlockSubscription, error) {
@@ -126,7 +126,7 @@ func (cl *Client) BlockSubscribe(
 			params = append(params, obj)
 		}
 	}
-	genSub, err := cl.subscribe(
+	genSub, err := c.subscribe(
 		params,
 		nil,
 		"blockSubscribe",

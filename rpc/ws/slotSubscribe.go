@@ -23,8 +23,8 @@ type SlotResult struct {
 }
 
 // SlotSubscribe subscribes to receive notification anytime a slot is processed by the validator.
-func (cl *Client) SlotSubscribe() (*SlotSubscription, error) {
-	genSub, err := cl.subscribe(
+func (c *Client) SlotSubscribe() (*SlotSubscription, error) {
+	genSub, err := c.subscribe(
 		nil,
 		nil,
 		"slotSubscribe",

@@ -57,8 +57,8 @@ const (
 //
 // This subscription is unstable; the format of this subscription
 // may change in the future and it may not always be supported.
-func (cl *Client) SlotsUpdatesSubscribe() (*SlotsUpdatesSubscription, error) {
-	genSub, err := cl.subscribe(
+func (c *Client) SlotsUpdatesSubscribe() (*SlotsUpdatesSubscription, error) {
+	genSub, err := c.subscribe(
 		nil,
 		nil,
 		"slotsUpdatesSubscribe",

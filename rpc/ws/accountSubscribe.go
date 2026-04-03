@@ -30,11 +30,11 @@ type AccountResult struct {
 
 // AccountSubscribe subscribes to an account to receive notifications
 // when the lamports or data for a given account public key changes.
-func (cl *Client) AccountSubscribe(
+func (c *Client) AccountSubscribe(
 	account solana.PublicKey,
 	commitment rpc.CommitmentType,
 ) (*AccountSubscription, error) {
-	return cl.AccountSubscribeWithOpts(
+	return c.AccountSubscribeWithOpts(
 		account,
 		commitment,
 		"",
@@ -43,7 +43,7 @@ func (cl *Client) AccountSubscribe(
 
 // AccountSubscribe subscribes to an account to receive notifications
 // when the lamports or data for a given account public key changes.
-func (cl *Client) AccountSubscribeWithOpts(
+func (c *Client) AccountSubscribeWithOpts(
 	account solana.PublicKey,
 	commitment rpc.CommitmentType,
 	encoding solana.EncodingType,
@@ -60,7 +60,7 @@ func (cl *Client) AccountSubscribeWithOpts(
 		conf["encoding"] = encoding
 	}
 
-	genSub, err := cl.subscribe(
+	genSub, err := c.subscribe(
 		params,
 		conf,
 		"accountSubscribe",

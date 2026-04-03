@@ -37,8 +37,8 @@ type VoteResult struct {
 // This subscription is unstable and only available if the validator
 // was started with the --rpc-pubsub-enable-vote-subscription flag.
 // The format of this subscription may change in the future.
-func (cl *Client) VoteSubscribe() (*VoteSubscription, error) {
-	genSub, err := cl.subscribe(
+func (c *Client) VoteSubscribe() (*VoteSubscription, error) {
+	genSub, err := c.subscribe(
 		nil,
 		nil,
 		"voteSubscribe",

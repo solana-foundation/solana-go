@@ -30,11 +30,11 @@ type ProgramResult struct {
 
 // ProgramSubscribe subscribes to a program to receive notifications
 // when the lamports or data for a given account owned by the program changes.
-func (cl *Client) ProgramSubscribe(
+func (c *Client) ProgramSubscribe(
 	programID solana.PublicKey,
 	commitment rpc.CommitmentType,
 ) (*ProgramSubscription, error) {
-	return cl.ProgramSubscribeWithOpts(
+	return c.ProgramSubscribeWithOpts(
 		programID,
 		commitment,
 		"",
@@ -44,7 +44,7 @@ func (cl *Client) ProgramSubscribe(
 
 // ProgramSubscribe subscribes to a program to receive notifications
 // when the lamports or data for a given account owned by the program changes.
-func (cl *Client) ProgramSubscribeWithOpts(
+func (c *Client) ProgramSubscribeWithOpts(
 	programID solana.PublicKey,
 	commitment rpc.CommitmentType,
 	encoding solana.EncodingType,
@@ -65,7 +65,7 @@ func (cl *Client) ProgramSubscribeWithOpts(
 		conf["filters"] = filters
 	}
 
-	genSub, err := cl.subscribe(
+	genSub, err := c.subscribe(
 		params,
 		conf,
 		"programSubscribe",

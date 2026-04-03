@@ -20,8 +20,8 @@ type RootResult uint64
 
 // SignatureSubscribe subscribes to receive notification
 // anytime a new root is set by the validator.
-func (cl *Client) RootSubscribe() (*RootSubscription, error) {
-	genSub, err := cl.subscribe(
+func (c *Client) RootSubscribe() (*RootSubscription, error) {
+	genSub, err := c.subscribe(
 		nil,
 		nil,
 		"rootSubscribe",

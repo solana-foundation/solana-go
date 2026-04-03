@@ -35,7 +35,7 @@ type SignatureResult struct {
 // SignatureSubscribe subscribes to a transaction signature to receive
 // notification when the transaction is confirmed On signatureNotification,
 // the subscription is automatically cancelled
-func (cl *Client) SignatureSubscribe(
+func (c *Client) SignatureSubscribe(
 	signature solana.Signature, // Transaction Signature.
 	commitment rpc.CommitmentType, // (optional)
 ) (*SignatureSubscription, error) {
@@ -45,7 +45,7 @@ func (cl *Client) SignatureSubscribe(
 		conf["commitment"] = commitment
 	}
 
-	genSub, err := cl.subscribe(
+	genSub, err := c.subscribe(
 		params,
 		conf,
 		"signatureSubscribe",

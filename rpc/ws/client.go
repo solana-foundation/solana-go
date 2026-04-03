@@ -180,6 +180,13 @@ func (c *Client) handleMessage(message []byte) {
 	// when receiving message with id. the result will be a subscription number.
 	// that number will be associated to all future message destine to this request
 
+	// Check for an error in the message.
+	if errorCode, errMsg, ok := getJsonRpcError(message); ok {
+		fmt.Printf("Error received in websocket message: Code: %d, Message: %s\n", errorCode, errMsg)
+		return
+	}
+
+	// Handle message with ID: this is a subscription response.
 	requestID, ok := getUint64WithOk(message, "id")
 	if ok {
 		subID, _ := getUint64WithOk(message, "result")
@@ -187,8 +194,21 @@ func (c *Client) handleMessage(message []byte) {
 		return
 	}
 
+	// Handle message associated with a subscription ID.
 	subID, _ := getUint64WithOk(message, "params", "subscription")
 	c.handleSubscriptionMessage(subID, message)
+}
+
+// getJsonRpcError checks if the message contains a JSON-RPC error.
+// Returns the error code, error message, and a boolean indicating if an error was present.
+func getJsonRpcError(message []byte) (errorCode int64, errMsg string, ok bool) {
+	if val, dataType, _, err := jsonparser.Get(message, "error"); err == nil && dataType == jsonparser.Object {
+		code, _ := jsonparser.GetInt(val, "code")
+		msg, _ := jsonparser.GetString(val, "message")
+		return code, msg, true
+	}
+
+	return 0, "", false
 }
 
 func (c *Client) handleNewSubscriptionMessage(requestID, subID uint64) {
