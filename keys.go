@@ -698,9 +698,24 @@ func FindAssociatedTokenAddress(
 	wallet PublicKey,
 	mint PublicKey,
 ) (PublicKey, uint8, error) {
+	return FindAssociatedTokenAddressWithProgram(
+		wallet,
+		mint,
+		TokenProgramID,
+	)
+}
+
+// FindAssociatedTokenAddressWithProgram returns the associated token account PDA
+// for the provided wallet, mint, and token program.
+func FindAssociatedTokenAddressWithProgram(
+	wallet PublicKey,
+	mint PublicKey,
+	tokenProgram PublicKey,
+) (PublicKey, uint8, error) {
 	return findAssociatedTokenAddressAndBumpSeed(
 		wallet,
 		mint,
+		tokenProgram,
 		SPLAssociatedTokenAccountProgramID,
 	)
 }
@@ -708,11 +723,12 @@ func FindAssociatedTokenAddress(
 func findAssociatedTokenAddressAndBumpSeed(
 	walletAddress PublicKey,
 	splTokenMintAddress PublicKey,
+	tokenProgram PublicKey,
 	programID PublicKey,
 ) (PublicKey, uint8, error) {
 	return FindProgramAddress([][]byte{
 		walletAddress[:],
-		TokenProgramID[:],
+		tokenProgram[:],
 		splTokenMintAddress[:],
 	},
 		programID,

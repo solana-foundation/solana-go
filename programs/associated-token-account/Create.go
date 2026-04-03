@@ -25,9 +25,10 @@ import (
 )
 
 type Create struct {
-	Payer  solana.PublicKey `bin:"-" borsh_skip:"true"`
-	Wallet solana.PublicKey `bin:"-" borsh_skip:"true"`
-	Mint   solana.PublicKey `bin:"-" borsh_skip:"true"`
+	Payer        solana.PublicKey `bin:"-" borsh_skip:"true"`
+	Wallet       solana.PublicKey `bin:"-" borsh_skip:"true"`
+	Mint         solana.PublicKey `bin:"-" borsh_skip:"true"`
+	TokenProgram solana.PublicKey `bin:"-" borsh_skip:"true"`
 
 	// [0] = [WRITE, SIGNER] Payer
 	// ··········· Funding account
@@ -51,7 +52,9 @@ type Create struct {
 
 // NewCreateInstructionBuilder creates a new `Create` instruction builder.
 func NewCreateInstructionBuilder() *Create {
-	nd := &Create{}
+	nd := &Create{
+		TokenProgram: solana.TokenProgramID,
+	}
 	return nd
 }
 
@@ -70,6 +73,11 @@ func (inst *Create) SetMint(mint solana.PublicKey) *Create {
 	return inst
 }
 
+func (inst *Create) SetTokenProgram(tokenProgram solana.PublicKey) *Create {
+	inst.TokenProgram = tokenProgram
+	return inst
+}
+
 func (inst *Create) SetAccounts(accounts []*solana.AccountMeta) error {
 	inst.AccountMetaSlice = accounts
 	if len(accounts) < 6 {
@@ -78,14 +86,20 @@ func (inst *Create) SetAccounts(accounts []*solana.AccountMeta) error {
 	inst.Payer = accounts[0].PublicKey
 	inst.Wallet = accounts[2].PublicKey
 	inst.Mint = accounts[3].PublicKey
+	inst.TokenProgram = accounts[5].PublicKey
 	return nil
 }
 
 func (inst Create) Build() *Instruction {
 	// Find the associatedTokenAddress;
-	associatedTokenAddress, _, _ := solana.FindAssociatedTokenAddress(
+	tokenProgram := inst.TokenProgram
+	if tokenProgram.IsZero() {
+		tokenProgram = solana.TokenProgramID
+	}
+	associatedTokenAddress, _, _ := solana.FindAssociatedTokenAddressWithProgram(
 		inst.Wallet,
 		inst.Mint,
+		tokenProgram,
 	)
 
 	keys := []*solana.AccountMeta{
@@ -115,7 +129,7 @@ func (inst Create) Build() *Instruction {
 			IsWritable: false,
 		},
 		{
-			PublicKey:  solana.TokenProgramID,
+			PublicKey:  tokenProgram,
 			IsSigner:   false,
 			IsWritable: false,
 		},
@@ -149,9 +163,14 @@ func (inst *Create) Validate() error {
 	if inst.Mint.IsZero() {
 		return errors.New("mint not set")
 	}
-	_, _, err := solana.FindAssociatedTokenAddress(
+	tokenProgram := inst.TokenProgram
+	if tokenProgram.IsZero() {
+		tokenProgram = solana.TokenProgramID
+	}
+	_, _, err := solana.FindAssociatedTokenAddressWithProgram(
 		inst.Wallet,
 		inst.Mint,
+		tokenProgram,
 	)
 	if err != nil {
 		return fmt.Errorf("error while FindAssociatedTokenAddress: %w", err)
@@ -195,10 +214,25 @@ func NewCreateInstruction(
 	walletAddress solana.PublicKey,
 	splTokenMintAddress solana.PublicKey,
 ) *Create {
+	return NewCreateInstructionWithTokenProgram(
+		payer,
+		walletAddress,
+		splTokenMintAddress,
+		solana.TokenProgramID,
+	)
+}
+
+func NewCreateInstructionWithTokenProgram(
+	payer solana.PublicKey,
+	walletAddress solana.PublicKey,
+	splTokenMintAddress solana.PublicKey,
+	tokenProgram solana.PublicKey,
+) *Create {
 	return NewCreateInstructionBuilder().
 		SetPayer(payer).
 		SetWallet(walletAddress).
-		SetMint(splTokenMintAddress)
+		SetMint(splTokenMintAddress).
+		SetTokenProgram(tokenProgram)
 }
 
 func (inst *Create) GetPayerAccount() *solana.AccountMeta {

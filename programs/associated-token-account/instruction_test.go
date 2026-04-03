@@ -229,6 +229,62 @@ func TestDecodeSetsAccountsAndGetters(t *testing.T) {
 		assert.Equal(t, ata, ci.GetAssociatedTokenAddressAccount().PublicKey)
 	})
 
+	t.Run("Create token-2022", func(t *testing.T) {
+		payer := solana.NewWallet().PublicKey()
+		wallet := solana.NewWallet().PublicKey()
+		mint := solana.NewWallet().PublicKey()
+
+		ix := NewCreateInstructionBuilder().
+			SetPayer(payer).
+			SetWallet(wallet).
+			SetMint(mint).
+			SetTokenProgram(solana.Token2022ProgramID).
+			Build()
+
+		accounts := ix.Accounts()
+		data, err := ix.Data()
+		require.NoError(t, err)
+
+		decoded, err := DecodeInstruction(accounts, data)
+		require.NoError(t, err)
+
+		create, ok := decoded.Impl.(*Create)
+		require.True(t, ok)
+		assert.Equal(t, solana.Token2022ProgramID, create.TokenProgram)
+
+		ata, _, err := solana.FindAssociatedTokenAddressWithProgram(wallet, mint, solana.Token2022ProgramID)
+		require.NoError(t, err)
+		assert.Equal(t, ata, create.GetAssociatedTokenAddressAccount().PublicKey)
+	})
+
+	t.Run("CreateIdempotent token-2022", func(t *testing.T) {
+		payer := solana.NewWallet().PublicKey()
+		wallet := solana.NewWallet().PublicKey()
+		mint := solana.NewWallet().PublicKey()
+
+		ix := NewCreateIdempotentInstructionBuilder().
+			SetPayer(payer).
+			SetWallet(wallet).
+			SetMint(mint).
+			SetTokenProgram(solana.Token2022ProgramID).
+			Build()
+
+		accounts := ix.Accounts()
+		data, err := ix.Data()
+		require.NoError(t, err)
+
+		decoded, err := DecodeInstruction(accounts, data)
+		require.NoError(t, err)
+
+		ci, ok := decoded.Impl.(*CreateIdempotent)
+		require.True(t, ok)
+		assert.Equal(t, solana.Token2022ProgramID, ci.TokenProgram)
+
+		ata, _, err := solana.FindAssociatedTokenAddressWithProgram(wallet, mint, solana.Token2022ProgramID)
+		require.NoError(t, err)
+		assert.Equal(t, ata, ci.GetAssociatedTokenAddressAccount().PublicKey)
+	})
+
 	t.Run("RecoverNested", func(t *testing.T) {
 		wallet := solana.NewWallet().PublicKey()
 		nestedMint := solana.NewWallet().PublicKey()

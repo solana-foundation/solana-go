@@ -28,9 +28,10 @@ import (
 // address and token mint, if it doesn't already exist.
 // Returns an error if the account exists but with a different owner.
 type CreateIdempotent struct {
-	Payer  solana.PublicKey `bin:"-" borsh_skip:"true"`
-	Wallet solana.PublicKey `bin:"-" borsh_skip:"true"`
-	Mint   solana.PublicKey `bin:"-" borsh_skip:"true"`
+	Payer        solana.PublicKey `bin:"-" borsh_skip:"true"`
+	Wallet       solana.PublicKey `bin:"-" borsh_skip:"true"`
+	Mint         solana.PublicKey `bin:"-" borsh_skip:"true"`
+	TokenProgram solana.PublicKey `bin:"-" borsh_skip:"true"`
 
 	// [0] = [WRITE, SIGNER] Payer
 	// ··········· Funding account
@@ -54,7 +55,9 @@ type CreateIdempotent struct {
 
 // NewCreateIdempotentInstructionBuilder creates a new `CreateIdempotent` instruction builder.
 func NewCreateIdempotentInstructionBuilder() *CreateIdempotent {
-	return &CreateIdempotent{}
+	return &CreateIdempotent{
+		TokenProgram: solana.TokenProgramID,
+	}
 }
 
 func (inst *CreateIdempotent) SetPayer(payer solana.PublicKey) *CreateIdempotent {
@@ -72,6 +75,11 @@ func (inst *CreateIdempotent) SetMint(mint solana.PublicKey) *CreateIdempotent {
 	return inst
 }
 
+func (inst *CreateIdempotent) SetTokenProgram(tokenProgram solana.PublicKey) *CreateIdempotent {
+	inst.TokenProgram = tokenProgram
+	return inst
+}
+
 func (inst *CreateIdempotent) SetAccounts(accounts []*solana.AccountMeta) error {
 	inst.AccountMetaSlice = accounts
 	if len(accounts) < 6 {
@@ -80,13 +88,19 @@ func (inst *CreateIdempotent) SetAccounts(accounts []*solana.AccountMeta) error 
 	inst.Payer = accounts[0].PublicKey
 	inst.Wallet = accounts[2].PublicKey
 	inst.Mint = accounts[3].PublicKey
+	inst.TokenProgram = accounts[5].PublicKey
 	return nil
 }
 
 func (inst CreateIdempotent) Build() *Instruction {
-	associatedTokenAddress, _, _ := solana.FindAssociatedTokenAddress(
+	tokenProgram := inst.TokenProgram
+	if tokenProgram.IsZero() {
+		tokenProgram = solana.TokenProgramID
+	}
+	associatedTokenAddress, _, _ := solana.FindAssociatedTokenAddressWithProgram(
 		inst.Wallet,
 		inst.Mint,
+		tokenProgram,
 	)
 
 	keys := []*solana.AccountMeta{
@@ -116,7 +130,7 @@ func (inst CreateIdempotent) Build() *Instruction {
 			IsWritable: false,
 		},
 		{
-			PublicKey:  solana.TokenProgramID,
+			PublicKey:  tokenProgram,
 			IsSigner:   false,
 			IsWritable: false,
 		},
@@ -150,9 +164,14 @@ func (inst *CreateIdempotent) Validate() error {
 	if inst.Mint.IsZero() {
 		return errors.New("mint not set")
 	}
-	_, _, err := solana.FindAssociatedTokenAddress(
+	tokenProgram := inst.TokenProgram
+	if tokenProgram.IsZero() {
+		tokenProgram = solana.TokenProgramID
+	}
+	_, _, err := solana.FindAssociatedTokenAddressWithProgram(
 		inst.Wallet,
 		inst.Mint,
+		tokenProgram,
 	)
 	if err != nil {
 		return fmt.Errorf("error while FindAssociatedTokenAddress: %w", err)
@@ -193,10 +212,25 @@ func NewCreateIdempotentInstruction(
 	walletAddress solana.PublicKey,
 	splTokenMintAddress solana.PublicKey,
 ) *CreateIdempotent {
+	return NewCreateIdempotentInstructionWithTokenProgram(
+		payer,
+		walletAddress,
+		splTokenMintAddress,
+		solana.TokenProgramID,
+	)
+}
+
+func NewCreateIdempotentInstructionWithTokenProgram(
+	payer solana.PublicKey,
+	walletAddress solana.PublicKey,
+	splTokenMintAddress solana.PublicKey,
+	tokenProgram solana.PublicKey,
+) *CreateIdempotent {
 	return NewCreateIdempotentInstructionBuilder().
 		SetPayer(payer).
 		SetWallet(walletAddress).
-		SetMint(splTokenMintAddress)
+		SetMint(splTokenMintAddress).
+		SetTokenProgram(tokenProgram)
 }
 
 func (inst *CreateIdempotent) GetPayerAccount() *solana.AccountMeta {
