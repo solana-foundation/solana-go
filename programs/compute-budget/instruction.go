@@ -57,6 +57,10 @@ const (
 	// Set a compute unit price in "micro-lamports" to pay a higher transaction
 	// fee for higher transaction prioritization.
 	Instruction_SetComputeUnitPrice
+
+	// set a specific transaction-wide account data size limit, in bytes, that
+	// is allowed to load.
+	Instruction_SetLoadedAccountsDataSizeLimit
 )
 
 // InstructionIDToName returns the name of the instruction given its ID.
@@ -70,6 +74,8 @@ func InstructionIDToName(id uint8) string {
 		return "SetComputeUnitLimit"
 	case Instruction_SetComputeUnitPrice:
 		return "SetComputeUnitPrice"
+	case Instruction_SetLoadedAccountsDataSizeLimit:
+		return "SetLoadedAccountsDataSizeLimit"
 	default:
 		return ""
 	}
@@ -91,16 +97,24 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint8TypeIDEncoding,
 	[]ag_binary.VariantType{
 		{
-			"RequestUnitsDeprecated", (*RequestUnitsDeprecated)(nil),
+			Name: "RequestUnitsDeprecated",
+			Type: (*RequestUnitsDeprecated)(nil),
 		},
 		{
-			"RequestHeapFrame", (*RequestHeapFrame)(nil),
+			Name: "RequestHeapFrame",
+			Type: (*RequestHeapFrame)(nil),
 		},
 		{
-			"SetComputeUnitLimit", (*SetComputeUnitLimit)(nil),
+			Name: "SetComputeUnitLimit",
+			Type: (*SetComputeUnitLimit)(nil),
 		},
 		{
-			"SetComputeUnitPrice", (*SetComputeUnitPrice)(nil),
+			Name: "SetComputeUnitPrice",
+			Type: (*SetComputeUnitPrice)(nil),
+		},
+		{
+			Name: "SetLoadedAccountsDataSizeLimit",
+			Type: (*SetLoadedAccountsDataSizeLimit)(nil),
 		},
 	},
 )
