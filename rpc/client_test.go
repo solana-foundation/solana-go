@@ -24,6 +24,9 @@ import (
 	stdjson "encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/AlekSi/pointer"
@@ -2805,4 +2808,77 @@ func TestClient_GetRecentPrioritizationFees(t *testing.T) {
 	got := mustJSONToInterface(mustAnyToJSON(out))
 
 	assert.Equal(t, expected, got, "both deserialized values must be equal")
+}
+
+// mockServer will check if the request header contains the specified key/value
+func mockServer(t *testing.T, wantKey, wantValue string, called *atomic.Bool) *httptest.Server {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get(wantKey); got != wantValue {
+			t.Errorf("header %q: got %q, want %q", wantKey, got, wantValue)
+		}
+		called.Store(true)
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","result":{},"id":1}`))
+	})
+	return httptest.NewServer(handler)
+}
+
+func TestClient_SetHeader_AddAndModify(t *testing.T) {
+	var called atomic.Bool
+	server := mockServer(t, "Authorization", "Bearer testtoken", &called)
+	defer server.Close()
+
+	cli := New(server.URL)
+
+	cli.SetHeader("Authorization", "Bearer testtoken")
+	// send a request to trigger the server
+	_ = cli.RPCCallForInto(context.Background(), &struct{}{}, "getVersion", nil)
+	if !called.Load() {
+		t.Fatalf("server was not called")
+	}
+
+	// modify header
+	called.Store(false)
+	cli.SetHeader("Authorization", "Bearer newtoken")
+	s2 := mockServer(t, "Authorization", "Bearer newtoken", &called)
+	defer s2.Close()
+	cli = New(s2.URL)
+	cli.SetHeader("Authorization", "Bearer newtoken")
+	_ = cli.RPCCallForInto(context.Background(), &struct{}{}, "getVersion", nil)
+	if !called.Load() {
+		t.Fatalf("server was not called after modifying header")
+	}
+}
+
+func TestClient_SetHeader_RemoveHeader(t *testing.T) {
+	var called atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Remove-Me"); got != "" {
+			t.Errorf("header X-Remove-Me should be empty after removal, got %q", got)
+		}
+		called.Store(true)
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","result":{},"id":1}`))
+	}))
+	defer server.Close()
+
+	cli := New(server.URL)
+	cli.SetHeader("X-Remove-Me", "to-be-removed")
+	cli.RemoveHeader("X-Remove-Me")
+	_ = cli.RPCCallForInto(context.Background(), &struct{}{}, "getVersion", nil)
+	if !called.Load() {
+		t.Fatalf("server was not called for RemoveHeader test")
+	}
+}
+
+func TestClient_GetHeaders(t *testing.T) {
+	cli := New("http://localhost")
+	cli.SetHeader("A", "1")
+	cli.SetHeader("B", "2")
+	cli.RemoveHeader("A")
+	headers := cli.GetHeaders()
+	if _, ok := headers["A"]; ok {
+		t.Errorf("header A should be removed")
+	}
+	if v, ok := headers["B"]; !ok || v != "2" {
+		t.Errorf("header B missing or incorrect")
+	}
 }
