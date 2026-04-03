@@ -79,6 +79,18 @@ func TestEncodingInstruction(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:    "SetLoadedAccountsDataSizeLimit",
+			hexData: "0400800000",
+			expectInstruction: &Instruction{
+				BaseVariant: bin.BaseVariant{
+					TypeID: bin.TypeIDFromUint8(4),
+					Impl: &SetLoadedAccountsDataSizeLimit{
+						Bytes: 32 * 1024,
+					},
+				},
+			},
+		},
 	}
 
 	t.Run("should encode", func(t *testing.T) {
