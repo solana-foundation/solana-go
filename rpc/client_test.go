@@ -471,6 +471,112 @@ func TestClient_GetBlockWithOpts(t *testing.T) {
 	// - test also when requesting only signatures
 }
 
+func TestClient_GetBlockWithOpts_AccountsMode(t *testing.T) {
+	responseBody := `{"blockHeight":69213636,"blockTime":1625227950,"blockhash":"5M77sHdwzH6rckuQwF8HL1w52n7hjrh4GVTFiF6T8QyB","parentSlot":83987983,"previousBlockhash":"Aq9jSXe1jRzfiaBcRFLe4wm7j499vWVEeFQrq5nnXfZN","rewards":[],"transactions":[{"meta":{"err":null,"fee":5000,"innerInstructions":[],"logMessages":[],"postBalances":[441866063495,40905918933763,1],"postTokenBalances":[],"preBalances":[441866068495,40905918933763,1],"preTokenBalances":[],"rewards":[],"status":{"Ok":null}},"transaction":{"signatures":["D8emaP3CaepSGigD3TCrev7j67yPLMi82qfzTb9iZYPxHcCmm6sQBKTU4bzAee4445zbnbWduVAZ87WfbWbXoAU"],"accountKeys":[{"pubkey":"EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes","signer":true,"writable":true,"source":"transaction"},{"pubkey":"72miaovmbPqccdbAA861r2uxwB5yL1sMjrgbCnc4JfVT","signer":false,"writable":true,"source":"transaction"},{"pubkey":"Vote111111111111111111111111111111111111111","signer":false,"writable":false,"source":"lookupTable"}]},"version":0}]}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	maxVersion := uint64(1)
+	rewards := false
+	out, err := client.GetBlockWithOpts(
+		context.Background(),
+		389906766,
+		&GetBlockOpts{
+			Commitment:                     CommitmentFinalized,
+			Encoding:                       solana.EncodingBase64,
+			TransactionDetails:             TransactionDetailsAccounts,
+			Rewards:                        &rewards,
+			MaxSupportedTransactionVersion: &maxVersion,
+		},
+	)
+	require.NoError(t, err)
+
+	// Verify the request params
+	reqBody := server.RequestBody(t)
+	assert.NotNil(t, reqBody["id"])
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getBlock",
+			"params": []any{
+				float64(389906766),
+				map[string]any{
+					"encoding":                       string(solana.EncodingBase64),
+					"transactionDetails":             string(TransactionDetailsAccounts),
+					"rewards":                        rewards,
+					"commitment":                     string(CommitmentFinalized),
+					"maxSupportedTransactionVersion": float64(1),
+				},
+			},
+		},
+		reqBody,
+	)
+
+	// Verify we can extract account keys from transactions in "accounts" mode
+	require.Len(t, out.Transactions, 1)
+	tx := out.Transactions[0]
+
+	accountKeys, err := tx.GetAccountKeys()
+	require.NoError(t, err)
+
+	require.Len(t, accountKeys.Signatures, 1)
+	assert.Equal(t,
+		solana.MustSignatureFromBase58("D8emaP3CaepSGigD3TCrev7j67yPLMi82qfzTb9iZYPxHcCmm6sQBKTU4bzAee4445zbnbWduVAZ87WfbWbXoAU"),
+		accountKeys.Signatures[0],
+	)
+
+	require.Len(t, accountKeys.AccountKeys, 3)
+
+	// First account: signer + writable, source=transaction
+	assert.Equal(t, solana.MustPublicKeyFromBase58("EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes"), accountKeys.AccountKeys[0].Pubkey)
+	assert.True(t, accountKeys.AccountKeys[0].Signer)
+	assert.True(t, accountKeys.AccountKeys[0].Writable)
+	require.NotNil(t, accountKeys.AccountKeys[0].Source)
+	assert.Equal(t, AccountKeySourceTransaction, *accountKeys.AccountKeys[0].Source)
+
+	// Second account: not signer, writable, source=transaction
+	assert.Equal(t, solana.MustPublicKeyFromBase58("72miaovmbPqccdbAA861r2uxwB5yL1sMjrgbCnc4JfVT"), accountKeys.AccountKeys[1].Pubkey)
+	assert.False(t, accountKeys.AccountKeys[1].Signer)
+	assert.True(t, accountKeys.AccountKeys[1].Writable)
+	require.NotNil(t, accountKeys.AccountKeys[1].Source)
+	assert.Equal(t, AccountKeySourceTransaction, *accountKeys.AccountKeys[1].Source)
+
+	// Third account: not signer, not writable, source=lookupTable
+	assert.Equal(t, solana.MustPublicKeyFromBase58("Vote111111111111111111111111111111111111111"), accountKeys.AccountKeys[2].Pubkey)
+	assert.False(t, accountKeys.AccountKeys[2].Signer)
+	assert.False(t, accountKeys.AccountKeys[2].Writable)
+	require.NotNil(t, accountKeys.AccountKeys[2].Source)
+	assert.Equal(t, AccountKeySourceLookupTable, *accountKeys.AccountKeys[2].Source)
+}
+
+func TestClient_GetBlockWithOpts_AccountsMode_GetTransactionFails(t *testing.T) {
+	// When using "accounts" mode, calling GetTransaction() should fail
+	// because there's no binary transaction data
+	responseBody := `{"blockHeight":69213636,"blockTime":1625227950,"blockhash":"5M77sHdwzH6rckuQwF8HL1w52n7hjrh4GVTFiF6T8QyB","parentSlot":83987983,"previousBlockhash":"Aq9jSXe1jRzfiaBcRFLe4wm7j499vWVEeFQrq5nnXfZN","rewards":[],"transactions":[{"meta":{"err":null,"fee":5000,"innerInstructions":[],"logMessages":[],"postBalances":[100],"postTokenBalances":[],"preBalances":[200],"preTokenBalances":[],"rewards":[],"status":{"Ok":null}},"transaction":{"signatures":["D8emaP3CaepSGigD3TCrev7j67yPLMi82qfzTb9iZYPxHcCmm6sQBKTU4bzAee4445zbnbWduVAZ87WfbWbXoAU"],"accountKeys":[{"pubkey":"EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes","signer":true,"writable":true,"source":"transaction"}]}}]}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	out, err := client.GetBlockWithOpts(context.Background(), 100, nil)
+	require.NoError(t, err)
+
+	require.Len(t, out.Transactions, 1)
+
+	// GetTransaction should fail — no binary data
+	_, err = out.Transactions[0].GetTransaction()
+	assert.Error(t, err)
+
+	// GetAccountKeys should succeed
+	accountKeys, err := out.Transactions[0].GetAccountKeys()
+	require.NoError(t, err)
+	require.Len(t, accountKeys.AccountKeys, 1)
+	assert.Equal(t, solana.MustPublicKeyFromBase58("EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes"), accountKeys.AccountKeys[0].Pubkey)
+}
+
 func TestClient_GetBlockHeight(t *testing.T) {
 	responseBody := `69217140`
 	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))

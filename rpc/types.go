@@ -125,6 +125,57 @@ func (twm TransactionWithMeta) GetTransaction() (*solana.Transaction, error) {
 	return tx, nil
 }
 
+// GetAccountKeys returns the account keys when the block was fetched with
+// TransactionDetailsAccounts. In this mode the transaction field contains
+// {"signatures": [...], "accountKeys": [...]} instead of the full encoded transaction.
+func (twm TransactionWithMeta) GetAccountKeys() (*TransactionAccountKeys, error) {
+	if twm.Transaction == nil {
+		return nil, fmt.Errorf("transaction is nil")
+	}
+	raw := twm.Transaction.GetRawJSON()
+	if raw == nil {
+		return nil, fmt.Errorf("transaction is not JSON (accounts mode requires transactionDetails=accounts)")
+	}
+	var out TransactionAccountKeys
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal account keys: %w", err)
+	}
+	return &out, nil
+}
+
+// TransactionAccountKeys is the transaction representation returned when
+// transactionDetails is "accounts". Instead of the full message, it contains
+// only the signatures and the list of account keys with their roles.
+type TransactionAccountKeys struct {
+	Signatures  []solana.Signature `json:"signatures"`
+	AccountKeys []AccountKey       `json:"accountKeys"`
+}
+
+// AccountKey represents a single account involved in a transaction,
+// as returned in the "accounts" transaction detail mode.
+type AccountKey struct {
+	// The account's public key.
+	Pubkey solana.PublicKey `json:"pubkey"`
+
+	// Whether this account signed the transaction.
+	Signer bool `json:"signer"`
+
+	// Whether the transaction marks this account as writable.
+	Writable bool `json:"writable"`
+
+	// The source of the account key: "transaction" for keys from the
+	// message itself, "lookupTable" for keys resolved from address
+	// lookup tables. Nil for legacy transactions.
+	Source *AccountKeySource `json:"source,omitempty"`
+}
+
+type AccountKeySource string
+
+const (
+	AccountKeySourceTransaction AccountKeySource = "transaction"
+	AccountKeySourceLookupTable AccountKeySource = "lookupTable"
+)
+
 type TransactionParsed struct {
 	Meta        *TransactionMeta    `json:"meta,omitempty"`
 	Transaction *solana.Transaction `json:"transaction"`

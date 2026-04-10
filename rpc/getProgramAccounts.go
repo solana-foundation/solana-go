@@ -53,12 +53,13 @@ func (cl *Client) GetProgramAccountsWithContext(
 	publicKey solana.PublicKey,
 	opts *GetProgramAccountsOpts,
 ) (out *GetProgramAccountsWithContextResult, err error) {
-	if opts == nil {
-		opts = &GetProgramAccountsOpts{}
+	var o GetProgramAccountsOpts
+	if opts != nil {
+		o = *opts
 	}
 	withCtx := true
-	opts.WithContext = &withCtx
-	params := buildGetProgramAccountsParams(publicKey, opts)
+	o.WithContext = &withCtx
+	params := buildGetProgramAccountsParams(publicKey, &o)
 	err = cl.rpcClient.CallForInto(ctx, &out, "getProgramAccounts", params)
 	return
 }
