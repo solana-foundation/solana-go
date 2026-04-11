@@ -24,8 +24,8 @@ import (
 
 	"github.com/gagliardetto/solana-go/text"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 func init() {

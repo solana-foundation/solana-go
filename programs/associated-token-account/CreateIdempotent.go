@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	format "github.com/gagliardetto/solana-go/text/format"
 	treeout "github.com/gagliardetto/treeout"
 )
@@ -196,14 +196,6 @@ func (inst *CreateIdempotent) EncodeToTree(parent treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (inst CreateIdempotent) MarshalWithEncoder(encoder *bin.Encoder) error {
-	return nil
-}
-
-func (inst *CreateIdempotent) UnmarshalWithDecoder(decoder *bin.Decoder) error {
-	return nil
 }
 
 // NewCreateIdempotentInstruction creates a new CreateIdempotent instruction.

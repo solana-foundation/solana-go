@@ -17,8 +17,8 @@ package computebudget
 import (
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -87,23 +87,6 @@ func (inst *SetLoadedAccountsDataSizeLimit) EncodeToTree(parent ag_treeout.Branc
 					})
 				})
 		})
-}
-
-func (obj SetLoadedAccountsDataSizeLimit) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	// Serialize `Bytes` param:
-	err = encoder.Encode(obj.Bytes)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (obj *SetLoadedAccountsDataSizeLimit) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	// Deserialize `Bytes`:
-	err = decoder.Decode(&obj.Bytes)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // NewSetLoadedAccountsDataSizeLimitInstruction declares a new SetLoadedAccountsDataSizeLimit instruction with the provided parameters and accounts.

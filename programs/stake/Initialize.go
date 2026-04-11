@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -38,38 +38,6 @@ type Initialize struct {
 	// ··········· RentSysvar account
 	//
 	solana.AccountMetaSlice `bin:"-" borsh_skip:"true"`
-}
-
-func (inst *Initialize) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	{
-		err := dec.Decode(&inst.Authorized)
-		if err != nil {
-			return err
-		}
-	}
-	{
-		err := dec.Decode(&inst.Lockup)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *Initialize) MarshalWithEncoder(encoder *bin.Encoder) error {
-	{
-		err := encoder.Encode(*inst.Authorized)
-		if err != nil {
-			return err
-		}
-	}
-	{
-		err := encoder.Encode(*inst.Lockup)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (inst *Initialize) Validate() error {

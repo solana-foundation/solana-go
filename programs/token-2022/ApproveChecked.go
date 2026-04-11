@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -231,33 +231,6 @@ func (inst *ApproveChecked) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (obj ApproveChecked) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	// Serialize `Amount` param:
-	err = encoder.Encode(obj.Amount)
-	if err != nil {
-		return err
-	}
-	// Serialize `Decimals` param:
-	err = encoder.Encode(obj.Decimals)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (obj *ApproveChecked) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	// Deserialize `Amount`:
-	err = decoder.Decode(&obj.Amount)
-	if err != nil {
-		return err
-	}
-	// Deserialize `Decimals`:
-	err = decoder.Decode(&obj.Decimals)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // NewApproveCheckedInstruction declares a new ApproveChecked instruction with the provided parameters and accounts.

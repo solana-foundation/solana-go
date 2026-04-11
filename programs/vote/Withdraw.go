@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
@@ -39,28 +39,6 @@ type Withdraw struct {
 	// ··········· Account authorized to do the witdraw
 	//
 	solana.AccountMetaSlice `bin:"-" borsh_skip:"true"`
-}
-
-func (v *Withdraw) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	// Deserialize `Lamports` param:
-	{
-		err := dec.Decode(&v.Lamports)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *Withdraw) MarshalWithEncoder(encoder *bin.Encoder) error {
-	// Serialize `Lamports` param:
-	{
-		err := encoder.Encode(*inst.Lamports)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (inst *Withdraw) Validate() error {

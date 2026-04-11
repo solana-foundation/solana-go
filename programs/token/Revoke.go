@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -154,13 +154,6 @@ func (inst *Revoke) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (obj Revoke) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	return nil
-}
-func (obj *Revoke) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	return nil
 }
 
 // NewRevokeInstruction declares a new Revoke instruction with the provided parameters and accounts.

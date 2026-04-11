@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	format "github.com/gagliardetto/solana-go/text/format"
 	treeout "github.com/gagliardetto/treeout"
 )
@@ -208,14 +208,6 @@ func (inst *RecoverNested) EncodeToTree(parent treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (inst RecoverNested) MarshalWithEncoder(encoder *bin.Encoder) error {
-	return nil
-}
-
-func (inst *RecoverNested) UnmarshalWithDecoder(decoder *bin.Decoder) error {
-	return nil
 }
 
 // NewRecoverNestedInstruction creates a new RecoverNested instruction.

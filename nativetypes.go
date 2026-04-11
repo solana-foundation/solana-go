@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"io"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/base58"
 	"github.com/mostynb/zstdpool-freelist"
 	mrtronbase58 "github.com/mr-tron/base58"

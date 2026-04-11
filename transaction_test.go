@@ -21,7 +21,7 @@ import (
 	"encoding/base64"
 	"testing"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

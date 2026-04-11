@@ -1,11 +1,10 @@
 package token2022
 
 import (
-	"encoding/binary"
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -94,29 +93,6 @@ func (inst *GetAccountDataSize) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (obj GetAccountDataSize) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	// Serialize extension types as raw u16 values (no length prefix).
-	for _, et := range obj.ExtensionTypes {
-		err = encoder.WriteUint16(uint16(et), binary.LittleEndian)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (obj *GetAccountDataSize) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	// Read extension types until EOF.
-	for {
-		val, err := decoder.ReadUint16(binary.LittleEndian)
-		if err != nil {
-			break
-		}
-		obj.ExtensionTypes = append(obj.ExtensionTypes, ExtensionType(val))
-	}
-	return nil
 }
 
 // NewGetAccountDataSizeInstruction declares a new GetAccountDataSize instruction with the provided parameters and accounts.

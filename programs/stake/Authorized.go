@@ -17,7 +17,6 @@ package stake
 import (
 	"errors"
 
-	bin "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
 )
 
@@ -26,38 +25,6 @@ type Authorized struct {
 	Staker *ag_solanago.PublicKey
 	// Address that is permitted to with from the stake account
 	Withdrawer *ag_solanago.PublicKey
-}
-
-func (auth *Authorized) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	{
-		err := dec.Decode(&auth.Staker)
-		if err != nil {
-			return err
-		}
-	}
-	{
-		err := dec.Decode(&auth.Withdrawer)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (auth *Authorized) MarshalWithEncoder(encoder *bin.Encoder) error {
-	{
-		err := encoder.Encode(*auth.Staker)
-		if err != nil {
-			return err
-		}
-	}
-	{
-		err := encoder.Encode(*auth.Withdrawer)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (auth *Authorized) Validate() error {

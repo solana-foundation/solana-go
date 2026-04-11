@@ -15,8 +15,8 @@
 package stake
 
 import (
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )

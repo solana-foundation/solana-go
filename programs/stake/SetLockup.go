@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -82,26 +82,6 @@ func (inst *SetLockup) SetLockupEpoch(epoch uint64) *SetLockup {
 func (inst *SetLockup) SetCustodian(custodian solana.PublicKey) *SetLockup {
 	inst.LockupArgs.Custodian = &custodian
 	return inst
-}
-
-func (inst *SetLockup) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	{
-		err := dec.Decode(&inst.LockupArgs)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *SetLockup) MarshalWithEncoder(encoder *bin.Encoder) error {
-	{
-		err := encoder.Encode(*inst.LockupArgs)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (inst SetLockup) Build() *Instruction {

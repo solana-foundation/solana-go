@@ -17,8 +17,8 @@ package stake
 import (
 	"encoding/binary"
 
-	bin "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 type StakeAuthorize uint32

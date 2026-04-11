@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -129,26 +129,6 @@ func (inst *AuthorizeCheckedWithSeed) SetAuthoritySeed(seed string) *AuthorizeCh
 func (inst *AuthorizeCheckedWithSeed) SetAuthorityOwner(owner solana.PublicKey) *AuthorizeCheckedWithSeed {
 	inst.Args.AuthorityOwner = &owner
 	return inst
-}
-
-func (inst *AuthorizeCheckedWithSeed) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	{
-		err := dec.Decode(&inst.Args)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *AuthorizeCheckedWithSeed) MarshalWithEncoder(encoder *bin.Encoder) error {
-	{
-		err := encoder.Encode(*inst.Args)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (inst AuthorizeCheckedWithSeed) Build() *Instruction {

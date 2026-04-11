@@ -24,7 +24,7 @@ import (
 	"slices"
 
 	"github.com/davecgh/go-spew/spew"
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text"
 	"github.com/gagliardetto/treeout"
 	"github.com/mr-tron/base58"

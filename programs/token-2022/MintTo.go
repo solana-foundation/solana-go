@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -193,23 +193,6 @@ func (inst *MintTo) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (obj MintTo) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	// Serialize `Amount` param:
-	err = encoder.Encode(obj.Amount)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (obj *MintTo) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	// Deserialize `Amount`:
-	err = decoder.Decode(&obj.Amount)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // NewMintToInstruction declares a new MintTo instruction with the provided parameters and accounts.

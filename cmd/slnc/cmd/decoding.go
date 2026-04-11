@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/token"
 )

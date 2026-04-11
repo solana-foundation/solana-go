@@ -21,7 +21,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/treeout"
 	gojson "github.com/goccy/go-json"
 

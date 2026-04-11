@@ -15,12 +15,11 @@
 package stake
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -106,28 +105,6 @@ func (inst *AuthorizeChecked) GetLockupAuthority() *solana.AccountMeta {
 func (inst *AuthorizeChecked) SetStakeAuthorize(stakeAuthorize StakeAuthorize) *AuthorizeChecked {
 	inst.StakeAuthorize = &stakeAuthorize
 	return inst
-}
-
-func (inst *AuthorizeChecked) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	{
-		val, err := dec.ReadUint32(binary.LittleEndian)
-		if err != nil {
-			return err
-		}
-		sa := StakeAuthorize(val)
-		inst.StakeAuthorize = &sa
-	}
-	return nil
-}
-
-func (inst *AuthorizeChecked) MarshalWithEncoder(encoder *bin.Encoder) error {
-	{
-		err := encoder.WriteUint32(uint32(*inst.StakeAuthorize), binary.LittleEndian)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (inst AuthorizeChecked) Build() *Instruction {

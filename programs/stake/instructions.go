@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text"
 	"github.com/gagliardetto/treeout"
 )

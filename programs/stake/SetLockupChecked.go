@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -91,26 +91,6 @@ func (inst *SetLockupChecked) SetLockupTimestamp(unixTimestamp int64) *SetLockup
 func (inst *SetLockupChecked) SetLockupEpoch(epoch uint64) *SetLockupChecked {
 	inst.LockupCheckedArgs.Epoch = &epoch
 	return inst
-}
-
-func (inst *SetLockupChecked) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	{
-		err := dec.Decode(&inst.LockupCheckedArgs)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *SetLockupChecked) MarshalWithEncoder(encoder *bin.Encoder) error {
-	{
-		err := encoder.Encode(*inst.LockupCheckedArgs)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (inst SetLockupChecked) Build() *Instruction {

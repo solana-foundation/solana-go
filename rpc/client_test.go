@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/AlekSi/pointer"
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go"
 	stdjson "github.com/goccy/go-json"
 	"github.com/stretchr/testify/assert"

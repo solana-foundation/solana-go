@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -166,57 +166,6 @@ func (inst *TransferWithSeed) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (inst TransferWithSeed) MarshalWithEncoder(encoder *ag_binary.Encoder) error {
-	// Serialize `Lamports` param:
-	{
-		err := encoder.Encode(*inst.Lamports)
-		if err != nil {
-			return err
-		}
-	}
-	// Serialize `FromSeed` param:
-	{
-		err := encoder.WriteRustString(*inst.FromSeed)
-		if err != nil {
-			return err
-		}
-	}
-	// Serialize `FromOwner` param:
-	{
-		err := encoder.Encode(*inst.FromOwner)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *TransferWithSeed) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
-	// Deserialize `Lamports` param:
-	{
-		err := decoder.Decode(&inst.Lamports)
-		if err != nil {
-			return err
-		}
-	}
-	// Deserialize `FromSeed` param:
-	{
-		value, err := decoder.ReadRustString()
-		if err != nil {
-			return err
-		}
-		inst.FromSeed = &value
-	}
-	// Deserialize `FromOwner` param:
-	{
-		err := decoder.Decode(&inst.FromOwner)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // NewTransferWithSeedInstruction declares a new TransferWithSeed instruction with the provided parameters and accounts.

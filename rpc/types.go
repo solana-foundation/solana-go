@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"math/big"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go"
 	stdjson "github.com/goccy/go-json"
 )

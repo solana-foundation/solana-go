@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -74,26 +74,6 @@ func (inst *Split) GetStakeAuthority() *solana.AccountMeta  { return inst.Accoun
 func (inst *Split) SetLamports(lamports uint64) *Split {
 	inst.Lamports = &lamports
 	return inst
-}
-
-func (inst *Split) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	{
-		err := dec.Decode(&inst.Lamports)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *Split) MarshalWithEncoder(encoder *bin.Encoder) error {
-	{
-		err := encoder.Encode(*inst.Lamports)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (inst Split) Build() *Instruction {

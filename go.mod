@@ -3,13 +3,13 @@ module github.com/gagliardetto/solana-go
 go 1.24.0
 
 require (
-	github.com/gagliardetto/binary v0.8.0
 	github.com/gagliardetto/gofuzz v1.2.2
 	github.com/gagliardetto/treeout v0.1.4
 	github.com/goccy/go-json v0.10.6
 	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12
 	github.com/mr-tron/base58 v1.2.0
+	github.com/shopspring/decimal v1.4.0
 	go.mongodb.org/mongo-driver/v2 v2.5.0
 )
 

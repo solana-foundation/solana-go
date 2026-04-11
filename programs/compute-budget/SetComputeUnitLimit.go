@@ -17,8 +17,8 @@ package computebudget
 import (
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -93,23 +93,6 @@ func (inst *SetComputeUnitLimit) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (obj SetComputeUnitLimit) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	// Serialize `Units` param:
-	err = encoder.Encode(obj.Units)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (obj *SetComputeUnitLimit) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	// Deserialize `Units`:
-	err = decoder.Decode(&obj.Units)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // NewSetComputeUnitLimitInstruction declares a new SetComputeUnitLimit instruction with the provided parameters and accounts.

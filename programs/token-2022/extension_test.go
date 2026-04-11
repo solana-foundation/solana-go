@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	ag_binary "github.com/gagliardetto/binary"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
 	ag_require "github.com/stretchr/testify/require"
 )

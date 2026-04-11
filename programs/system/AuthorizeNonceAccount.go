@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -126,28 +126,6 @@ func (inst *AuthorizeNonceAccount) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (inst AuthorizeNonceAccount) MarshalWithEncoder(encoder *ag_binary.Encoder) error {
-	// Serialize `Authorized` param:
-	{
-		err := encoder.Encode(*inst.Authorized)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (inst *AuthorizeNonceAccount) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
-	// Deserialize `Authorized` param:
-	{
-		err := decoder.Decode(&inst.Authorized)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // NewAuthorizeNonceAccountInstruction declares a new AuthorizeNonceAccount instruction with the provided parameters and accounts.

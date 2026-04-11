@@ -17,8 +17,8 @@ package computebudget
 import (
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -87,23 +87,6 @@ func (inst *SetComputeUnitPrice) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (obj SetComputeUnitPrice) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	// Serialize `MicroLamports` param:
-	err = encoder.Encode(obj.MicroLamports)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (obj *SetComputeUnitPrice) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	// Deserialize `MicroLamports`:
-	err = decoder.Decode(&obj.MicroLamports)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // NewSetComputeUnitPriceInstruction declares a new SetComputeUnitPrice instruction with the provided parameters and accounts.

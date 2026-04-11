@@ -17,8 +17,8 @@ package token2022
 import (
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -100,13 +100,6 @@ func (inst *SyncNative) EncodeToTree(parent ag_treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (obj SyncNative) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
-	return nil
-}
-func (obj *SyncNative) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	return nil
 }
 
 // NewSyncNativeInstruction declares a new SyncNative instruction with the provided parameters and accounts.

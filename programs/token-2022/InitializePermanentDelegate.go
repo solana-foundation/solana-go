@@ -3,7 +3,7 @@ package token2022
 import (
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"

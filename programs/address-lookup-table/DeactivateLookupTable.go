@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	format "github.com/gagliardetto/solana-go/text/format"
 	treeout "github.com/gagliardetto/treeout"
 )
@@ -91,14 +91,6 @@ func (inst *DeactivateLookupTable) EncodeToTree(parent treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (inst DeactivateLookupTable) MarshalWithEncoder(encoder *bin.Encoder) error {
-	return nil
-}
-
-func (inst *DeactivateLookupTable) UnmarshalWithDecoder(decoder *bin.Decoder) error {
-	return nil
 }
 
 // NewDeactivateLookupTableInstruction creates a new DeactivateLookupTable instruction.

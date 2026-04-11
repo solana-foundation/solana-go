@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	format "github.com/gagliardetto/solana-go/text/format"
 	treeout "github.com/gagliardetto/treeout"
 )
@@ -142,33 +142,6 @@ func (inst *CreateLookupTable) EncodeToTree(parent treeout.Branches) {
 					})
 				})
 		})
-}
-
-func (inst CreateLookupTable) MarshalWithEncoder(encoder *bin.Encoder) error {
-	if err := encoder.WriteUint64(*inst.RecentSlot, binary.LittleEndian); err != nil {
-		return err
-	}
-	if err := encoder.WriteUint8(*inst.BumpSeed); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (inst *CreateLookupTable) UnmarshalWithDecoder(decoder *bin.Decoder) error {
-	var err error
-	recentSlot, err := decoder.ReadUint64(binary.LittleEndian)
-	if err != nil {
-		return err
-	}
-	inst.RecentSlot = &recentSlot
-
-	bumpSeed, err := decoder.ReadUint8()
-	if err != nil {
-		return err
-	}
-	inst.BumpSeed = &bumpSeed
-
-	return nil
 }
 
 // DeriveLookupTableAddress derives the address and bump seed for an address lookup table
