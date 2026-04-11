@@ -33,16 +33,24 @@ func isInvalidValue(rv reflect.Value) bool {
 // when the field is held by value. Without the second try, a legitimate
 // custom marshaler is silently skipped and the encoder falls back to the
 // generic reflect path — producing a different wire encoding.
+//
+// Performance note: rv.Interface() boxes the value into an interface{},
+// which heap-allocates for any non-pointer type larger than a word. We
+// short-circuit via reflect.Type.Implements (a static type-info lookup
+// with no allocation) so the boxing only happens for types that actually
+// satisfy BinaryMarshaler — turning the dominant per-field allocation
+// site into a no-op for types like solana.PublicKey.
 func asBinaryMarshaler(rv reflect.Value) (BinaryMarshaler, bool) {
 	if !rv.IsValid() {
 		return nil, false
 	}
-	if rv.CanInterface() {
+	rt := rv.Type()
+	if rt.Implements(marshalableType) && rv.CanInterface() {
 		if m, ok := rv.Interface().(BinaryMarshaler); ok {
 			return m, true
 		}
 	}
-	if rv.CanAddr() {
+	if rv.CanAddr() && reflect.PointerTo(rt).Implements(marshalableType) {
 		addr := rv.Addr()
 		if addr.CanInterface() {
 			if m, ok := addr.Interface().(BinaryMarshaler); ok {

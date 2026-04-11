@@ -3,6 +3,7 @@ package tokenregistry
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	bin "github.com/gagliardetto/solana-go/binary"
 
@@ -82,4 +83,77 @@ func BenchmarkEncode_TokenMeta_Reused(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+}
+
+// coldStruct is a copy of TokenMeta intentionally never referenced
+// outside this file. Its typePlan has not been prewarmed by init(), so
+// the very first call to MarshalBin pays the cold-path cost (reflect
+// walk + plan construction + sync.Map.LoadOrStore).
+type coldStruct struct {
+	IsInitialized         bool
+	Reg                   [3]byte
+	DataType              byte
+	MintAddress           *solana.PublicKey
+	RegistrationAuthority *solana.PublicKey
+	Logo                  Logo
+	Name                  Name
+	Website               Website
+	Symbol                Symbol
+}
+
+// runtimeWarmup is a throwaway type used to pre-load the encoder's
+// reflect-driven code paths, CPU caches, and any lazy-init globals
+// BEFORE we measure typePlan-build cost. Without this, the very first
+// MarshalBin call in a process pays a fixed ~100-200µs runtime cold-
+// start cost that dwarfs the actual typePlan construction (~5-10µs)
+// and gives nonsense readings.
+type runtimeWarmup struct{ X uint64 }
+
+// TestFirstCallCost measures, after a runtime warmup, the cost of
+// encoding TokenMeta (whose typePlan has been prewarmed by init via
+// PrewarmTypes) versus coldStruct (whose typePlan has NEVER been
+// touched, so the very first encode pays the reflect-walk cost). The
+// delta is the cold-path overhead that PrewarmTypes eliminates.
+func TestFirstCallCost(t *testing.T) {
+	// Throwaway call to warm the runtime, the encoder, and the CPU
+	// caches. After this, both subsequent measurements start from the
+	// same hot state and only the typePlan lookup differs.
+	if _, err := bin.MarshalBin(&runtimeWarmup{X: 42}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Warm path: TokenMeta. Prewarmed in init() — the typePlan is
+	// already in the sync.Map and the first encode hits the load fast
+	// path.
+	tm := makeBenchTokenMeta()
+	startWarm := time.Now()
+	if _, err := bin.MarshalBin(&tm); err != nil {
+		t.Fatal(err)
+	}
+	warmDur := time.Since(startWarm)
+
+	// Cold path: coldStruct. Cache miss, typePlan built inline.
+	cs := coldStruct{IsInitialized: true, Reg: [3]byte{1, 2, 3}, DataType: 7}
+	mint := solana.PublicKey{1, 2, 3}
+	auth := solana.PublicKey{4, 5, 6}
+	cs.MintAddress = &mint
+	cs.RegistrationAuthority = &auth
+	logo, _ := LogoFromString("logo")
+	name, _ := NameFromString("name")
+	site, _ := WebsiteFromString("site")
+	sym, _ := SymbolFromString("sym")
+	cs.Logo = logo
+	cs.Name = name
+	cs.Website = site
+	cs.Symbol = sym
+
+	startCold := time.Now()
+	if _, err := bin.MarshalBin(&cs); err != nil {
+		t.Fatal(err)
+	}
+	coldDur := time.Since(startCold)
+
+	t.Logf("warm (TokenMeta, typePlan prewarmed via init): %v", warmDur)
+	t.Logf("cold (coldStruct, typePlan miss + build):      %v", coldDur)
+	t.Logf("cold-path overhead saved by prewarm:           %v", coldDur-warmDur)
 }

@@ -44,6 +44,7 @@ func init() {
 	if !ProgramID.IsZero() {
 		ag_solanago.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
 	}
+	ag_binary.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 const (

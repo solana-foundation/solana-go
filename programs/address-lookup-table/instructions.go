@@ -23,6 +23,7 @@ const ProgramName = "AddressLookupTable"
 
 func init() {
 	solana.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
+	bin.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 const (

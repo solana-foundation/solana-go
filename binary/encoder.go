@@ -51,6 +51,17 @@ type Encoder struct {
 	// Uvarint/Varint header (max 10 bytes) and for a CompactU16 (max 3 bytes).
 	// Safe to reuse: io.Writer.Write must not retain p after return.
 	scratch [16]byte
+
+	// skipMarshalerCheck tells encodeBin/encodeBorsh/encodeCompactU16 to
+	// skip the per-call asBinaryMarshaler() type assertion. encodeStructBin
+	// (and friends) sets this to true before encoding a field whose typePlan
+	// has already proven that neither the value nor the pointer type
+	// implements BinaryMarshaler. The flag is propagated through Ptr.Elem
+	// recursion (because *T not implementing means T doesn't either), and
+	// reset around array/slice element loops where elements are independent
+	// types. Without this flag, the rv.Interface() boxing dominates encode
+	// allocations for non-marshaler types like solana.PublicKey.
+	skipMarshalerCheck bool
 }
 
 func (enc *Encoder) IsBorsh() bool {
@@ -118,6 +129,7 @@ func (e *Encoder) Reset() {
 	e.count = 0
 	e.buf = e.buf[:0]
 	e.currentFieldOpt = option{}
+	e.skipMarshalerCheck = false
 }
 
 // Grow ensures the internal buffer has at least n free bytes available.

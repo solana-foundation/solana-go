@@ -37,6 +37,7 @@ const ProgramName = "Vote"
 
 func init() {
 	solana.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
+	bin.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 type Instruction struct {

@@ -57,11 +57,19 @@ func (e *Encoder) encodeBin(rv reflect.Value, opt option) (err error) {
 		return nil
 	}
 
-	if marshaler, ok := asBinaryMarshaler(rv); ok {
-		if traceEnabled {
-			zlog.Debug("encode: using MarshalerBinary method to encode type")
+	// Skip the asBinaryMarshaler boxing call when encodeStructBin has
+	// proven via the cached fieldPlan that neither the value nor the
+	// pointer type implements BinaryMarshaler. This is the dominant
+	// allocation site for hot encode loops on non-marshaler types
+	// (every field used to box rv via rv.Interface() to test the
+	// assertion).
+	if !e.skipMarshalerCheck {
+		if marshaler, ok := asBinaryMarshaler(rv); ok {
+			if traceEnabled {
+				zlog.Debug("encode: using MarshalerBinary method to encode type")
+			}
+			return marshaler.MarshalWithEncoder(e)
 		}
-		return marshaler.MarshalWithEncoder(e)
 	}
 
 	switch rv.Kind() {
@@ -114,11 +122,19 @@ func (e *Encoder) encodeBin(rv reflect.Value, opt option) (err error) {
 				return err
 			}
 		default:
+			// Element-wise recursion: each element is an independent type
+			// that may have its own marshaler, so reset the skip flag
+			// inherited from the field-level entry. The flag is restored
+			// when this Array case returns.
+			prevSkip := e.skipMarshalerCheck
+			e.skipMarshalerCheck = false
 			for i := range l {
 				if err = e.encodeBin(rv.Index(i), opt); err != nil {
+					e.skipMarshalerCheck = prevSkip
 					return
 				}
 			}
+			e.skipMarshalerCheck = prevSkip
 		}
 
 	case reflect.Slice:
@@ -149,11 +165,15 @@ func (e *Encoder) encodeBin(rv reflect.Value, opt option) (err error) {
 				return err
 			}
 		default:
+			prevSkip := e.skipMarshalerCheck
+			e.skipMarshalerCheck = false
 			for i := range l {
 				if err = e.encodeBin(rv.Index(i), opt); err != nil {
+					e.skipMarshalerCheck = prevSkip
 					return
 				}
 			}
+			e.skipMarshalerCheck = prevSkip
 		}
 	case reflect.Struct:
 		if err = e.encodeStructBin(rt, rv); err != nil {
@@ -268,7 +288,18 @@ func (e *Encoder) encodeStructBin(rt reflect.Type, rv reflect.Value) (err error)
 			)
 		}
 
-		if err := e.encodeBin(fv, opt); err != nil {
+		// Tell encodeBin to skip its asBinaryMarshaler boxing when the
+		// cached plan has already proven this field's type doesn't
+		// implement BinaryMarshaler. The flag is propagated through
+		// Ptr.Elem recursion in encodeBin and reset around array/slice
+		// element loops.
+		prevSkip := e.skipMarshalerCheck
+		if !fp.valImplementsMarshaler && !fp.ptrImplementsMarshaler {
+			e.skipMarshalerCheck = true
+		}
+		err := e.encodeBin(fv, opt)
+		e.skipMarshalerCheck = prevSkip
+		if err != nil {
 			return fmt.Errorf("error while encoding %q field: %w", fp.name, err)
 		}
 	}

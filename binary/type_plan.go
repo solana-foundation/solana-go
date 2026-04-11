@@ -104,6 +104,51 @@ func planForStruct(rt reflect.Type) *typePlan {
 	return actual.(*typePlan)
 }
 
+// PrewarmTypes builds and caches the typePlan for each value's underlying
+// struct type. Pass struct values (or pointers to them); the helper unwraps
+// pointers and ignores anything that doesn't resolve to a struct. Intended
+// to be called from package init() in latency-sensitive callers, so the
+// first encode/decode of a type doesn't pay the reflect-walk cost.
+//
+// Steady-state performance is unchanged: the typePlan cache already
+// amortizes the cost across calls. Prewarming only moves the one-time
+// per-type cost from first-call to init().
+func PrewarmTypes(values ...any) {
+	for _, v := range values {
+		rt := reflect.TypeOf(v)
+		prewarmType(rt)
+	}
+}
+
+// PrewarmVariantDefinition builds and caches the typePlan for every type
+// registered in def. This is the convenience entry point for program
+// packages: a single call from init() prewarms every instruction variant
+// defined in the package's InstructionImplDef.
+//
+// def may be nil; the call is a no-op in that case.
+func PrewarmVariantDefinition(def *VariantDefinition) {
+	if def == nil {
+		return
+	}
+	for _, rt := range def.typeIDToType {
+		prewarmType(rt)
+	}
+}
+
+// prewarmType unwraps pointer types and, if the result is a struct, builds
+// and caches its typePlan. Used by PrewarmTypes and PrewarmVariantDefinition.
+func prewarmType(rt reflect.Type) {
+	if rt == nil {
+		return
+	}
+	for rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+	}
+	if rt.Kind() == reflect.Struct {
+		planForStruct(rt)
+	}
+}
+
 func buildStructPlan(rt reflect.Type) *typePlan {
 	plan := &typePlan{}
 	n := rt.NumField()

@@ -34,6 +34,7 @@ func SetProgramID(pubkey ag_solanago.PublicKey) error {
 
 func init() {
 	ag_solanago.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
+	ag_binary.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 type MemoInstruction struct {

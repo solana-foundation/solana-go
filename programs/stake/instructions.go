@@ -38,6 +38,7 @@ const ProgramName = "Stake"
 
 func init() {
 	solana.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
+	bin.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 const (

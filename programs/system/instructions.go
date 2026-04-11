@@ -40,6 +40,7 @@ const ProgramName = "System"
 
 func init() {
 	ag_solanago.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
+	ag_binary.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 const (

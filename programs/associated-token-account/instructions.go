@@ -36,6 +36,7 @@ const ProgramName = "AssociatedTokenAccount"
 
 func init() {
 	solana.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
+	bin.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 const (
