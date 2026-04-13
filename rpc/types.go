@@ -406,6 +406,9 @@ type GetProgramAccountsOpts struct {
 	// Filter results using various filter objects;
 	// account must meet all filter criteria to be included in results.
 	Filters []RPCFilter `json:"filters,omitempty"`
+
+	// Return only the accounts that have changed since this slot
+	ChangedSinceSlot *uint64 `json:"changedSinceSlot,omitempty"`
 }
 
 type GetProgramAccountsResult []*KeyedAccount

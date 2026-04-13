@@ -59,6 +59,9 @@ func (cl *Client) GetProgramAccountsWithOpts(
 				"length": opts.DataSlice.Length,
 			}
 		}
+		if opts.ChangedSinceSlot != nil {
+			obj["changedSinceSlot"] = *opts.ChangedSinceSlot
+		}
 	}
 
 	params := []any{publicKey, obj}
