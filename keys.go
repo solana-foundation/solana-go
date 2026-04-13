@@ -29,7 +29,7 @@ import (
 	"os"
 	"sort"
 
-	"filippo.io/edwards25519"
+	"filippo.io/edwards25519/field"
 	"github.com/gagliardetto/solana-go/base58"
 	mrtronbase58 "github.com/mr-tron/base58"
 	"go.mongodb.org/mongo-driver/bson"
@@ -679,14 +679,35 @@ func CreateProgramAddress(seeds [][]byte, programID PublicKey) (PublicKey, error
 	return PublicKeyFromBytes(hash[:]), nil
 }
 
+var feOne = new(field.Element).One()
+var d, _ = new(field.Element).SetBytes([]byte{
+	0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75,
+	0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00,
+	0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c,
+	0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52})
+
 // Check if the provided `b` is on the ed25519 curve.
 func IsOnCurve(b []byte) bool {
 	if len(b) != ed25519.PublicKeySize {
 		return false
 	}
-	_, err := new(edwards25519.Point).SetBytes(b)
-	isOnCurve := err == nil
-	return isOnCurve
+	//_, err := new(edwards25519.Point).SetBytes(b)
+	y, err := new(field.Element).SetBytes(b)
+	if err != nil {
+		return false
+	}
+
+	y2 := new(field.Element).Square(y)
+	u := new(field.Element).Subtract(y2, feOne)
+
+	vv := new(field.Element).Multiply(y2, d)
+	vv = vv.Add(vv, feOne)
+
+	_, wasSquare := new(field.Element).SqrtRatio(u, vv)
+	if wasSquare == 0 {
+		return false
+	}
+	return true
 }
 
 // Find a valid program address and its corresponding bump seed.
