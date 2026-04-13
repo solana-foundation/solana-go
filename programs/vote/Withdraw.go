@@ -16,6 +16,7 @@
 package vote
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -55,7 +56,7 @@ func (v *Withdraw) UnmarshalWithDecoder(dec *bin.Decoder) error {
 func (inst *Withdraw) MarshalWithEncoder(encoder *bin.Encoder) error {
 	// Serialize `Lamports` param:
 	{
-		err := encoder.Encode(*inst.Lamports)
+		err := encoder.WriteUint64(*inst.Lamports, binary.LittleEndian)
 		if err != nil {
 			return err
 		}

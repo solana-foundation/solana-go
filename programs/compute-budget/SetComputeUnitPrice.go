@@ -15,6 +15,7 @@
 package computebudget
 
 import (
+	"encoding/binary"
 	"errors"
 
 	ag_binary "github.com/gagliardetto/solana-go/binary"
@@ -91,7 +92,7 @@ func (inst *SetComputeUnitPrice) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj SetComputeUnitPrice) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `MicroLamports` param:
-	err = encoder.Encode(obj.MicroLamports)
+	err = encoder.WriteUint64(obj.MicroLamports, binary.LittleEndian)
 	if err != nil {
 		return err
 	}

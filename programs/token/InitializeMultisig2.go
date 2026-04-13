@@ -159,7 +159,7 @@ func (inst *InitializeMultisig2) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj InitializeMultisig2) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `M` param:
-	err = encoder.Encode(obj.M)
+	err = encoder.WriteByte(*obj.M)
 	if err != nil {
 		return err
 	}

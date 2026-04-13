@@ -15,6 +15,7 @@
 package token
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -216,12 +217,12 @@ func (inst *BurnChecked) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj BurnChecked) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `Amount` param:
-	err = encoder.Encode(obj.Amount)
+	err = encoder.WriteUint64(*obj.Amount, binary.LittleEndian)
 	if err != nil {
 		return err
 	}
 	// Serialize `Decimals` param:
-	err = encoder.Encode(obj.Decimals)
+	err = encoder.WriteByte(*obj.Decimals)
 	if err != nil {
 		return err
 	}

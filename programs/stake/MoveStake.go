@@ -15,6 +15,7 @@
 package stake
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -93,7 +94,7 @@ func (inst *MoveStake) UnmarshalWithDecoder(dec *bin.Decoder) error {
 
 func (inst *MoveStake) MarshalWithEncoder(encoder *bin.Encoder) error {
 	{
-		err := encoder.Encode(*inst.Lamports)
+		err := encoder.WriteUint64(*inst.Lamports, binary.LittleEndian)
 		if err != nil {
 			return err
 		}

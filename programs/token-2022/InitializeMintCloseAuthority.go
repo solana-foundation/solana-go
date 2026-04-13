@@ -108,7 +108,7 @@ func (obj InitializeMintCloseAuthority) MarshalWithEncoder(encoder *ag_binary.En
 			if err != nil {
 				return err
 			}
-			err = encoder.Encode(obj.CloseAuthority)
+			err = encoder.WriteBytes(obj.CloseAuthority[:], false)
 			if err != nil {
 				return err
 			}

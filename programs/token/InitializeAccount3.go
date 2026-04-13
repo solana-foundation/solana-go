@@ -138,7 +138,7 @@ func (inst *InitializeAccount3) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj InitializeAccount3) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `Owner` param:
-	err = encoder.Encode(obj.Owner)
+	err = encoder.WriteBytes(obj.Owner[:], false)
 	if err != nil {
 		return err
 	}

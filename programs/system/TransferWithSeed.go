@@ -171,7 +171,7 @@ func (inst *TransferWithSeed) EncodeToTree(parent ag_treeout.Branches) {
 func (inst TransferWithSeed) MarshalWithEncoder(encoder *ag_binary.Encoder) error {
 	// Serialize `Lamports` param:
 	{
-		err := encoder.Encode(*inst.Lamports)
+		err := encoder.WriteUint64(*inst.Lamports, binary.LittleEndian)
 		if err != nil {
 			return err
 		}

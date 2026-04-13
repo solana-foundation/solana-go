@@ -15,6 +15,7 @@
 package computebudget
 
 import (
+	"encoding/binary"
 	"errors"
 
 	ag_binary "github.com/gagliardetto/solana-go/binary"
@@ -97,7 +98,7 @@ func (inst *RequestHeapFrame) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj RequestHeapFrame) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `HeapSize` param:
-	err = encoder.Encode(obj.HeapSize)
+	err = encoder.WriteUint32(obj.HeapSize, binary.LittleEndian)
 	if err != nil {
 		return err
 	}

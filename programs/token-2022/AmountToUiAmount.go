@@ -1,6 +1,7 @@
 package token2022
 
 import (
+	"encoding/binary"
 	"errors"
 
 	ag_binary "github.com/gagliardetto/solana-go/binary"
@@ -104,7 +105,7 @@ func (inst *AmountToUiAmount) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj AmountToUiAmount) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `Amount` param:
-	err = encoder.Encode(obj.Amount)
+	err = encoder.WriteUint64(*obj.Amount, binary.LittleEndian)
 	if err != nil {
 		return err
 	}
