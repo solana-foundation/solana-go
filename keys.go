@@ -32,8 +32,7 @@ import (
 	"filippo.io/edwards25519"
 	"github.com/gagliardetto/solana-go/base58"
 	mrtronbase58 "github.com/mr-tron/base58"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type PrivateKey []byte
@@ -256,12 +255,12 @@ func (p *PublicKey) UnmarshalBSON(data []byte) (err error) {
 }
 
 // MarshalBSONValue implements the bson.ValueMarshaler interface.
-func (p PublicKey) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (p PublicKey) MarshalBSONValue() (bson.Type, []byte, error) {
 	return bson.MarshalValue(p.String())
 }
 
 // UnmarshalBSONValue implements the bson.ValueUnmarshaler interface.
-func (p *PublicKey) UnmarshalBSONValue(t bsontype.Type, data []byte) (err error) {
+func (p *PublicKey) UnmarshalBSONValue(t bson.Type, data []byte) (err error) {
 	var s string
 	if err := bson.UnmarshalValue(t, data, &s); err != nil {
 		return err
