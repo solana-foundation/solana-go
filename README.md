@@ -831,6 +831,8 @@ Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/ex
 
 We encourage everyone to contribute, submit issues, PRs, discuss. Every kind of help is welcome.
 
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on commit messages, semver policy, and CI checks.
+
 ## License
 
 [Apache 2.0](LICENSE)
