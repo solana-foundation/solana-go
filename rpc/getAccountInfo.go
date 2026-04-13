@@ -85,6 +85,9 @@ type GetAccountInfoOpts struct {
 	// The minimum slot that the request can be evaluated at.
 	// This parameter is optional.
 	MinContextSlot *uint64
+
+	// Return only if the account(s) have changed since this slot
+	ChangedSinceSlot *uint64 `json:"changedSinceSlot,omitempty"`
 }
 
 // GetAccountInfoWithOpts returns all information associated with the account of provided publicKey.
@@ -134,6 +137,9 @@ func (cl *Client) getAccountInfoWithOpts(
 		}
 		if opts.MinContextSlot != nil {
 			obj["minContextSlot"] = *opts.MinContextSlot
+		}
+		if opts.ChangedSinceSlot != nil {
+			obj["changedSinceSlot"] = *opts.ChangedSinceSlot
 		}
 	}
 
