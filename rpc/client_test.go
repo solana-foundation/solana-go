@@ -143,6 +143,147 @@ func TestClient_GetAccountInfoWithOpts(t *testing.T) {
 	)
 }
 
+func TestClient_GetTransactionsForAddressWithOpts(t *testing.T) {
+	responseBody := `{"data":[{"signature":"5h6xBEauJ3PK6SWCZ1PGjBvj8vDdWG3KpwATGy1ARAXFSDwt8GFXM7W5Ncn16wmqokgpiKRLuS83KUxyZyv2sUYv","slot":1054,"transactionIndex":42,"err":null,"memo":null,"blockTime":1641038400,"confirmationStatus":"finalized"}],"paginationToken":"1055:5"}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	address := solana.MustPublicKeyFromBase58("7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932")
+	limit := 100
+	maxSupportedTransactionVersion := uint64(0)
+	minContextSlot := uint64(99)
+	slotGte := uint64(1000)
+	slotLt := uint64(2000)
+	blockTimeGte := int64(1640995200)
+	blockTimeLt := int64(1641081600)
+	sigLt := solana.MustSignatureFromBase58("5h6xBEauJ3PK6SWCZ1PGjBvj8vDdWG3KpwATGy1ARAXFSDwt8GFXM7W5Ncn16wmqokgpiKRLuS83KUxyZyv2sUYv")
+
+	out, err := client.GetTransactionsForAddressWithOpts(
+		context.Background(),
+		address,
+		&GetTransactionsForAddressOpts{
+			TransactionDetails: TransactionDetailsSignatures,
+			SortOrder:          TransactionsForAddressSortOrderAscending,
+			Limit:              &limit,
+			PaginationToken:    "1055:5",
+			Commitment:         CommitmentConfirmed,
+			Filters: &GetTransactionsForAddressFilters{
+				Slot: &GetTransactionsForAddressUint64Filter{
+					Gte: &slotGte,
+					Lt:  &slotLt,
+				},
+				BlockTime: &GetTransactionsForAddressInt64Filter{
+					Gte: &blockTimeGte,
+					Lt:  &blockTimeLt,
+				},
+				Signature: &GetTransactionsForAddressSignatureFilter{
+					Lt: &sigLt,
+				},
+				Status:        TransactionsForAddressStatusSucceeded,
+				TokenAccounts: TransactionsForAddressTokenAccountsBalanceChanged,
+			},
+			Encoding:                       solana.EncodingJSON,
+			MaxSupportedTransactionVersion: &maxSupportedTransactionVersion,
+			MinContextSlot:                 &minContextSlot,
+		},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, out)
+	require.Len(t, out.Data, 1)
+	assert.Equal(t, uint64(42), out.Data[0].TransactionIndex)
+	require.NotNil(t, out.PaginationToken)
+	assert.Equal(t, "1055:5", *out.PaginationToken)
+
+	reqBody := server.RequestBody(t)
+	assert.NotNil(t, reqBody["id"])
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getTransactionsForAddress",
+			"params": []any{
+				address.String(),
+				map[string]any{
+					"transactionDetails": string(TransactionDetailsSignatures),
+					"sortOrder":          string(TransactionsForAddressSortOrderAscending),
+					"limit":              float64(limit),
+					"paginationToken":    "1055:5",
+					"commitment":         string(CommitmentConfirmed),
+					"filters": map[string]any{
+						"slot": map[string]any{
+							"gte": float64(slotGte),
+							"lt":  float64(slotLt),
+						},
+						"blockTime": map[string]any{
+							"gte": float64(blockTimeGte),
+							"lt":  float64(blockTimeLt),
+						},
+						"signature": map[string]any{
+							"lt": sigLt.String(),
+						},
+						"status":        string(TransactionsForAddressStatusSucceeded),
+						"tokenAccounts": string(TransactionsForAddressTokenAccountsBalanceChanged),
+					},
+					"encoding":                       string(solana.EncodingJSON),
+					"maxSupportedTransactionVersion": float64(maxSupportedTransactionVersion),
+					"minContextSlot":                 float64(minContextSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
+func TestClient_GetTransactionsForAddressFullWithOpts(t *testing.T) {
+	responseBody := `{"data":[{"slot":1054,"transactionIndex":42,"blockTime":1641038400,"transaction":["AQID","base64"],"meta":{"err":null,"fee":5000,"preBalances":[1000000],"postBalances":[995000],"innerInstructions":[],"preTokenBalances":[],"postTokenBalances":[],"logMessages":[],"status":{"Ok":null},"rewards":[],"loadedAddresses":{"readonly":[],"writable":[]},"returnData":{"programId":"11111111111111111111111111111111","data":["","base64"]}}}],"paginationToken":"1055:5"}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	address := solana.MustPublicKeyFromBase58("7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932")
+	limit := 10
+	out, err := client.GetTransactionsForAddressFullWithOpts(
+		context.Background(),
+		address,
+		&GetTransactionsForAddressOpts{
+			SortOrder: TransactionsForAddressSortOrderAscending,
+			Limit:     &limit,
+			Encoding:  solana.EncodingBase64,
+		},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, out)
+	require.Len(t, out.Data, 1)
+	assert.Equal(t, uint64(42), out.Data[0].TransactionIndex)
+	require.NotNil(t, out.Data[0].Transaction)
+	assert.Equal(t, []byte{1, 2, 3}, out.Data[0].Transaction.GetBinary())
+
+	reqBody := server.RequestBody(t)
+	assert.NotNil(t, reqBody["id"])
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getTransactionsForAddress",
+			"params": []any{
+				address.String(),
+				map[string]any{
+					"sortOrder":          string(TransactionsForAddressSortOrderAscending),
+					"limit":              float64(limit),
+					"encoding":           string(solana.EncodingBase64),
+					"transactionDetails": string(TransactionDetailsFull),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
 // mustAnyToJSON marshals the provided variable
 // to JSON bytes.
 func mustAnyToJSON(raw any) []byte {
@@ -2726,12 +2867,12 @@ func TestClient_SimulateTransactionWithOpts_AllOptions(t *testing.T) {
 			"params": []any{
 				base64.StdEncoding.EncodeToString(txData),
 				map[string]any{
-					"encoding":              "base64",
-					"sigVerify":             true,
-					"commitment":            string(CommitmentProcessed),
+					"encoding":               "base64",
+					"sigVerify":              true,
+					"commitment":             string(CommitmentProcessed),
 					"replaceRecentBlockhash": true,
-					"innerInstructions":     true,
-					"minContextSlot":        float64(100),
+					"innerInstructions":      true,
+					"minContextSlot":         float64(100),
 					"accounts": map[string]any{
 						"encoding":  string(solana.EncodingBase64),
 						"addresses": []any{"7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"},
