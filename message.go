@@ -450,9 +450,7 @@ func (mx *Message) GetAddressTableLookupAccounts() (PublicKeySlice, error) {
 	numWritable := mx.AddressTableLookups.NumWritableLookups()
 	numTotal := mx.AddressTableLookups.NumLookups()
 
-	// Single allocation: writable accounts first, then readonly.
-	all := make(PublicKeySlice, 0, numTotal)
-	writable := all[:0:numWritable]
+	writable := make(PublicKeySlice, 0, numWritable)
 	readonly := make(PublicKeySlice, 0, numTotal-numWritable)
 
 	for i := range mx.AddressTableLookups {
@@ -524,8 +522,10 @@ func (mx *Message) GetAllKeys() (keys PublicKeySlice, err error) {
 	if err != nil {
 		return keys, err
 	}
-	// ...and return the account keys with the lookups appended:
-	return append(mx.AccountKeys, atlAccounts...), nil
+	// Return a new slice to avoid mutating mx.AccountKeys' backing array.
+	all := make(PublicKeySlice, len(mx.AccountKeys), len(mx.AccountKeys)+len(atlAccounts))
+	copy(all, mx.AccountKeys)
+	return append(all, atlAccounts...), nil
 }
 
 func (mx *Message) getStaticKeys() (keys PublicKeySlice) {
@@ -855,15 +855,14 @@ func (m *Message) numStaticAccounts() int {
 func (m *Message) IsWritableStatic(account PublicKey) bool {
 	// check only the static accounts (i.e. not the ones in the address table lookups); no check preconditions needed.
 	accountKeys := m.getStaticKeys()
-	index := 0
-	found := false
+	index := -1
 	for idx, acc := range accountKeys {
 		if acc == account {
-			found = true
 			index = idx
+			break
 		}
 	}
-	if !found {
+	if index < 0 {
 		return false
 	}
 	h := m.Header
@@ -885,15 +884,14 @@ func (m *Message) IsWritable(account PublicKey) (bool, error) {
 		return false, err
 	}
 
-	index := 0
-	found := false
+	index := -1
 	for idx, acc := range accountKeys {
 		if acc == account {
-			found = true
 			index = idx
+			break
 		}
 	}
-	if !found {
+	if index < 0 {
 		return false, nil
 	}
 	return m.uncheckedAccountIndexIsWritable(index), nil
@@ -920,6 +918,82 @@ func (m *Message) uncheckedAccountIndexIsWritable(index int) bool {
 
 func (m *Message) signerKeys() PublicKeySlice {
 	return m.AccountKeys[0:m.Header.NumRequiredSignatures]
+}
+
+// ProgramIDs returns the deduplicated list of program IDs used by the message's instructions.
+func (m *Message) ProgramIDs() PublicKeySlice {
+	seen := make(map[PublicKey]struct{})
+	out := make(PublicKeySlice, 0, len(m.Instructions))
+	for i := range m.Instructions {
+		idx := m.Instructions[i].ProgramIDIndex
+		if int(idx) < len(m.AccountKeys) {
+			key := m.AccountKeys[idx]
+			if _, ok := seen[key]; !ok {
+				seen[key] = struct{}{}
+				out = append(out, key)
+			}
+		}
+	}
+	return out
+}
+
+// IsInstructionAccount returns true if the given account index is referenced as
+// an account (not a program) in any instruction.
+func (m *Message) IsInstructionAccount(index uint16) bool {
+	for i := range m.Instructions {
+		for _, acctIdx := range m.Instructions[i].Accounts {
+			if acctIdx == index {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ProgramPosition returns the 0-based position of the account at the given index
+// among all program IDs invoked by the message. Returns (pos, true) if found,
+// or (0, false) if the account is not a program ID.
+func (m *Message) ProgramPosition(index uint16) (int, bool) {
+	pos := 0
+	seen := make(map[uint16]struct{})
+	for i := range m.Instructions {
+		progIdx := m.Instructions[i].ProgramIDIndex
+		if _, ok := seen[progIdx]; !ok {
+			seen[progIdx] = struct{}{}
+			if progIdx == index {
+				return pos, true
+			}
+			pos++
+		}
+	}
+	return 0, false
+}
+
+// NumReadonlyAccounts returns the total number of readonly accounts (signed + unsigned)
+// in the static account list.
+func (m *Message) NumReadonlyAccounts() int {
+	return int(m.Header.NumReadonlySignedAccounts) + int(m.Header.NumReadonlyUnsignedAccounts)
+}
+
+// GetIxSigners returns the set of account keys that are both signers and referenced
+// as accounts (not program) in the instruction at the given index.
+func (m *Message) GetIxSigners(ixIndex int) PublicKeySlice {
+	if ixIndex < 0 || ixIndex >= len(m.Instructions) {
+		return nil
+	}
+	ix := m.Instructions[ixIndex]
+	seen := make(map[PublicKey]struct{}, len(ix.Accounts))
+	var out PublicKeySlice
+	for _, acctIdx := range ix.Accounts {
+		if m.accountIndexIsSigner(int(acctIdx)) && int(acctIdx) < len(m.AccountKeys) {
+			key := m.AccountKeys[acctIdx]
+			if _, ok := seen[key]; !ok {
+				seen[key] = struct{}{}
+				out = append(out, key)
+			}
+		}
+	}
+	return out
 }
 
 type MessageHeader struct {

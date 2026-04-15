@@ -2,6 +2,7 @@ package solana
 
 import (
 	"testing"
+	"unsafe"
 
 	bin "github.com/gagliardetto/binary"
 	"github.com/stretchr/testify/assert"
@@ -706,4 +707,540 @@ func TestMarshalUnmarshalBase64(t *testing.T) {
 	assert.Equal(t, msg.Header, decoded.Header)
 	assert.Equal(t, msg.AccountKeys, decoded.AccountKeys)
 	assert.Equal(t, msg.RecentBlockhash, decoded.RecentBlockhash)
+}
+
+// --- Tests ported from anza-xyz/solana-sdk/message ---
+
+// Ported from legacy.rs: test_message_header_len_constant
+func TestMessageHeaderLenConstant(t *testing.T) {
+	// MessageHeader is 3 × uint8 = 3 bytes, matching Rust's MESSAGE_HEADER_LENGTH.
+	assert.Equal(t, uintptr(3), unsafe.Sizeof(MessageHeader{}))
+}
+
+// Ported from legacy.rs: test_program_ids (extended).
+// Tests ProgramIDs() returns the unique set of program IDs.
+func TestProgramIDs_Unique(t *testing.T) {
+	key0 := newUniqueKey()
+	key1 := newUniqueKey()
+	loader := newUniqueKey()
+
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: PublicKeySlice{key0, key1, loader},
+		Instructions: []CompiledInstruction{
+			{ProgramIDIndex: 2, Accounts: []uint16{0, 1}, Data: []byte{}},
+		},
+	}
+
+	ids := msg.ProgramIDs()
+	require.Equal(t, 1, len(ids))
+	assert.Equal(t, loader, ids[0])
+}
+
+// Ported from legacy.rs: test_program_ids — multiple programs.
+func TestProgramIDs_Multiple(t *testing.T) {
+	key0 := newUniqueKey()
+	prog0 := newUniqueKey()
+	prog1 := newUniqueKey()
+
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 2,
+		},
+		AccountKeys: PublicKeySlice{key0, prog0, prog1},
+		Instructions: []CompiledInstruction{
+			{ProgramIDIndex: 1, Accounts: []uint16{0}, Data: []byte{}},
+			{ProgramIDIndex: 2, Accounts: []uint16{0}, Data: []byte{}},
+			{ProgramIDIndex: 1, Accounts: []uint16{0}, Data: []byte{}}, // duplicate
+		},
+	}
+
+	ids := msg.ProgramIDs()
+	require.Equal(t, 2, len(ids))
+	assert.Equal(t, prog0, ids[0])
+	assert.Equal(t, prog1, ids[1])
+}
+
+// Ported from legacy.rs: test_is_instruction_account.
+func TestIsInstructionAccount(t *testing.T) {
+	key0 := newUniqueKey()
+	key1 := newUniqueKey()
+	loader := newUniqueKey()
+
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: PublicKeySlice{key0, key1, loader},
+		Instructions: []CompiledInstruction{
+			{ProgramIDIndex: 2, Accounts: []uint16{0, 1}, Data: []byte{}},
+		},
+	}
+
+	assert.True(t, msg.IsInstructionAccount(0))
+	assert.True(t, msg.IsInstructionAccount(1))
+	assert.False(t, msg.IsInstructionAccount(2)) // program, not instruction account
+}
+
+// Ported from legacy.rs: test_program_position.
+func TestProgramPosition(t *testing.T) {
+	id := newUniqueKey()
+	prog0 := newUniqueKey()
+	prog1 := newUniqueKey()
+
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 2,
+		},
+		AccountKeys: PublicKeySlice{id, prog0, prog1},
+		Instructions: []CompiledInstruction{
+			{ProgramIDIndex: 1, Accounts: []uint16{0}, Data: []byte{}},
+			{ProgramIDIndex: 2, Accounts: []uint16{0}, Data: []byte{}},
+		},
+	}
+
+	_, found := msg.ProgramPosition(0)
+	assert.False(t, found, "id is not a program")
+
+	pos, found := msg.ProgramPosition(1)
+	assert.True(t, found)
+	assert.Equal(t, 0, pos, "first program")
+
+	pos, found = msg.ProgramPosition(2)
+	assert.True(t, found)
+	assert.Equal(t, 1, pos, "second program")
+}
+
+// Ported from sanitized.rs: test_num_readonly_accounts.
+func TestNumReadonlyAccounts_Legacy(t *testing.T) {
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       2,
+			NumReadonlySignedAccounts:   1,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: PublicKeySlice{
+			newUniqueKey(), newUniqueKey(),
+			newUniqueKey(), newUniqueKey(),
+		},
+	}
+
+	assert.Equal(t, 2, msg.NumReadonlyAccounts())
+}
+
+// Ported from sanitized.rs: test_num_readonly_accounts (V0 variant).
+// V0 messages also have readonly accounts from lookups.
+func TestNumReadonlyAccounts_V0(t *testing.T) {
+	tableKey := newUniqueKey()
+	msg := Message{
+		version: MessageVersionV0,
+		Header: MessageHeader{
+			NumRequiredSignatures:       2,
+			NumReadonlySignedAccounts:   1,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: PublicKeySlice{
+			newUniqueKey(), newUniqueKey(),
+			newUniqueKey(), newUniqueKey(),
+		},
+		AddressTableLookups: MessageAddressTableLookupSlice{
+			{
+				AccountKey:      tableKey,
+				WritableIndexes: []uint8{0},
+				ReadonlyIndexes: []uint8{1},
+			},
+		},
+	}
+
+	// Static readonly: 1 signed + 1 unsigned = 2
+	assert.Equal(t, 2, msg.NumReadonlyAccounts())
+	// Total with lookups: 2 static readonly + 1 readonly lookup = 3
+	numReadonlyLookups := msg.NumLookups() - msg.NumWritableLookups()
+	assert.Equal(t, 3, msg.NumReadonlyAccounts()+numReadonlyLookups)
+}
+
+// Ported from sanitized.rs: test_get_ix_signers.
+func TestGetIxSigners(t *testing.T) {
+	signer0 := newUniqueKey()
+	signer1 := newUniqueKey()
+	nonSigner := newUniqueKey()
+	loaderKey := newUniqueKey()
+
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       2,
+			NumReadonlySignedAccounts:   1,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: PublicKeySlice{signer0, signer1, nonSigner, loaderKey},
+		Instructions: []CompiledInstruction{
+			{ProgramIDIndex: 3, Accounts: []uint16{2, 0}, Data: []byte{}}, // ix 0: nonSigner, signer0
+			{ProgramIDIndex: 3, Accounts: []uint16{0, 1}, Data: []byte{}}, // ix 1: signer0, signer1
+			{ProgramIDIndex: 3, Accounts: []uint16{0, 0}, Data: []byte{}}, // ix 2: signer0, signer0 (dup)
+		},
+	}
+
+	// ix 0: only signer0 is a signer (nonSigner at index 2 is not)
+	signers0 := msg.GetIxSigners(0)
+	require.Equal(t, 1, len(signers0))
+	assert.Equal(t, signer0, signers0[0])
+
+	// ix 1: both signer0 and signer1
+	signers1 := msg.GetIxSigners(1)
+	require.Equal(t, 2, len(signers1))
+	assert.Contains(t, []PublicKey(signers1), signer0)
+	assert.Contains(t, []PublicKey(signers1), signer1)
+
+	// ix 2: signer0 referenced twice, but deduped
+	signers2 := msg.GetIxSigners(2)
+	require.Equal(t, 1, len(signers2))
+	assert.Equal(t, signer0, signers2[0])
+
+	// Out of range returns nil.
+	assert.Nil(t, msg.GetIxSigners(3))
+}
+
+// Ported from sanitized.rs: test_static_account_keys.
+func TestStaticAccountKeys(t *testing.T) {
+	keys := PublicKeySlice{newUniqueKey(), newUniqueKey(), newUniqueKey()}
+
+	t.Run("legacy", func(t *testing.T) {
+		msg := Message{
+			Header: MessageHeader{
+				NumRequiredSignatures:       2,
+				NumReadonlySignedAccounts:   1,
+				NumReadonlyUnsignedAccounts: 1,
+			},
+			AccountKeys: keys,
+		}
+		assert.Equal(t, keys, msg.getStaticKeys())
+	})
+
+	t.Run("v0 no lookups", func(t *testing.T) {
+		msg := Message{
+			version: MessageVersionV0,
+			Header: MessageHeader{
+				NumRequiredSignatures:       2,
+				NumReadonlySignedAccounts:   1,
+				NumReadonlyUnsignedAccounts: 1,
+			},
+			AccountKeys: keys,
+		}
+		assert.Equal(t, keys, msg.getStaticKeys())
+	})
+
+	t.Run("v0 with lookups resolved", func(t *testing.T) {
+		tableKey := newUniqueKey()
+		extraWritable := newUniqueKey()
+		extraReadonly := newUniqueKey()
+
+		msg := Message{
+			version: MessageVersionV0,
+			Header: MessageHeader{
+				NumRequiredSignatures:       2,
+				NumReadonlySignedAccounts:   1,
+				NumReadonlyUnsignedAccounts: 1,
+			},
+			AccountKeys: append(PublicKeySlice{}, keys...),
+			AddressTableLookups: MessageAddressTableLookupSlice{
+				{
+					AccountKey:      tableKey,
+					WritableIndexes: []uint8{0},
+					ReadonlyIndexes: []uint8{1},
+				},
+			},
+			addressTables: map[PublicKey]PublicKeySlice{
+				tableKey: {extraWritable, extraReadonly},
+			},
+		}
+		require.NoError(t, msg.ResolveLookups())
+
+		// After resolution, AccountKeys has 5 entries, but static keys are only the first 3.
+		assert.Equal(t, 5, len(msg.AccountKeys))
+		staticKeys := msg.getStaticKeys()
+		assert.Equal(t, keys, staticKeys)
+	})
+}
+
+// Ported from v0/mod.rs: test_sanitize_with_max_table_loaded_keys.
+// Tests the exact boundary: 256 total accounts (static + lookup) is valid.
+func TestMessageSanitize_V0_MaxTableLoadedKeys(t *testing.T) {
+	keys := make(PublicKeySlice, 2) // payer + program
+	keys[0] = newUniqueKey()
+	keys[1] = newUniqueKey()
+
+	// 254 lookup accounts (to reach 256 total)
+	writableIndexes := make([]uint8, 127)
+	readonlyIndexes := make([]uint8, 127)
+	for i := range writableIndexes {
+		writableIndexes[i] = uint8(i)
+	}
+	for i := range readonlyIndexes {
+		readonlyIndexes[i] = uint8(i + 127)
+	}
+
+	msg := Message{
+		version: MessageVersionV0,
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: keys,
+		Instructions: []CompiledInstruction{
+			{ProgramIDIndex: 1, Accounts: []uint16{0}, Data: []byte{}},
+		},
+		AddressTableLookups: MessageAddressTableLookupSlice{
+			{
+				AccountKey:      newUniqueKey(),
+				WritableIndexes: writableIndexes,
+				ReadonlyIndexes: readonlyIndexes,
+			},
+		},
+	}
+
+	// 2 static + 254 lookup = 256 total → should pass
+	err := msg.Sanitize()
+	require.NoError(t, err)
+}
+
+// Ported from v0/loaded.rs: test_is_writable_index.
+// Tests uncheckedAccountIndexIsWritable with a resolved V0 message.
+func TestUncheckedAccountIndexIsWritable_WithLookups(t *testing.T) {
+	tableKey := newUniqueKey()
+	msg := Message{
+		version: MessageVersionV0,
+		Header: MessageHeader{
+			NumRequiredSignatures:       2,
+			NumReadonlySignedAccounts:   1,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: PublicKeySlice{
+			newUniqueKey(), // 0: writable signer
+			newUniqueKey(), // 1: readonly signer
+			newUniqueKey(), // 2: writable unsigned
+			newUniqueKey(), // 3: readonly unsigned
+		},
+		AddressTableLookups: MessageAddressTableLookupSlice{
+			{
+				AccountKey:      tableKey,
+				WritableIndexes: []uint8{0},    // 4: writable from lookup
+				ReadonlyIndexes: []uint8{1, 2}, // 5,6: readonly from lookup
+			},
+		},
+		addressTables: map[PublicKey]PublicKeySlice{
+			tableKey: {newUniqueKey(), newUniqueKey(), newUniqueKey()},
+		},
+	}
+	require.NoError(t, msg.ResolveLookups())
+
+	expected := []bool{
+		true,  // 0: writable signer
+		false, // 1: readonly signer
+		true,  // 2: writable unsigned
+		false, // 3: readonly unsigned
+		true,  // 4: writable lookup
+		false, // 5: readonly lookup
+		false, // 6: readonly lookup
+	}
+
+	for i, want := range expected {
+		got := msg.uncheckedAccountIndexIsWritable(i)
+		assert.Equal(t, want, got, "index %d", i)
+	}
+}
+
+// Ported from v0/loaded.rs: test_is_writable.
+// Tests IsWritable by public key with a resolved V0 message.
+func TestIsWritable_WithResolvedLookups(t *testing.T) {
+	staticKeys := PublicKeySlice{
+		newUniqueKey(), // 0: writable signer
+		newUniqueKey(), // 1: readonly signer
+		newUniqueKey(), // 2: writable unsigned
+		newUniqueKey(), // 3: readonly unsigned
+	}
+	tableKey := newUniqueKey()
+	lookupKeys := PublicKeySlice{
+		newUniqueKey(), // table[0] → writable lookup (idx 4)
+		newUniqueKey(), // table[1] → readonly lookup (idx 5)
+		newUniqueKey(), // table[2] → readonly lookup (idx 6)
+	}
+
+	msg := Message{
+		version: MessageVersionV0,
+		Header: MessageHeader{
+			NumRequiredSignatures:       2,
+			NumReadonlySignedAccounts:   1,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: append(PublicKeySlice{}, staticKeys...),
+		AddressTableLookups: MessageAddressTableLookupSlice{
+			{
+				AccountKey:      tableKey,
+				WritableIndexes: []uint8{0},
+				ReadonlyIndexes: []uint8{1, 2},
+			},
+		},
+		addressTables: map[PublicKey]PublicKeySlice{
+			tableKey: lookupKeys,
+		},
+	}
+	require.NoError(t, msg.ResolveLookups())
+
+	allKeys := append(staticKeys, lookupKeys...)
+	expected := []bool{true, false, true, false, true, false, false}
+
+	for i, key := range allKeys {
+		w, err := msg.IsWritable(key)
+		require.NoError(t, err)
+		assert.Equal(t, expected[i], w, "key at index %d", i)
+	}
+}
+
+// Ported from v0/mod.rs: test_is_maybe_writable.
+// Tests writability including lookup accounts using header-based logic.
+func TestIsWritable_V0_HeaderLayout(t *testing.T) {
+	staticKeys := PublicKeySlice{
+		newUniqueKey(), // 0: writable signer
+		newUniqueKey(), // 1: readonly signer
+		newUniqueKey(), // 2: writable unsigned
+		newUniqueKey(), // 3: readonly unsigned
+	}
+	tableKey := newUniqueKey()
+	lookupWritable := newUniqueKey()
+	lookupReadonly := newUniqueKey()
+
+	msg := Message{
+		version: MessageVersionV0,
+		Header: MessageHeader{
+			NumRequiredSignatures:       2,
+			NumReadonlySignedAccounts:   1,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: append(PublicKeySlice{}, staticKeys...),
+		AddressTableLookups: MessageAddressTableLookupSlice{
+			{
+				AccountKey:      tableKey,
+				WritableIndexes: []uint8{0},
+				ReadonlyIndexes: []uint8{1},
+			},
+		},
+		addressTables: map[PublicKey]PublicKeySlice{
+			tableKey: {lookupWritable, lookupReadonly},
+		},
+	}
+	require.NoError(t, msg.ResolveLookups())
+
+	// Static accounts:
+	w, err := msg.IsWritable(staticKeys[0])
+	require.NoError(t, err)
+	assert.True(t, w, "idx 0: writable signer")
+
+	w, err = msg.IsWritable(staticKeys[1])
+	require.NoError(t, err)
+	assert.False(t, w, "idx 1: readonly signer")
+
+	w, err = msg.IsWritable(staticKeys[2])
+	require.NoError(t, err)
+	assert.True(t, w, "idx 2: writable unsigned")
+
+	w, err = msg.IsWritable(staticKeys[3])
+	require.NoError(t, err)
+	assert.False(t, w, "idx 3: readonly unsigned")
+
+	// Lookup accounts:
+	w, err = msg.IsWritable(lookupWritable)
+	require.NoError(t, err)
+	assert.True(t, w, "idx 4: writable lookup")
+
+	w, err = msg.IsWritable(lookupReadonly)
+	require.NoError(t, err)
+	assert.False(t, w, "idx 5: readonly lookup")
+}
+
+// Ported from v0/loaded.rs: test_has_duplicates (already partially covered,
+// but this adds explicit sub-cases from the Rust test).
+func TestHasDuplicates_Loaded(t *testing.T) {
+	tableKey := newUniqueKey()
+	key0 := newUniqueKey()
+	key1 := newUniqueKey()
+	lookupW := newUniqueKey()
+	lookupR := newUniqueKey()
+
+	t.Run("no duplicates", func(t *testing.T) {
+		msg := Message{
+			version: MessageVersionV0,
+			Header: MessageHeader{
+				NumRequiredSignatures:       1,
+				NumReadonlySignedAccounts:   0,
+				NumReadonlyUnsignedAccounts: 0,
+			},
+			AccountKeys: PublicKeySlice{key0, key1},
+			AddressTableLookups: MessageAddressTableLookupSlice{
+				{
+					AccountKey:      tableKey,
+					WritableIndexes: []uint8{0},
+					ReadonlyIndexes: []uint8{1},
+				},
+			},
+			addressTables: map[PublicKey]PublicKeySlice{
+				tableKey: {lookupW, lookupR},
+			},
+		}
+		require.NoError(t, msg.ResolveLookups())
+
+		allKeys, err := msg.GetAllKeys()
+		require.NoError(t, err)
+		assert.False(t, hasDuplicates(allKeys))
+	})
+
+	t.Run("with duplicate keys", func(t *testing.T) {
+		// Static key duplicated in lookup → should detect duplicate.
+		msg := Message{
+			version: MessageVersionV0,
+			Header: MessageHeader{
+				NumRequiredSignatures:       1,
+				NumReadonlySignedAccounts:   0,
+				NumReadonlyUnsignedAccounts: 0,
+			},
+			AccountKeys: PublicKeySlice{key0, key1},
+			AddressTableLookups: MessageAddressTableLookupSlice{
+				{
+					AccountKey:      tableKey,
+					WritableIndexes: []uint8{0},
+					ReadonlyIndexes: []uint8{},
+				},
+			},
+			addressTables: map[PublicKey]PublicKeySlice{
+				tableKey: {key0}, // key0 is both static and lookup
+			},
+		}
+		require.NoError(t, msg.ResolveLookups())
+
+		allKeys, err := msg.GetAllKeys()
+		require.NoError(t, err)
+		assert.True(t, hasDuplicates(allKeys))
+	})
+}
+
+// hasDuplicates is a test helper matching Rust's has_duplicates check.
+func hasDuplicates(keys PublicKeySlice) bool {
+	seen := make(map[PublicKey]struct{}, len(keys))
+	for _, k := range keys {
+		if _, ok := seen[k]; ok {
+			return true
+		}
+		seen[k] = struct{}{}
+	}
+	return false
 }
