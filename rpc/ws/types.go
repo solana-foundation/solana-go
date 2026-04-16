@@ -20,7 +20,7 @@ package ws
 import (
 	stdjson "encoding/json"
 	"fmt"
-	"math/rand"
+	rand "math/rand/v2"
 	"net/http"
 	"time"
 )
@@ -32,7 +32,7 @@ type request struct {
 	ID      uint64 `json:"id"`
 }
 
-const maxJSONRPCSafeInteger = uint64(1<<53 - 1)
+const maxJSONSafeInteger = uint64(1<<53 - 1)
 
 func newRequest(params []any, method string, configuration map[string]any, shortID bool) *request {
 	if params != nil && configuration != nil {
@@ -40,9 +40,9 @@ func newRequest(params []any, method string, configuration map[string]any, short
 	}
 	var ID uint64
 	if !shortID {
-		ID = uint64(rand.Int63n(int64(maxJSONRPCSafeInteger + 1)))
+		ID = rand.Uint64N(maxJSONSafeInteger + 1)
 	} else {
-		ID = uint64(rand.Int31())
+		ID = uint64(rand.Uint32N(1 << 31))
 	}
 	return &request{
 		Version: "2.0",

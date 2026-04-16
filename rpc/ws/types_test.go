@@ -10,7 +10,7 @@ import (
 func TestNewRequest_IDWithinJSONSafeInteger(t *testing.T) {
 	for range 2_000 {
 		req := newRequest(nil, "slotSubscribe", nil, false)
-		require.LessOrEqual(t, req.ID, maxJSONRPCSafeInteger)
+		require.LessOrEqual(t, req.ID, maxJSONSafeInteger)
 	}
 }
 
