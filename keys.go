@@ -76,6 +76,9 @@ func ValidatePrivateKey(b []byte) (bool, error) {
 	// ed25519 private keys are seed(32) + public(32); ensure they match.
 	derived := ed25519.NewKeyFromSeed(b[:ed25519.SeedSize])
 	if !bytes.Equal(derived, b) {
+		if !IsOnCurve(b[ed25519.SeedSize:]) {
+			return false, errors.New("invalid private key: seed/public key mismatch (provided public key is NOT on the ed25519 curve)")
+		}
 		return false, errors.New("invalid private key: seed/public key mismatch")
 	}
 	return true, nil
