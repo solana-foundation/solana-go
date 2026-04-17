@@ -68,7 +68,7 @@ func (inst UpdateCommission) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *UpdateCommission) Validate() error {
 	if inst.Commission == nil {
-		return errors.New("Commission parameter is not set")
+		return errors.New("commission parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {

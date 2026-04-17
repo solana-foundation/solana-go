@@ -11,7 +11,7 @@ import (
 
 // ConfidentialMintBurn sub-instruction IDs.
 const (
-	ConfidentialMintBurn_InitializeMint       uint8 = iota
+	ConfidentialMintBurn_InitializeMint uint8 = iota
 	ConfidentialMintBurn_UpdateDecryptableSupply
 	ConfidentialMintBurn_RotateSupplyElGamalPubkey
 	ConfidentialMintBurn_Mint

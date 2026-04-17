@@ -13,7 +13,7 @@ import (
 
 // TransferFee sub-instruction IDs.
 const (
-	TransferFee_InitializeTransferFeeConfig      uint8 = iota
+	TransferFee_InitializeTransferFeeConfig uint8 = iota
 	TransferFee_TransferCheckedWithFee
 	TransferFee_WithdrawWithheldTokensFromMint
 	TransferFee_WithdrawWithheldTokensFromAccounts
@@ -87,13 +87,13 @@ func (inst *TransferFeeExtension) Validate() error {
 	switch inst.SubInstruction {
 	case TransferFee_TransferCheckedWithFee:
 		if inst.Amount == nil {
-			return errors.New("Amount parameter is not set")
+			return errors.New("amount parameter is not set")
 		}
 		if inst.Decimals == nil {
-			return errors.New("Decimals parameter is not set")
+			return errors.New("decimals parameter is not set")
 		}
 		if inst.Fee == nil {
-			return errors.New("Fee parameter is not set")
+			return errors.New("fee parameter is not set")
 		}
 		for i := 0; i < 4; i++ {
 			if len(inst.Accounts) <= i || inst.Accounts[i] == nil {
@@ -222,8 +222,8 @@ func (obj TransferFeeExtension) MarshalWithEncoder(encoder *ag_binary.Encoder) (
 		if err != nil {
 			return err
 		}
-	// WithdrawWithheldTokensFromMint, WithdrawWithheldTokensFromAccounts,
-	// HarvestWithheldTokensToMint have no additional data
+		// WithdrawWithheldTokensFromMint, WithdrawWithheldTokensFromAccounts,
+		// HarvestWithheldTokensToMint have no additional data
 	}
 	return nil
 }

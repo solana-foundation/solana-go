@@ -28,8 +28,8 @@ import (
 // Authorize is the Authorize instruction.
 // Data: (Pubkey, VoteAuthorize)
 type Authorize struct {
-	NewAuthority   *solana.PublicKey
-	VoteAuthorize  *VoteAuthorizeKind
+	NewAuthority  *solana.PublicKey
+	VoteAuthorize *VoteAuthorizeKind
 
 	// [0] = [WRITE] VoteAccount
 	//

@@ -3286,12 +3286,12 @@ func TestClient_SimulateTransactionWithOpts_AllOptions(t *testing.T) {
 			"params": []any{
 				base64.StdEncoding.EncodeToString(txData),
 				map[string]any{
-					"encoding":              "base64",
-					"sigVerify":             true,
-					"commitment":            string(CommitmentProcessed),
+					"encoding":               "base64",
+					"sigVerify":              true,
+					"commitment":             string(CommitmentProcessed),
 					"replaceRecentBlockhash": true,
-					"innerInstructions":     true,
-					"minContextSlot":        float64(100),
+					"innerInstructions":      true,
+					"minContextSlot":         float64(100),
 					"accounts": map[string]any{
 						"encoding":  string(solana.EncodingBase64),
 						"addresses": []any{"7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"},

@@ -447,7 +447,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		// prevent error created in ResolveLookups
 		err := message.SetAddressTables(options.addressTables)
 		if err != nil {
-			return nil, fmt.Errorf("SetAddressTables: %s", err)
+			return nil, fmt.Errorf("SetAddressTables: %w", err)
 		}
 		message.SetAddressTableLookups(lookups)
 	}

@@ -26,10 +26,10 @@ import (
 type VoteStateVersion uint32
 
 const (
-	VoteStateVersionV0_23_5 VoteStateVersion = 0 // rejected on deserialize
+	VoteStateVersionV0_23_5  VoteStateVersion = 0 // rejected on deserialize
 	VoteStateVersionV1_14_11 VoteStateVersion = 1
-	VoteStateVersionV3      VoteStateVersion = 2
-	VoteStateVersionV4      VoteStateVersion = 3
+	VoteStateVersionV3       VoteStateVersion = 2
+	VoteStateVersionV4       VoteStateVersion = 3
 )
 
 // BlockTimestamp pairs a slot with a unix timestamp.
@@ -175,9 +175,9 @@ func (c PriorVotersCircBuf) MarshalWithEncoder(enc *bin.Encoder) error {
 
 // EpochCredit is a single (epoch, credits, prev_credits) tuple.
 type EpochCredit struct {
-	Epoch        uint64
-	Credits      uint64
-	PrevCredits  uint64
+	Epoch       uint64
+	Credits     uint64
+	PrevCredits uint64
 }
 
 // decodeEpochCredits decodes a Vec<(Epoch, u64, u64)> with a u64 length prefix.
@@ -270,7 +270,7 @@ type VoteStateV4 struct {
 
 // VoteStateVersions is a tagged union holding one of the vote state versions.
 type VoteStateVersions struct {
-	Version VoteStateVersion
+	Version  VoteStateVersion
 	V1_14_11 *VoteState1_14_11
 	V3       *VoteStateV3
 	V4       *VoteStateV4

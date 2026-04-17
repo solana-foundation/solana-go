@@ -129,7 +129,7 @@ func (wrap *TransactionResultEnvelope) UnmarshalJSON(data []byte) error {
 			return json.Unmarshal(data, &wrap.asParsedTransaction)
 		}
 	default:
-		return fmt.Errorf("Unknown kind: %v", data)
+		return fmt.Errorf("unknown kind: %v", data)
 	}
 
 	return nil

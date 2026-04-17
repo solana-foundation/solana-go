@@ -80,7 +80,7 @@ func (inst *Assign) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Owner == nil {
-			return errors.New("Owner parameter is not set")
+			return errors.New("owner parameter is not set")
 		}
 	}
 

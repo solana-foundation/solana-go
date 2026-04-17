@@ -66,7 +66,7 @@ func (inst UpdateVoteState) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *UpdateVoteState) Validate() error {
 	if inst.Update == nil {
-		return errors.New("Update parameter is not set")
+		return errors.New("update parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {
@@ -154,7 +154,7 @@ func (inst UpdateVoteStateSwitch) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *UpdateVoteStateSwitch) Validate() error {
 	if inst.Update == nil {
-		return errors.New("Update parameter is not set")
+		return errors.New("update parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {
@@ -247,7 +247,7 @@ func (inst CompactUpdateVoteState) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *CompactUpdateVoteState) Validate() error {
 	if inst.Update == nil {
-		return errors.New("Update parameter is not set")
+		return errors.New("update parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {
@@ -329,7 +329,7 @@ func (inst CompactUpdateVoteStateSwitch) ValidateAndBuild() (*Instruction, error
 
 func (inst *CompactUpdateVoteStateSwitch) Validate() error {
 	if inst.Update == nil {
-		return errors.New("Update parameter is not set")
+		return errors.New("update parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {

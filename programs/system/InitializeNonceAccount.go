@@ -25,7 +25,7 @@ import (
 	ag_treeout "github.com/gagliardetto/treeout"
 )
 
-// Drive state of Uninitalized nonce account to Initialized, setting the nonce value
+// Drive state of Uninitialized nonce account to Initialized, setting the nonce value
 type InitializeNonceAccount struct {
 	// The Pubkey parameter specifies the entity authorized to execute nonce instruction on the account.
 	// No signatures are required to execute this instruction, enabling derived nonce account addresses.
@@ -110,7 +110,7 @@ func (inst *InitializeNonceAccount) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Authorized == nil {
-			return errors.New("Authorized parameter is not set")
+			return errors.New("authorized parameter is not set")
 		}
 	}
 

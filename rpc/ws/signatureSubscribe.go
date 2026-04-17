@@ -32,7 +32,7 @@ type SignatureResult struct {
 
 // SignatureSubscribe subscribes to a transaction signature to receive
 // notification when the transaction is confirmed On signatureNotification,
-// the subscription is automatically cancelled
+// the subscription is automatically canceled
 func (cl *Client) SignatureSubscribe(
 	signature solana.Signature, // Transaction Signature.
 	commitment rpc.CommitmentType, // (optional)

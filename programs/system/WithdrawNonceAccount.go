@@ -134,7 +134,7 @@ func (inst *WithdrawNonceAccount) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Lamports == nil {
-			return errors.New("Lamports parameter is not set")
+			return errors.New("lamports parameter is not set")
 		}
 	}
 

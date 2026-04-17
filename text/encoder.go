@@ -45,15 +45,6 @@ func isZero(rv reflect.Value) (b bool) {
 	return rv.Kind() == 0
 }
 
-func isNil(rv reflect.Value) (b bool) {
-	defer func(b bool) {
-		if err := recover(); err != nil {
-			b = true
-		}
-	}(b)
-	return rv.IsNil()
-}
-
 func (e *Encoder) Encode(v any, option *Option) (err error) {
 	if option == nil {
 		option = &Option{}
@@ -184,8 +175,7 @@ func (e *Encoder) ToWriter(s string, indent bool, c *color.Color) (err error) {
 		s = c.Sprintf("%s", s)
 	}
 	_, err = e.output.Write([]byte(s))
-
-	return nil
+	return err
 }
 
 func (e *Encoder) encodeStruct(rt reflect.Type, rv reflect.Value, option *Option) (err error) {

@@ -317,145 +317,145 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint8TypeIDEncoding,
 	[]ag_binary.VariantType{
 		{
-			"InitializeMint", (*InitializeMint)(nil),
+			Name: "InitializeMint", Type: (*InitializeMint)(nil),
 		},
 		{
-			"InitializeAccount", (*InitializeAccount)(nil),
+			Name: "InitializeAccount", Type: (*InitializeAccount)(nil),
 		},
 		{
-			"InitializeMultisig", (*InitializeMultisig)(nil),
+			Name: "InitializeMultisig", Type: (*InitializeMultisig)(nil),
 		},
 		{
-			"Transfer", (*Transfer)(nil),
+			Name: "Transfer", Type: (*Transfer)(nil),
 		},
 		{
-			"Approve", (*Approve)(nil),
+			Name: "Approve", Type: (*Approve)(nil),
 		},
 		{
-			"Revoke", (*Revoke)(nil),
+			Name: "Revoke", Type: (*Revoke)(nil),
 		},
 		{
-			"SetAuthority", (*SetAuthority)(nil),
+			Name: "SetAuthority", Type: (*SetAuthority)(nil),
 		},
 		{
-			"MintTo", (*MintTo)(nil),
+			Name: "MintTo", Type: (*MintTo)(nil),
 		},
 		{
-			"Burn", (*Burn)(nil),
+			Name: "Burn", Type: (*Burn)(nil),
 		},
 		{
-			"CloseAccount", (*CloseAccount)(nil),
+			Name: "CloseAccount", Type: (*CloseAccount)(nil),
 		},
 		{
-			"FreezeAccount", (*FreezeAccount)(nil),
+			Name: "FreezeAccount", Type: (*FreezeAccount)(nil),
 		},
 		{
-			"ThawAccount", (*ThawAccount)(nil),
+			Name: "ThawAccount", Type: (*ThawAccount)(nil),
 		},
 		{
-			"TransferChecked", (*TransferChecked)(nil),
+			Name: "TransferChecked", Type: (*TransferChecked)(nil),
 		},
 		{
-			"ApproveChecked", (*ApproveChecked)(nil),
+			Name: "ApproveChecked", Type: (*ApproveChecked)(nil),
 		},
 		{
-			"MintToChecked", (*MintToChecked)(nil),
+			Name: "MintToChecked", Type: (*MintToChecked)(nil),
 		},
 		{
-			"BurnChecked", (*BurnChecked)(nil),
+			Name: "BurnChecked", Type: (*BurnChecked)(nil),
 		},
 		{
-			"InitializeAccount2", (*InitializeAccount2)(nil),
+			Name: "InitializeAccount2", Type: (*InitializeAccount2)(nil),
 		},
 		{
-			"SyncNative", (*SyncNative)(nil),
+			Name: "SyncNative", Type: (*SyncNative)(nil),
 		},
 		{
-			"InitializeAccount3", (*InitializeAccount3)(nil),
+			Name: "InitializeAccount3", Type: (*InitializeAccount3)(nil),
 		},
 		{
-			"InitializeMultisig2", (*InitializeMultisig2)(nil),
+			Name: "InitializeMultisig2", Type: (*InitializeMultisig2)(nil),
 		},
 		{
-			"InitializeMint2", (*InitializeMint2)(nil),
+			Name: "InitializeMint2", Type: (*InitializeMint2)(nil),
 		},
 		{
-			"GetAccountDataSize", (*GetAccountDataSize)(nil),
+			Name: "GetAccountDataSize", Type: (*GetAccountDataSize)(nil),
 		},
 		{
-			"InitializeImmutableOwner", (*InitializeImmutableOwner)(nil),
+			Name: "InitializeImmutableOwner", Type: (*InitializeImmutableOwner)(nil),
 		},
 		{
-			"AmountToUiAmount", (*AmountToUiAmount)(nil),
+			Name: "AmountToUiAmount", Type: (*AmountToUiAmount)(nil),
 		},
 		{
-			"UiAmountToAmount", (*UiAmountToAmount)(nil),
+			Name: "UiAmountToAmount", Type: (*UiAmountToAmount)(nil),
 		},
 		{
-			"InitializeMintCloseAuthority", (*InitializeMintCloseAuthority)(nil),
+			Name: "InitializeMintCloseAuthority", Type: (*InitializeMintCloseAuthority)(nil),
 		},
 		{
-			"TransferFeeExtension", (*TransferFeeExtension)(nil),
+			Name: "TransferFeeExtension", Type: (*TransferFeeExtension)(nil),
 		},
 		{
-			"ConfidentialTransferExtension", (*ConfidentialTransferExtension)(nil),
+			Name: "ConfidentialTransferExtension", Type: (*ConfidentialTransferExtension)(nil),
 		},
 		{
-			"DefaultAccountStateExtension", (*DefaultAccountStateExtension)(nil),
+			Name: "DefaultAccountStateExtension", Type: (*DefaultAccountStateExtension)(nil),
 		},
 		{
-			"Reallocate", (*Reallocate)(nil),
+			Name: "Reallocate", Type: (*Reallocate)(nil),
 		},
 		{
-			"MemoTransferExtension", (*MemoTransferExtension)(nil),
+			Name: "MemoTransferExtension", Type: (*MemoTransferExtension)(nil),
 		},
 		{
-			"CreateNativeMint", (*CreateNativeMint)(nil),
+			Name: "CreateNativeMint", Type: (*CreateNativeMint)(nil),
 		},
 		{
-			"InitializeNonTransferableMint", (*InitializeNonTransferableMint)(nil),
+			Name: "InitializeNonTransferableMint", Type: (*InitializeNonTransferableMint)(nil),
 		},
 		{
-			"InterestBearingMintExtension", (*InterestBearingMintExtension)(nil),
+			Name: "InterestBearingMintExtension", Type: (*InterestBearingMintExtension)(nil),
 		},
 		{
-			"CpiGuardExtension", (*CpiGuardExtension)(nil),
+			Name: "CpiGuardExtension", Type: (*CpiGuardExtension)(nil),
 		},
 		{
-			"InitializePermanentDelegate", (*InitializePermanentDelegate)(nil),
+			Name: "InitializePermanentDelegate", Type: (*InitializePermanentDelegate)(nil),
 		},
 		{
-			"TransferHookExtension", (*TransferHookExtension)(nil),
+			Name: "TransferHookExtension", Type: (*TransferHookExtension)(nil),
 		},
 		{
-			"ConfidentialTransferFeeExtension", (*ConfidentialTransferFeeExtension)(nil),
+			Name: "ConfidentialTransferFeeExtension", Type: (*ConfidentialTransferFeeExtension)(nil),
 		},
 		{
-			"WithdrawExcessLamports", (*WithdrawExcessLamports)(nil),
+			Name: "WithdrawExcessLamports", Type: (*WithdrawExcessLamports)(nil),
 		},
 		{
-			"MetadataPointerExtension", (*MetadataPointerExtension)(nil),
+			Name: "MetadataPointerExtension", Type: (*MetadataPointerExtension)(nil),
 		},
 		{
-			"GroupPointerExtension", (*GroupPointerExtension)(nil),
+			Name: "GroupPointerExtension", Type: (*GroupPointerExtension)(nil),
 		},
 		{
-			"GroupMemberPointerExtension", (*GroupMemberPointerExtension)(nil),
+			Name: "GroupMemberPointerExtension", Type: (*GroupMemberPointerExtension)(nil),
 		},
 		{
-			"ConfidentialMintBurnExtension", (*ConfidentialMintBurnExtension)(nil),
+			Name: "ConfidentialMintBurnExtension", Type: (*ConfidentialMintBurnExtension)(nil),
 		},
 		{
-			"ScaledUiAmountExtension", (*ScaledUiAmountExtension)(nil),
+			Name: "ScaledUiAmountExtension", Type: (*ScaledUiAmountExtension)(nil),
 		},
 		{
-			"PausableExtension", (*PausableExtension)(nil),
+			Name: "PausableExtension", Type: (*PausableExtension)(nil),
 		},
 		{
-			"UnwrapLamports", (*UnwrapLamports)(nil),
+			Name: "UnwrapLamports", Type: (*UnwrapLamports)(nil),
 		},
 		{
-			"PermissionedBurnExtension", (*PermissionedBurnExtension)(nil),
+			Name: "PermissionedBurnExtension", Type: (*PermissionedBurnExtension)(nil),
 		},
 	},
 )

@@ -703,10 +703,7 @@ func IsOnCurve(b []byte) bool {
 	vv = vv.Add(vv, feOne)
 
 	_, wasSquare := new(field.Element).SqrtRatio(u, vv)
-	if wasSquare == 0 {
-		return false
-	}
-	return true
+	return wasSquare != 0
 }
 
 // Find a valid program address and its corresponding bump seed.

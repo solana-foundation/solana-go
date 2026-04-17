@@ -530,8 +530,8 @@ func TestUsesDurableNonce_Valid(t *testing.T) {
 			},
 			Instructions: []CompiledInstruction{
 				{
-					ProgramIDIndex: 3,                  // system program
-					Accounts:       []uint16{1, 2, 0},  // nonce account, recent blockhashes, authority
+					ProgramIDIndex: 3,                 // system program
+					Accounts:       []uint16{1, 2, 0}, // nonce account, recent blockhashes, authority
 					Data:           makeNonceAdvanceIxData(),
 				},
 			},

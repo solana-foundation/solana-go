@@ -124,7 +124,7 @@ func (inst *TransferWithSeed) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Lamports == nil {
-			return errors.New("Lamports parameter is not set")
+			return errors.New("lamports parameter is not set")
 		}
 		if inst.FromSeed == nil {
 			return errors.New("FromSeed parameter is not set")

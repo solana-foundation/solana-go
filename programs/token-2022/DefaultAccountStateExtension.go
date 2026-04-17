@@ -64,7 +64,7 @@ func (inst DefaultAccountStateExtension) ValidateAndBuild() (*Instruction, error
 
 func (inst *DefaultAccountStateExtension) Validate() error {
 	if inst.State == nil {
-		return errors.New("State parameter is not set")
+		return errors.New("state parameter is not set")
 	}
 	if len(inst.Accounts) == 0 || inst.Accounts[0] == nil {
 		return errors.New("accounts.Mint is not set")

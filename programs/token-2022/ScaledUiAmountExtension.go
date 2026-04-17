@@ -14,7 +14,7 @@ import (
 
 // ScaledUiAmount sub-instruction IDs.
 const (
-	ScaledUiAmount_Initialize      uint8 = iota
+	ScaledUiAmount_Initialize uint8 = iota
 	ScaledUiAmount_UpdateMultiplier
 )
 
@@ -192,11 +192,11 @@ func NewUpdateScaledUiAmountMultiplierInstruction(
 	multisigSigners []ag_solanago.PublicKey,
 ) *ScaledUiAmountExtension {
 	inst := &ScaledUiAmountExtension{
-		SubInstruction:    ScaledUiAmount_UpdateMultiplier,
-		Multiplier:        multiplier,
+		SubInstruction:     ScaledUiAmount_UpdateMultiplier,
+		Multiplier:         multiplier,
 		EffectiveTimestamp: effectiveTimestamp,
-		Accounts:          make(ag_solanago.AccountMetaSlice, 2),
-		Signers:           make(ag_solanago.AccountMetaSlice, 0),
+		Accounts:           make(ag_solanago.AccountMetaSlice, 2),
+		Signers:            make(ag_solanago.AccountMetaSlice, 0),
 	}
 	inst.Accounts[0] = ag_solanago.Meta(mint).WRITE()
 	inst.Accounts[1] = ag_solanago.Meta(authority)

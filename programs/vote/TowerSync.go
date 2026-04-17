@@ -62,7 +62,7 @@ func (inst TowerSync) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *TowerSync) Validate() error {
 	if inst.Sync == nil {
-		return errors.New("Sync parameter is not set")
+		return errors.New("sync parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {
@@ -151,7 +151,7 @@ func (inst TowerSyncSwitch) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *TowerSyncSwitch) Validate() error {
 	if inst.Sync == nil {
-		return errors.New("Sync parameter is not set")
+		return errors.New("sync parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {

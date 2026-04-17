@@ -546,7 +546,7 @@ func (mx *Message) UnmarshalV0(decoder *bin.Decoder) (err error) {
 	if solanaVersion != 0 {
 		return fmt.Errorf("unsupported message version: %d", solanaVersion)
 	}
-	mx.version = MessageVersion(solanaVersion + 1) // map Solana version 0 → MessageVersionV0 (1)
+	mx.version = MessageVersion(solanaVersion + 1) // map Solana version 0 -> MessageVersionV0 (1)
 
 	// The middle of the message is the same as the legacy message:
 	err = mx.UnmarshalLegacy(decoder)
@@ -694,7 +694,7 @@ func (m *Message) checkPreconditions() error {
 	// and there are > 0 lookups,
 	// but the address table is empty,
 	// then we can't build the account meta list:
-	if m.IsVersioned() && m.AddressTableLookups.NumLookups() > 0 && (m.addressTables == nil || len(m.addressTables) == 0) {
+	if m.IsVersioned() && m.AddressTableLookups.NumLookups() > 0 && len(m.addressTables) == 0 {
 		return fmt.Errorf("cannot build account meta list without address tables")
 	}
 

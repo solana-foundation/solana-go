@@ -25,17 +25,17 @@ import (
 
 // Constants from the official vote program.
 const (
-	MAX_LOCKOUT_HISTORY                      = 31
-	INITIAL_LOCKOUT                          = 2
-	MAX_EPOCH_CREDITS_HISTORY                = 64
-	VOTE_CREDITS_GRACE_SLOTS                 = 2
-	VOTE_CREDITS_MAXIMUM_PER_SLOT            = 16
-	CircBufMaxItems                          = 32
-	BLS_PUBLIC_KEY_COMPRESSED_SIZE           = 48
-	BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE  = 96
-	VoteStateV1_14_11Size                    = 3731
-	VoteStateV3Size                          = 3762
-	VoteStateV4Size                          = 3762
+	MAX_LOCKOUT_HISTORY                     = 31
+	INITIAL_LOCKOUT                         = 2
+	MAX_EPOCH_CREDITS_HISTORY               = 64
+	VOTE_CREDITS_GRACE_SLOTS                = 2
+	VOTE_CREDITS_MAXIMUM_PER_SLOT           = 16
+	CircBufMaxItems                         = 32
+	BLS_PUBLIC_KEY_COMPRESSED_SIZE          = 48
+	BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE = 96
+	VoteStateV1_14_11Size                   = 3731
+	VoteStateV3Size                         = 3762
+	VoteStateV4Size                         = 3762
 )
 
 // Instruction IDs for VoteInstruction variants.
@@ -114,8 +114,8 @@ func InstructionIDToName(id uint32) string {
 type VoteAuthorizeKind uint32
 
 const (
-	VoteAuthorizeVoter       VoteAuthorizeKind = 0
-	VoteAuthorizeWithdrawer  VoteAuthorizeKind = 1
+	VoteAuthorizeVoter        VoteAuthorizeKind = 0
+	VoteAuthorizeWithdrawer   VoteAuthorizeKind = 1
 	VoteAuthorizeVoterWithBLS VoteAuthorizeKind = 2
 )
 
@@ -226,13 +226,13 @@ func (v VoteInit) MarshalWithEncoder(enc *bin.Encoder) error {
 
 // VoteInitV2 is the data for the InitializeAccountV2 instruction (Alpenglow).
 type VoteInitV2 struct {
-	NodePubkey                           solana.PublicKey
-	AuthorizedVoter                      solana.PublicKey
-	AuthorizedVoterBLSPubkey             [BLS_PUBLIC_KEY_COMPRESSED_SIZE]byte
-	AuthorizedVoterBLSProofOfPossession  [BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE]byte
-	AuthorizedWithdrawer                 solana.PublicKey
-	InflationRewardsCommissionBps        uint16
-	BlockRevenueCommissionBps            uint16
+	NodePubkey                          solana.PublicKey
+	AuthorizedVoter                     solana.PublicKey
+	AuthorizedVoterBLSPubkey            [BLS_PUBLIC_KEY_COMPRESSED_SIZE]byte
+	AuthorizedVoterBLSProofOfPossession [BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE]byte
+	AuthorizedWithdrawer                solana.PublicKey
+	InflationRewardsCommissionBps       uint16
+	BlockRevenueCommissionBps           uint16
 }
 
 func (v *VoteInitV2) UnmarshalWithDecoder(dec *bin.Decoder) error {

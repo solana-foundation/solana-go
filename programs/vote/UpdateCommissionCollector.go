@@ -58,7 +58,7 @@ func (inst UpdateCommissionCollector) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *UpdateCommissionCollector) Validate() error {
 	if inst.Kind == nil {
-		return errors.New("Kind parameter is not set")
+		return errors.New("kind parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {
@@ -147,7 +147,7 @@ func (inst *UpdateCommissionBps) Validate() error {
 		return errors.New("CommissionBps parameter is not set")
 	}
 	if inst.Kind == nil {
-		return errors.New("Kind parameter is not set")
+		return errors.New("kind parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {
@@ -242,7 +242,7 @@ func (inst DepositDelegatorRewards) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *DepositDelegatorRewards) Validate() error {
 	if inst.Deposit == nil {
-		return errors.New("Deposit parameter is not set")
+		return errors.New("deposit parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {

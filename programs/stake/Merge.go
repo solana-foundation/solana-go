@@ -81,8 +81,8 @@ func (inst *Merge) GetSourceStakeAccount() *solana.AccountMeta {
 	return inst.AccountMetaSlice[1]
 }
 func (inst *Merge) GetClockSysvar() *solana.AccountMeta        { return inst.AccountMetaSlice[2] }
-func (inst *Merge) GetStakeHistorySysvar() *solana.AccountMeta  { return inst.AccountMetaSlice[3] }
-func (inst *Merge) GetStakeAuthority() *solana.AccountMeta      { return inst.AccountMetaSlice[4] }
+func (inst *Merge) GetStakeHistorySysvar() *solana.AccountMeta { return inst.AccountMetaSlice[3] }
+func (inst *Merge) GetStakeAuthority() *solana.AccountMeta     { return inst.AccountMetaSlice[4] }
 
 func (inst Merge) Build() *Instruction {
 	return &Instruction{BaseVariant: bin.BaseVariant{

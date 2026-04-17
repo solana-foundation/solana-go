@@ -56,7 +56,7 @@ func (inst AuthorizeWithSeed) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *AuthorizeWithSeed) Validate() error {
 	if inst.Args == nil {
-		return errors.New("Args parameter is not set")
+		return errors.New("args parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {
@@ -142,7 +142,7 @@ func (inst AuthorizeCheckedWithSeed) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *AuthorizeCheckedWithSeed) Validate() error {
 	if inst.Args == nil {
-		return errors.New("Args parameter is not set")
+		return errors.New("args parameter is not set")
 	}
 	for i, a := range inst.AccountMetaSlice {
 		if a == nil {

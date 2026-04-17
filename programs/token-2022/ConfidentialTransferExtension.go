@@ -11,7 +11,7 @@ import (
 
 // ConfidentialTransfer sub-instruction IDs.
 const (
-	ConfidentialTransfer_InitializeMint                      uint8 = iota
+	ConfidentialTransfer_InitializeMint uint8 = iota
 	ConfidentialTransfer_UpdateMint
 	ConfidentialTransfer_ConfigureAccount
 	ConfidentialTransfer_ApproveAccount

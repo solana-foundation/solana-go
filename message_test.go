@@ -121,7 +121,7 @@ func TestV0MessageSerializationRoundtrip(t *testing.T) {
 }
 
 // Tests the version prefix detection logic ported from solana-sdk/message/src/versions/mod.rs.
-// In Rust: MESSAGE_VERSION_PREFIX = 0x80; if first_byte & 0x80 != 0 → versioned.
+// In Rust: MESSAGE_VERSION_PREFIX = 0x80; if first_byte & 0x80 != 0 -> versioned.
 // This specifically tests the bug fix where byte value 127 (0x7F) was incorrectly
 // classified as versioned — it should be legacy (numRequiredSignatures = 127).
 func TestVersionDetection_PrefixByte(t *testing.T) {
@@ -146,7 +146,7 @@ func TestVersionDetection_PrefixByte(t *testing.T) {
 			if tt.expectedVersion == MessageVersionLegacy {
 				// legacy: header(3) + compact_len(1) + key(32) + blockhash(32) + compact_len(1)=0 instructions
 				buf = make([]byte, 0, 69)
-				buf = append(buf, tt.firstByte, 0, 0) // header
+				buf = append(buf, tt.firstByte, 0, 0)  // header
 				buf = append(buf, 1)                   // 1 account key
 				buf = append(buf, make([]byte, 32)...) // account key
 				buf = append(buf, make([]byte, 32)...) // blockhash
@@ -156,11 +156,11 @@ func TestVersionDetection_PrefixByte(t *testing.T) {
 				buf = make([]byte, 0, 71)
 				buf = append(buf, tt.firstByte)        // version prefix
 				buf = append(buf, 1, 0, 0)             // header
-				buf = append(buf, 1)                    // 1 account key
-				buf = append(buf, make([]byte, 32)...)  // account key
-				buf = append(buf, make([]byte, 32)...)  // blockhash
-				buf = append(buf, 0)                    // 0 instructions
-				buf = append(buf, 0)                    // 0 address table lookups
+				buf = append(buf, 1)                   // 1 account key
+				buf = append(buf, make([]byte, 32)...) // account key
+				buf = append(buf, make([]byte, 32)...) // blockhash
+				buf = append(buf, 0)                   // 0 instructions
+				buf = append(buf, 0)                   // 0 address table lookups
 			}
 
 			var msg Message
@@ -174,7 +174,7 @@ func TestVersionDetection_PrefixByte(t *testing.T) {
 // Tests that unsupported version numbers (> 0) in versioned messages are rejected.
 // Ported from solana-sdk/message/src/versions/v0/mod.rs version validation.
 func TestVersionDetection_UnsupportedVersion(t *testing.T) {
-	// 0x81 = messageVersionPrefix | 1 → version 1 (unsupported)
+	// 0x81 = messageVersionPrefix | 1 -> version 1 (unsupported)
 	buf := []byte{0x81, 1, 0, 0}
 	buf = append(buf, 1)                   // 1 account key
 	buf = append(buf, make([]byte, 32)...) // account key
@@ -192,7 +192,7 @@ func TestVersionDetection_UnsupportedVersion(t *testing.T) {
 // Tests edge cases where header values exceed the number of account keys.
 func TestIsWritable_SaturatingBehavior(t *testing.T) {
 	// Case 1: num_readonly_signed (2) > num_required_signatures (1)
-	// Index 0 is signed but readonly count exceeds signature count → not writable.
+	// Index 0 is signed but readonly count exceeds signature count -> not writable.
 	key0 := newUniqueKey()
 	msg1 := Message{
 		Header: MessageHeader{
@@ -207,7 +207,7 @@ func TestIsWritable_SaturatingBehavior(t *testing.T) {
 	assert.False(t, w, "case 1: readonly signed exceeds required signatures")
 
 	// Case 2: num_readonly_unsigned (2) > num unsigned accounts (1)
-	// Only 1 account, 0 signers, all are unsigned but readonly count exceeds → not writable.
+	// Only 1 account, 0 signers, all are unsigned but readonly count exceeds -> not writable.
 	key1 := newUniqueKey()
 	msg2 := Message{
 		Header: MessageHeader{
@@ -236,7 +236,7 @@ func TestIsWritable_SaturatingBehavior(t *testing.T) {
 	assert.True(t, w, "case 3: signer with no readonly signed is writable")
 
 	// Case 4: 2 accounts, 1 signer, 0 readonly signed, 3 readonly unsigned.
-	// Index 0: writable signer; index 1: unsigned but readonly exceeds → not writable.
+	// Index 0: writable signer; index 1: unsigned but readonly exceeds -> not writable.
 	key2 := newUniqueKey()
 	msg4 := Message{
 		Header: MessageHeader{
@@ -274,7 +274,7 @@ func TestIsWritable_SaturatingBehavior(t *testing.T) {
 // Ported from solana-sdk/message/src/legacy.rs: test_is_maybe_writable.
 // Tests the standard writability layout:
 //
-//	Header: 3 signers (2 readonly), 1 readonly unsigned → 6 accounts total.
+//	Header: 3 signers (2 readonly), 1 readonly unsigned -> 6 accounts total.
 //	idx 0: writable signer
 //	idx 1: readonly signer
 //	idx 2: readonly signer
@@ -1009,7 +1009,7 @@ func TestMessageSanitize_V0_MaxTableLoadedKeys(t *testing.T) {
 		},
 	}
 
-	// 2 static + 254 lookup = 256 total → should pass
+	// 2 static + 254 lookup = 256 total -> should pass
 	err := msg.Sanitize()
 	require.NoError(t, err)
 }
@@ -1071,9 +1071,9 @@ func TestIsWritable_WithResolvedLookups(t *testing.T) {
 	}
 	tableKey := newUniqueKey()
 	lookupKeys := PublicKeySlice{
-		newUniqueKey(), // table[0] → writable lookup (idx 4)
-		newUniqueKey(), // table[1] → readonly lookup (idx 5)
-		newUniqueKey(), // table[2] → readonly lookup (idx 6)
+		newUniqueKey(), // table[0] -> writable lookup (idx 4)
+		newUniqueKey(), // table[1] -> readonly lookup (idx 5)
+		newUniqueKey(), // table[2] -> readonly lookup (idx 6)
 	}
 
 	msg := Message{
@@ -1205,7 +1205,7 @@ func TestHasDuplicates_Loaded(t *testing.T) {
 	})
 
 	t.Run("with duplicate keys", func(t *testing.T) {
-		// Static key duplicated in lookup → should detect duplicate.
+		// Static key duplicated in lookup -> should detect duplicate.
 		msg := Message{
 			version: MessageVersionV0,
 			Header: MessageHeader{

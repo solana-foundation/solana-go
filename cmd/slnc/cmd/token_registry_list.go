@@ -43,13 +43,13 @@ var tokenRegistryListCmd = &cobra.Command{
 		out := []string{"Is Initialized | Mint Address | Registration Authority | Logo | Name | Symbol | Website"}
 
 		for _, e := range entries {
-			initalized := "false"
+			initialized := "false"
 			if e.IsInitialized {
-				initalized = "true"
+				initialized = "true"
 			}
 
 			line := []string{
-				initalized,
+				initialized,
 				e.MintAddress.String(),
 				e.RegistrationAuthority.String(),
 				e.Logo.String(),

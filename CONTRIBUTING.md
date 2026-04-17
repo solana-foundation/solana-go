@@ -8,6 +8,7 @@ We encourage everyone to contribute — submit issues, PRs, and discuss. Every k
 2. Make sure you have Go 1.24+ installed
 3. Run `go mod download` to fetch dependencies
 4. Run the tests to verify everything works: `go test ./... -count=1`
+5. Install [`golangci-lint`](https://golangci-lint.run/welcome/install/) (v2.11+) and run `golangci-lint run` to verify the linters pass
 
 ## Development Workflow
 
@@ -16,6 +17,36 @@ We encourage everyone to contribute — submit issues, PRs, and discuss. Every k
 3. Ensure all tests pass locally
 4. Commit using [Conventional Commits](#commit-messages) format
 5. Open a pull request against `main`
+
+## Linting
+
+This project uses [golangci-lint](https://golangci-lint.run/) with the config at [`.golangci.yml`](.golangci.yml). The enabled linters are:
+
+| Linter         | Purpose                                                       |
+| -------------- | ------------------------------------------------------------- |
+| `errcheck`     | Flags unchecked errors                                        |
+| `govet`        | Go's standard static analyzer (composites, unusedresult, etc.) |
+| `ineffassign`  | Catches ineffectual assignments                               |
+| `staticcheck`  | Detects bugs, performance issues, and style violations        |
+| `unused`       | Finds unused constants, variables, functions, and types       |
+| `errorlint`    | Enforces `%w` wrapping and `errors.Is` / `errors.As`          |
+| `misspell`     | Catches common misspellings (US English)                      |
+| `gofmt`        | Standard Go formatting                                        |
+| `goimports`    | Import ordering and grouping                                  |
+
+Run locally:
+
+```bash
+# Run all linters
+golangci-lint run
+
+# Auto-fix where possible (errorlint, gofmt, goimports, misspell)
+golangci-lint run --fix
+```
+
+The `lint` CI check must pass before a PR can merge. If you need to disable a rule for a specific line, use `//nolint:<linter> // reason` and include a reason — unjustified nolint directives will be flagged in review.
+
+A small number of deprecation warnings (`SA1019`), stylistic checks (`ST1003` naming, `ST1001` dot imports), and known-refactor items are disabled in config and tracked as follow-up work — not as accepted debt. See [`.golangci.yml`](.golangci.yml) for the current exclusion list.
 
 ## Commit Messages
 
@@ -95,6 +126,7 @@ Every pull request runs the following checks:
 | Check            | What it does                                                                                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **tests**        | Runs `go test ./...` across Go 1.24.x on ubuntu, macos, and windows. Only triggered when `.go`, `go.mod`, `go.sum`, or the workflow file itself changes. |
+| **lint**         | Runs `golangci-lint` on ubuntu-latest with the config at `.golangci.yml`. See [Linting](#linting) above.                                                 |
 | **semver-check** | Runs `gorelease` to compare the public API against the latest release tag. Fails if breaking changes are detected without a major version bump.          |
 | **commit-lint**  | Validates that all commits in the PR follow Conventional Commits format.                                                                                 |
 

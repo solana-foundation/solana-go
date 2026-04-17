@@ -207,7 +207,7 @@ func HighlightAnyCase(str, substr string, colorer func(string) string) string {
 	str = strings.ToLower(str)
 
 	hiSubstr := colorer(substr)
-	return strings.Replace(str, substr, hiSubstr, -1)
+	return strings.ReplaceAll(str, substr, hiSubstr)
 }
 
 func StringToColor(str string) func(string) string {
@@ -267,7 +267,7 @@ func IsLight(rr, gg, bb uint64) bool {
 	g := float64(gg)
 	b := float64(bb)
 
-	hsp := math.Sqrt(0.299*math.Pow(r, 2) + 0.587*math.Pow(g, 2) + 0.114*math.Pow(b, 2))
+	hsp := math.Sqrt(0.299*r*r + 0.587*g*g + 0.114*b*b)
 
 	return hsp > 130
 }

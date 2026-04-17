@@ -76,7 +76,7 @@ type SimulateTransactionResult struct {
 }
 
 type ReplacementBlockhash struct {
-	Blockhash           solana.Hash `json:"blockhash"`
+	Blockhash            solana.Hash `json:"blockhash"`
 	LastValidBlockHeight uint64      `json:"lastValidBlockHeight"`
 }
 

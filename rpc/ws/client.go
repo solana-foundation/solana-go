@@ -171,7 +171,7 @@ func getUint64(data []byte, keys ...string) (val uint64, err error) {
 		return 0, e
 	}
 	if t != jsonparser.Number {
-		return 0, fmt.Errorf("Value is not a number: %s", string(v))
+		return 0, fmt.Errorf("value is not a number: %s", string(v))
 	}
 	return strconv.ParseUint(string(v), 10, 64)
 }

@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gagliardetto/solana-go"
 
@@ -38,24 +39,24 @@ var vaultAddCmd = &cobra.Command{
 		fmt.Println("Loading existing vault from file:", walletFile)
 		v, err := vault.NewVaultFromWalletFile(walletFile)
 		if err != nil {
-			fmt.Errorf("unable to load vault file: %w", err)
+			log.Fatalf("unable to load vault file: %s", err)
 		}
 
 		boxer, err := vault.SecretBoxerForType(v.SecretBoxWrap, viper.GetString("global-kms-gcp-keypath"))
 		if err != nil {
-			fmt.Errorf("unable to intiate boxer: %w", err)
+			log.Fatalf("unable to initiate boxer: %s", err)
 		}
 
 		err = v.Open(boxer)
 		if err != nil {
-			fmt.Errorf("unable to open vault: %w", err)
+			log.Fatalf("unable to open vault: %s", err)
 		}
 
 		v.PrintPublicKeys()
 
 		privateKeys, err := capturePrivateKeys()
 		if err != nil {
-			fmt.Errorf("failed to enter private keys: %w", err)
+			log.Fatalf("failed to enter private keys: %s", err)
 		}
 
 		var newKeys []solana.PublicKey
@@ -66,12 +67,12 @@ var vaultAddCmd = &cobra.Command{
 
 		err = v.Seal(boxer)
 		if err != nil {
-			fmt.Errorf("failed to seal vault: %w", err)
+			log.Fatalf("failed to seal vault: %s", err)
 		}
 
 		err = v.WriteToFile(walletFile)
 		if err != nil {
-			fmt.Errorf("failed to write vault file: %w", err)
+			log.Fatalf("failed to write vault file: %s", err)
 		}
 
 		vaultWrittenReport(walletFile, newKeys, len(v.KeyBag))
@@ -94,7 +95,7 @@ func capturePrivateKeys() (out []solana.PrivateKey, err error) {
 	for {
 		privKey, err := capturePrivateKey(first)
 		if err != nil {
-			return out, fmt.Errorf("capture privkeys: %s", err)
+			return out, fmt.Errorf("capture privkeys: %w", err)
 		}
 		first = false
 
@@ -113,7 +114,7 @@ func capturePrivateKey(isFirst bool) (privateKey solana.PrivateKey, err error) {
 
 	enteredKey, err := cli.GetPassword(prompt)
 	if err != nil {
-		return nil, fmt.Errorf("get private key: %s", err)
+		return nil, fmt.Errorf("get private key: %w", err)
 	}
 
 	if enteredKey == "" {
@@ -122,7 +123,7 @@ func capturePrivateKey(isFirst bool) (privateKey solana.PrivateKey, err error) {
 
 	key, err := solana.PrivateKeyFromBase58(enteredKey)
 	if err != nil {
-		return nil, fmt.Errorf("import private key: %s", err)
+		return nil, fmt.Errorf("import private key: %w", err)
 	}
 
 	fmt.Printf("- Scanned private key corresponding to %s\n", key.PublicKey().String())

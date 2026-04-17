@@ -12,7 +12,7 @@ import (
 
 // CpiGuard sub-instruction IDs.
 const (
-	CpiGuard_Enable  uint8 = iota
+	CpiGuard_Enable uint8 = iota
 	CpiGuard_Disable
 )
 

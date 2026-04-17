@@ -75,11 +75,11 @@ func (inst *Instruction) EncodeToTree(parent treeout.Branches) {
 var InstructionImplDef = bin.NewVariantDefinition(
 	bin.Uint32TypeIDEncoding,
 	[]bin.VariantType{
-		{"CreateLookupTable", (*CreateLookupTable)(nil)},
-		{"FreezeLookupTable", (*FreezeLookupTable)(nil)},
-		{"ExtendLookupTable", (*ExtendLookupTable)(nil)},
-		{"DeactivateLookupTable", (*DeactivateLookupTable)(nil)},
-		{"CloseLookupTable", (*CloseLookupTable)(nil)},
+		{Name: "CreateLookupTable", Type: (*CreateLookupTable)(nil)},
+		{Name: "FreezeLookupTable", Type: (*FreezeLookupTable)(nil)},
+		{Name: "ExtendLookupTable", Type: (*ExtendLookupTable)(nil)},
+		{Name: "DeactivateLookupTable", Type: (*DeactivateLookupTable)(nil)},
+		{Name: "CloseLookupTable", Type: (*CloseLookupTable)(nil)},
 	},
 )
 

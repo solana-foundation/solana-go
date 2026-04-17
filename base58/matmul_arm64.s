@@ -8,7 +8,7 @@
 // All intermediate values kept in registers to avoid memory traffic.
 // Fully unrolled, zero entries skipped.
 //
-// ARM64 MADD semantics in Go asm: MADD Rm, Ra, Rn, Rd → Rd = Ra + Rn * Rm
+// ARM64 MADD semantics in Go asm: MADD Rm, Ra, Rn, Rd -> Rd = Ra + Rn * Rm
 TEXT ·encodeMatMul32(SB), NOSPLIT|NOFRAME, $0-16
 	MOVD	src+0(FP), R0
 	MOVD	intermediate+8(FP), R2
@@ -258,7 +258,7 @@ TEXT ·decodeMatMul32(SB), NOSPLIT|NOFRAME, $0-16
 	MOVWU	252(R1), R20
 	MADD	R10, R19, R20, R19
 
-	// Row 8: table[8] = {0,0,0,0,0,0,0,1} → bin[7] += intermediate[8]
+	// Row 8: table[8] = {0,0,0,0,0,0,0,1} -> bin[7] += intermediate[8]
 	ADD	R21, R19, R19
 
 	// Store bin[0..7].

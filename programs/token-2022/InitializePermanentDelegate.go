@@ -57,7 +57,7 @@ func (inst InitializePermanentDelegate) ValidateAndBuild() (*Instruction, error)
 
 func (inst *InitializePermanentDelegate) Validate() error {
 	if inst.Delegate == nil {
-		return errors.New("Delegate parameter is not set")
+		return errors.New("delegate parameter is not set")
 	}
 	if inst.AccountMetaSlice[0] == nil {
 		return errors.New("accounts.Mint is not set")

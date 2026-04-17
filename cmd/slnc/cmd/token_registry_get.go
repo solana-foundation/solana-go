@@ -18,13 +18,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/gagliardetto/solana-go/rpc"
-
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/tokenregistry"
+	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/gagliardetto/solana-go/text"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +44,7 @@ var tokenRegistryGetCmd = &cobra.Command{
 
 		t, err := tokenregistry.GetTokenRegistryEntry(cmd.Context(), client, pubKey)
 		if err != nil {
-			if err == rpc.ErrNotFound {
+			if errors.Is(err, rpc.ErrNotFound) {
 				fmt.Printf("No token registry entry found for given mint %q", pubKey.String())
 				return nil
 			}

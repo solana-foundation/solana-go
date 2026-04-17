@@ -61,7 +61,7 @@ const (
 	// Withdraw funds from a nonce account
 	Instruction_WithdrawNonceAccount
 
-	// Drive state of Uninitalized nonce account to Initialized, setting the nonce value
+	// Drive state of Uninitialized nonce account to Initialized, setting the nonce value
 	Instruction_InitializeNonceAccount
 
 	// Change the entity authorized to execute nonce instructions on the account
@@ -133,45 +133,19 @@ func (inst *Instruction) EncodeToTree(parent ag_treeout.Branches) {
 var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint32TypeIDEncoding,
 	[]ag_binary.VariantType{
-		{
-			"CreateAccount", (*CreateAccount)(nil),
-		},
-		{
-			"Assign", (*Assign)(nil),
-		},
-		{
-			"Transfer", (*Transfer)(nil),
-		},
-		{
-			"CreateAccountWithSeed", (*CreateAccountWithSeed)(nil),
-		},
-		{
-			"AdvanceNonceAccount", (*AdvanceNonceAccount)(nil),
-		},
-		{
-			"WithdrawNonceAccount", (*WithdrawNonceAccount)(nil),
-		},
-		{
-			"InitializeNonceAccount", (*InitializeNonceAccount)(nil),
-		},
-		{
-			"AuthorizeNonceAccount", (*AuthorizeNonceAccount)(nil),
-		},
-		{
-			"Allocate", (*Allocate)(nil),
-		},
-		{
-			"AllocateWithSeed", (*AllocateWithSeed)(nil),
-		},
-		{
-			"AssignWithSeed", (*AssignWithSeed)(nil),
-		},
-		{
-			"TransferWithSeed", (*TransferWithSeed)(nil),
-		},
-		{
-			"UpgradeNonceAccount", (*UpgradeNonceAccount)(nil),
-		},
+		{Name: "CreateAccount", Type: (*CreateAccount)(nil)},
+		{Name: "Assign", Type: (*Assign)(nil)},
+		{Name: "Transfer", Type: (*Transfer)(nil)},
+		{Name: "CreateAccountWithSeed", Type: (*CreateAccountWithSeed)(nil)},
+		{Name: "AdvanceNonceAccount", Type: (*AdvanceNonceAccount)(nil)},
+		{Name: "WithdrawNonceAccount", Type: (*WithdrawNonceAccount)(nil)},
+		{Name: "InitializeNonceAccount", Type: (*InitializeNonceAccount)(nil)},
+		{Name: "AuthorizeNonceAccount", Type: (*AuthorizeNonceAccount)(nil)},
+		{Name: "Allocate", Type: (*Allocate)(nil)},
+		{Name: "AllocateWithSeed", Type: (*AllocateWithSeed)(nil)},
+		{Name: "AssignWithSeed", Type: (*AssignWithSeed)(nil)},
+		{Name: "TransferWithSeed", Type: (*TransferWithSeed)(nil)},
+		{Name: "UpgradeNonceAccount", Type: (*UpgradeNonceAccount)(nil)},
 	},
 )
 

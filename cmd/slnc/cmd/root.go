@@ -30,7 +30,7 @@ import (
 // Version represents the cmd command version
 var Version string
 
-//const defaultRPCURL = "http://localhost:8899"
+// const defaultRPCURL = "http://localhost:8899"
 const defaultRPCURL = "http://api.mainnet-beta.solana.com"
 
 // RootCmd represents the eosc command

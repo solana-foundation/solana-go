@@ -153,9 +153,9 @@ func TestOfficialVector_UnwrapLamports_Some(t *testing.T) {
 func TestOfficialVector_TransferFee_InitializeConfig(t *testing.T) {
 	pk11 := pubkeyOf(11)
 	inst := NewInitializeTransferFeeConfigInstruction(
-		&pk11,  // authority
-		nil,    // withdraw_withheld_authority = None
-		111,    // basis_points
+		&pk11,      // authority
+		nil,        // withdraw_withheld_authority = None
+		111,        // basis_points
 		^uint64(0), // max_fee = u64::MAX
 		pubkeyOf(0),
 	)
@@ -627,7 +627,7 @@ func TestParseMintWithExtensions(t *testing.T) {
 	mintData := make([]byte, 0, 215)
 	mintData = append(mintData, testMintSlice...)
 	mintData = append(mintData, make([]byte, 83)...) // zero padding to offset 165
-	mintData = append(mintData, AccountTypeMint)      // account type byte at offset 165
+	mintData = append(mintData, AccountTypeMint)     // account type byte at offset 165
 	// TLV entry: type=3 (MintCloseAuthority), length=32
 	mintData = append(mintData, 3, 0, 32, 0) // u16 LE type, u16 LE length
 	mintData = append(mintData, repeatByte(1, 32)...)
@@ -651,7 +651,7 @@ func TestParseAccountWithExtensions(t *testing.T) {
 	acctData = append(acctData, AccountTypeAccount) // account type byte at offset 165
 	// TLV entry: type=15 (TransferHookAccount), length=1
 	acctData = append(acctData, 15, 0, 1, 0) // u16 LE type, u16 LE length
-	acctData = append(acctData, 1)            // transferring=true
+	acctData = append(acctData, 1)           // transferring=true
 
 	ag_require.Equal(t, 171, len(acctData))
 

@@ -12,7 +12,7 @@ import (
 
 // MemoTransfer sub-instruction IDs.
 const (
-	MemoTransfer_Enable  uint8 = iota
+	MemoTransfer_Enable uint8 = iota
 	MemoTransfer_Disable
 )
 

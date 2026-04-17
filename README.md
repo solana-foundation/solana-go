@@ -3,6 +3,7 @@
 [![GoDoc](https://pkg.go.dev/badge/github.com/gagliardetto/solana-go?status.svg)](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0?tab=doc)
 [![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/gagliardetto/solana-go?include_prereleases&label=release-tag)](https://github.com/gagliardetto/solana-go/releases)
 [![Build Status](https://github.com/gagliardetto/solana-go/workflows/tests/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain)
+[![Lint Status](https://github.com/gagliardetto/solana-go/workflows/lint/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain+workflow%3Alint)
 [![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/gagliardetto/solana-go/main)](https://www.tickgit.com/browse?repo=github.com/gagliardetto/solana-go&branch=main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gagliardetto/solana-go)](https://goreportcard.com/report/github.com/gagliardetto/solana-go)
 
@@ -831,7 +832,16 @@ Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/ex
 
 We encourage everyone to contribute, submit issues, PRs, discuss. Every kind of help is welcome.
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on commit messages, semver policy, and CI checks.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on commit messages, semver policy, linting, and CI checks.
+
+Before opening a PR, run:
+
+```bash
+go test ./... -count=1
+golangci-lint run
+```
+
+Both must pass in CI.
 
 ## License
 
