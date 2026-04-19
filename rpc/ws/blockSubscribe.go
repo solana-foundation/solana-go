@@ -22,15 +22,34 @@ import (
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
+// BlockResult is the unified notification payload for blockSubscribe.
+// Exactly one of Value.Block or Value.ParsedBlock is populated per
+// frame, based on the Encoding the caller passed at subscribe time.
 type BlockResult struct {
-	Context struct {
-		Slot uint64
-	} `json:"context"`
-	Value struct {
-		Slot  uint64              `json:"slot"`
-		Err   any                 `json:"err,omitempty"`
-		Block *rpc.GetBlockResult `json:"block,omitempty"`
-	} `json:"value"`
+	Context RPCResponseContext `json:"context"`
+	Value   BlockResultValue   `json:"value"`
+}
+
+// BlockResultValue mirrors Agave's RpcBlockUpdate with a Go-style union
+// over the two block shapes.
+//
+//	Encoding                              Field populated
+//	----------------------------------------------------
+//	base58 / base64 / base64+zstd         Block        (*rpc.GetBlockResult)
+//	jsonParsed                            ParsedBlock  (*rpc.GetParsedBlockResult)
+//
+// Err / Slot are always decoded regardless of which block field is set.
+type BlockResultValue struct {
+	Slot uint64 `json:"slot"`
+	Err  any    `json:"err,omitempty"`
+
+	// Block is populated for binary encodings.
+	Block *rpc.GetBlockResult `json:"block,omitempty"`
+
+	// ParsedBlock is populated when Encoding=jsonParsed was requested.
+	// BlockSubscribe sets this at decode time; it is not read by the
+	// default json.Unmarshal path.
+	ParsedBlock *rpc.GetParsedBlockResult `json:"-"`
 }
 
 type BlockSubscribeFilter interface {
@@ -76,7 +95,11 @@ type BlockSubscribeOpts struct {
 
 // NOTE: Unstable, disabled by default
 //
-// Subscribe to receive notification anytime a new block is Confirmed or Finalized.
+// BlockSubscribe subscribes to new blocks. Supports every encoding the
+// RPC does — base58, base64, base64+zstd, and jsonParsed. The
+// BlockResult.Value field is a union: the binary encodings populate
+// Block (*rpc.GetBlockResult); jsonParsed populates ParsedBlock
+// (*rpc.GetParsedBlockResult).
 //
 // **This subscription is unstable and only available if the validator was started
 // with the `--rpc-pubsub-enable-block-subscription` flag. The format of this
@@ -85,6 +108,8 @@ func (cl *Client) BlockSubscribe(
 	filter BlockSubscribeFilter,
 	opts *BlockSubscribeOpts,
 ) (*BlockSubscription, error) {
+	isParsed := opts != nil && opts.Encoding == solana.EncodingJSONParsed
+
 	var params []any
 	if filter != nil {
 		switch v := filter.(type) {
@@ -94,6 +119,7 @@ func (cl *Client) BlockSubscribe(
 			params = append(params, rpc.M{"mentionsAccountOrProgram": v.Pubkey})
 		}
 	}
+
 	if opts != nil {
 		obj := make(rpc.M)
 		if opts.Commitment != "" {
@@ -102,12 +128,10 @@ func (cl *Client) BlockSubscribe(
 		if opts.Encoding != "" {
 			if !solana.IsAnyOfEncodingType(
 				opts.Encoding,
-				// Valid encodings:
-				// solana.EncodingJSON, // TODO
-				solana.EncodingJSONParsed, // TODO
 				solana.EncodingBase58,
 				solana.EncodingBase64,
 				solana.EncodingBase64Zstd,
+				solana.EncodingJSONParsed,
 			) {
 				return nil, fmt.Errorf("provided encoding is not supported: %s", opts.Encoding)
 			}
@@ -126,16 +150,13 @@ func (cl *Client) BlockSubscribe(
 			params = append(params, obj)
 		}
 	}
+
 	genSub, err := cl.subscribe(
 		params,
 		nil,
 		"blockSubscribe",
 		"blockUnsubscribe",
-		func(msg []byte) (any, error) {
-			var res BlockResult
-			err := decodeResponseFromMessage(msg, &res)
-			return &res, err
-		},
+		decodeBlockNotification(isParsed),
 	)
 	if err != nil {
 		return nil, err
@@ -143,6 +164,42 @@ func (cl *Client) BlockSubscribe(
 	return &BlockSubscription{
 		sub: genSub,
 	}, nil
+}
+
+// decodeBlockNotification returns a frame decoder that lands the block
+// either in BlockResultValue.Block (binary) or .ParsedBlock (jsonParsed).
+// Unexported but package-local so tests can exercise both branches
+// without a live server.
+func decodeBlockNotification(isParsed bool) func([]byte) (any, error) {
+	return func(msg []byte) (any, error) {
+		if isParsed {
+			var tmp struct {
+				Context RPCResponseContext `json:"context"`
+				Value   struct {
+					Slot  uint64                    `json:"slot"`
+					Err   any                       `json:"err,omitempty"`
+					Block *rpc.GetParsedBlockResult `json:"block,omitempty"`
+				} `json:"value"`
+			}
+			if err := decodeResponseFromMessage(msg, &tmp); err != nil {
+				return nil, err
+			}
+			return &BlockResult{
+				Context: tmp.Context,
+				Value: BlockResultValue{
+					Slot:        tmp.Value.Slot,
+					Err:         tmp.Value.Err,
+					ParsedBlock: tmp.Value.Block,
+				},
+			}, nil
+		}
+
+		var res BlockResult
+		if err := decodeResponseFromMessage(msg, &res); err != nil {
+			return nil, err
+		}
+		return &res, nil
+	}
 }
 
 type BlockSubscription struct {

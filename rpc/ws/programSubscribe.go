@@ -22,52 +22,93 @@ import (
 )
 
 type ProgramResult struct {
-	Context struct {
-		Slot uint64
-	} `json:"context"`
-	Value rpc.KeyedAccount `json:"value"`
+	Context RPCResponseContext `json:"context"`
+	Value   rpc.KeyedAccount   `json:"value"`
+}
+
+// ProgramSubscribeConfig matches Agave's RpcProgramAccountsConfig. All
+// encoding types supported by getProgramAccounts are supported here too
+// (base58, base64, base64+zstd, jsonParsed) — the per-account data
+// decodes via rpc.KeyedAccount.Account.Data (a DataBytesOrJSON union).
+type ProgramSubscribeConfig struct {
+	Commitment     rpc.CommitmentType
+	Encoding       solana.EncodingType
+	DataSlice      *rpc.DataSlice
+	Filters        []rpc.RPCFilter
+	MinContextSlot *uint64
+	WithContext    *bool
+	SortResults    *bool
+}
+
+// params converts the config to the JSON-RPC params object the
+// programSubscribe method expects. Missing options are omitted so the
+// wire format matches Agave's serde(skip_serializing_if) behavior.
+func (c *ProgramSubscribeConfig) params() map[string]any {
+	conf := map[string]any{"encoding": solana.EncodingBase64}
+	if c == nil {
+		return conf
+	}
+	if c.Commitment != "" {
+		conf["commitment"] = c.Commitment
+	}
+	if c.Encoding != "" {
+		conf["encoding"] = c.Encoding
+	}
+	if c.DataSlice != nil {
+		conf["dataSlice"] = c.DataSlice
+	}
+	if len(c.Filters) > 0 {
+		conf["filters"] = c.Filters
+	}
+	if c.MinContextSlot != nil {
+		conf["minContextSlot"] = *c.MinContextSlot
+	}
+	if c.WithContext != nil {
+		conf["withContext"] = *c.WithContext
+	}
+	if c.SortResults != nil {
+		conf["sortResults"] = *c.SortResults
+	}
+	return conf
 }
 
 // ProgramSubscribe subscribes to a program to receive notifications
-// when the lamports or data for a given account owned by the program changes.
+// when the lamports or data for any account owned by the program change.
 func (cl *Client) ProgramSubscribe(
 	programID solana.PublicKey,
 	commitment rpc.CommitmentType,
 ) (*ProgramSubscription, error) {
-	return cl.ProgramSubscribeWithOpts(
-		programID,
-		commitment,
-		"",
-		nil,
-	)
+	return cl.ProgramSubscribeWithOpts(programID, commitment, "", nil)
 }
 
-// ProgramSubscribe subscribes to a program to receive notifications
-// when the lamports or data for a given account owned by the program changes.
+// ProgramSubscribeWithOpts is the simple variant that accepts bare
+// commitment, encoding, and filters.
+//
+// Deprecated: use ProgramSubscribeWithConfig for the full option set
+// (dataSlice, minContextSlot, withContext, sortResults) exposed by
+// Agave's RpcProgramAccountsConfig.
 func (cl *Client) ProgramSubscribeWithOpts(
 	programID solana.PublicKey,
 	commitment rpc.CommitmentType,
 	encoding solana.EncodingType,
 	filters []rpc.RPCFilter,
 ) (*ProgramSubscription, error) {
+	return cl.ProgramSubscribeWithConfig(programID, &ProgramSubscribeConfig{
+		Commitment: commitment,
+		Encoding:   encoding,
+		Filters:    filters,
+	})
+}
 
-	params := []any{programID.String()}
-	conf := map[string]any{
-		"encoding": "base64",
-	}
-	if commitment != "" {
-		conf["commitment"] = commitment
-	}
-	if encoding != "" {
-		conf["encoding"] = encoding
-	}
-	if len(filters) > 0 {
-		conf["filters"] = filters
-	}
-
+// ProgramSubscribeWithConfig mirrors the full RpcProgramAccountsConfig
+// option surface of the underlying programSubscribe RPC.
+func (cl *Client) ProgramSubscribeWithConfig(
+	programID solana.PublicKey,
+	config *ProgramSubscribeConfig,
+) (*ProgramSubscription, error) {
 	genSub, err := cl.subscribe(
-		params,
-		conf,
+		[]any{programID.String()},
+		config.params(),
 		"programSubscribe",
 		"programUnsubscribe",
 		func(msg []byte) (any, error) {
@@ -79,9 +120,7 @@ func (cl *Client) ProgramSubscribeWithOpts(
 	if err != nil {
 		return nil, err
 	}
-	return &ProgramSubscription{
-		sub: genSub,
-	}, nil
+	return &ProgramSubscription{sub: genSub}, nil
 }
 
 type ProgramSubscription struct {
