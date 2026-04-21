@@ -543,6 +543,17 @@ type ParsedTransactionMeta struct {
 	// Array of string log messages or omitted if log message
 	// recording was not yet enabled during this transaction
 	LogMessages []string `json:"logMessages"`
+
+	// DEPRECATED: Transaction status.
+	Status DeprecatedTransactionMetaStatus `json:"status"`
+
+	Rewards []BlockReward `json:"rewards"`
+
+	LoadedAddresses LoadedAddresses `json:"loadedAddresses"`
+
+	ReturnData ReturnData `json:"returnData"`
+
+	ComputeUnitsConsumed *uint64 `json:"computeUnitsConsumed"`
 }
 
 type ParsedInnerInstruction struct {

@@ -113,3 +113,64 @@ func TestData_DataBytesOrJSONFromBytes(t *testing.T) {
 	out := dataBytesOrJSON.GetBinary()
 	assert.Equal(t, in, out)
 }
+
+// TestParsedTransactionMeta_Decode guards issue #284: the jsonParsed
+// and binary encodings return the same UiTransactionStatusMeta shape
+// on the wire, so every field on TransactionMeta must also decode
+// cleanly onto ParsedTransactionMeta. The fixture carries every trailing
+// field that was historically dropped (status, rewards, loadedAddresses,
+// returnData, computeUnitsConsumed) plus the parsed inner-instructions
+// shape that distinguishes this path from the binary one.
+func TestParsedTransactionMeta_Decode(t *testing.T) {
+	in := []byte(`{
+      "err": null,
+      "fee": 5000,
+      "preBalances": [1000000, 0],
+      "postBalances": [994000, 1000],
+      "innerInstructions": [{
+        "index": 0,
+        "instructions": [{
+          "program": "system",
+          "programId": "11111111111111111111111111111111",
+          "parsed": {"type":"transfer","info":{"lamports":1}},
+          "stackHeight": 1
+        }]
+      }],
+      "preTokenBalances": [],
+      "postTokenBalances": [],
+      "logMessages": ["Program 11111111111111111111111111111111 invoke [1]"],
+      "status": {"Ok": null},
+      "rewards": [{
+        "pubkey": "4ejjNYBbaETZyqaiK8aDj2BWER8LKHgDcCnRrPC22YGg",
+        "lamports": 10,
+        "postBalance": 1000010,
+        "rewardType": "Fee"
+      }],
+      "loadedAddresses": {
+        "writable": ["4ejjNYBbaETZyqaiK8aDj2BWER8LKHgDcCnRrPC22YGg"],
+        "readonly": ["11111111111111111111111111111111"]
+      },
+      "returnData": {
+        "programId": "11111111111111111111111111111111",
+        "data": ["", "base64"]
+      },
+      "computeUnitsConsumed": 150
+    }`)
+
+	var got ParsedTransactionMeta
+	assert.NoError(t, stdjson.Unmarshal(in, &got))
+
+	assert.Equal(t, uint64(5000), got.Fee)
+	assert.Len(t, got.InnerInstructions, 1)
+	assert.Equal(t, "system", got.InnerInstructions[0].Instructions[0].Program)
+
+	// Fields that were missing before the #284 fix — regression guards.
+	assert.Len(t, got.Rewards, 1)
+	assert.Equal(t, int64(10), got.Rewards[0].Lamports)
+	assert.Len(t, got.LoadedAddresses.Writable, 1)
+	assert.Len(t, got.LoadedAddresses.ReadOnly, 1)
+	assert.Equal(t, solana.MustPublicKeyFromBase58("11111111111111111111111111111111"), got.ReturnData.ProgramId)
+	if assert.NotNil(t, got.ComputeUnitsConsumed) {
+		assert.Equal(t, uint64(150), *got.ComputeUnitsConsumed)
+	}
+}
