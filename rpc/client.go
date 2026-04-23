@@ -56,12 +56,28 @@ func New(rpcEndpoint string) *Client {
 	return NewWithCustomRPCClient(rpcClient)
 }
 
-// New creates a new Solana JSON RPC client with the provided custom headers.
+// NewWithHeaders creates a new Solana JSON RPC client with the provided custom headers.
 // The provided headers will be added to each RPC request sent via this RPC client.
 func NewWithHeaders(rpcEndpoint string, headers map[string]string) *Client {
 	opts := &jsonrpc.RPCClientOpts{
 		HTTPClient:    newHTTP(),
 		CustomHeaders: headers,
+	}
+	rpcClient := jsonrpc.NewClientWithOpts(rpcEndpoint, opts)
+	return NewWithCustomRPCClient(rpcClient)
+}
+
+// NewWithHTTPClient creates a new Solana JSON RPC client with the provided httpClient.
+// This is particularly useful when one wants to configure a proxy server without relying on
+// the HTTP_PROXY/HTTPS_PROXY environment variables. http.ProxyFromEnvironment will ignore
+// any HTTP_PROXY/HTTPS_PROXY setting if it resolves to localhost or any RFC1918 private IP
+// which adds considerable friction when testing with a local proxy server
+func NewWithHTTPClient(
+	rpcEndpoint string,
+	httpClient *http.Client,
+) *Client {
+	opts := &jsonrpc.RPCClientOpts{
+		HTTPClient: httpClient,
 	}
 	rpcClient := jsonrpc.NewClientWithOpts(rpcEndpoint, opts)
 	return NewWithCustomRPCClient(rpcClient)
