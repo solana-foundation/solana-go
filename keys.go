@@ -72,14 +72,14 @@ func ValidatePrivateKey(b []byte) (bool, error) {
 	if len(b) != voied25519.PrivateKeySize {
 		return false, fmt.Errorf("invalid private key size, expected %v, got %d", voied25519.PrivateKeySize, len(b))
 	}
-<<<<<<< HEAD
-	// check if the public key is on the ed25519 curve
-=======
-	// check if the public key is on the voied25519 curve
->>>>>>> f4f19e0 (rename)
-	pub := voied25519.PrivateKey(b).Public().(voied25519.PublicKey)
-	if !IsOnCurve(pub) {
-		return false, errors.New("the corresponding public key is NOT on the voied25519 curve")
+
+	// ed25519 private keys are seed(32) + public(32); ensure they match.
+	derived := voied25519.NewKeyFromSeed(b[:voied25519.SeedSize])
+	if !bytes.Equal(derived, b) {
+		if !IsOnCurve(b[voied25519.SeedSize:]) {
+			return false, errors.New("invalid private key: seed/public key mismatch (provided public key is NOT on the ed25519 curve)")
+		}
+		return false, errors.New("invalid private key: seed/public key mismatch")
 	}
 	return true, nil
 }
@@ -156,11 +156,7 @@ func (k PrivateKey) PublicKey() PublicKey {
 // PK is a convenience alias for PublicKey
 type PK = PublicKey
 
-<<<<<<< HEAD
-// done to keep verify the same as stdlib crypto/ed25519
-=======
 // done to keep verify the same as stdlib crypto/voied25519
->>>>>>> f4f19e0 (rename)
 var verifyOptsStdLib = &voied25519.Options{
 	Verify: voied25519.VerifyOptionsStdLib,
 }
