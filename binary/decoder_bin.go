@@ -20,7 +20,6 @@ package bin
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"reflect"
 
 	"go.uber.org/zap"
@@ -189,8 +188,8 @@ func (dec *Decoder) decodeBin(rv reflect.Value, opt option) (err error) {
 			zlog.Debug("reading slice", zap.Int("len", l), typeField("type", rv))
 		}
 
-		if l > dec.Remaining() {
-			return io.ErrUnexpectedEOF
+		if err := dec.checkSliceLen(l, sliceElemMinWireSize(rv.Type().Elem())); err != nil {
+			return err
 		}
 
 		switch k := rv.Type().Elem().Kind(); k {
@@ -220,6 +219,9 @@ func (dec *Decoder) decodeBin(rv reflect.Value, opt option) (err error) {
 	case reflect.Map:
 		l, err := dec.ReadLength()
 		if err != nil {
+			return err
+		}
+		if err := dec.checkMapLen(l); err != nil {
 			return err
 		}
 		if l == 0 {

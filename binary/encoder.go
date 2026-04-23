@@ -45,6 +45,15 @@ type Encoder struct {
 	output io.Writer
 	buf    []byte
 
+	// fixedBuf marks the encoder as bound to a caller-supplied buffer (see
+	// NewBinEncoderInto etc.). In this mode writes append to buf without
+	// ever reallocating: toWriter bounds-checks every write against
+	// cap(buf) and returns io.ErrShortBuffer when the caller's buffer is
+	// too small. This is the zero-allocation encode path — the caller
+	// pre-sizes dst (typically from a SerializedSize computation), calls
+	// EncodeInto, and the encoded payload lives in dst with no copy.
+	fixedBuf bool
+
 	// scratch is a per-Encoder staging buffer reused across primitive writes
 	// so WriteUint*/WriteFloat*/WriteVarInt/WriteCompactU16/... don't allocate.
 	// 16 bytes is enough for any fixed-width primitive (Uint128) and for a
@@ -116,6 +125,45 @@ func NewBinEncoderBuf() *Encoder        { return NewBufferedEncoder(EncodingBin)
 func NewBorshEncoderBuf() *Encoder      { return NewBufferedEncoder(EncodingBorsh) }
 func NewCompactU16EncoderBuf() *Encoder { return NewBufferedEncoder(EncodingCompactU16) }
 
+// NewEncoderIntoWithEncoding returns an Encoder that writes directly into
+// the caller-supplied dst buffer. The encoded payload will occupy
+// dst[:n] where n is the Written() count after Encode returns. If dst is
+// too small to hold the payload, writes return io.ErrShortBuffer — dst
+// is never reallocated.
+//
+// Typical use combines this with a pre-computed encoded size:
+//
+//	buf := make([]byte, EncodedSizeOf(tx))
+//	n, err := MarshalBinInto(tx, buf)
+//	wire := buf[:n]
+//
+// Passing dst with non-zero length is allowed — the encoder truncates it
+// to dst[:0] internally and uses its capacity. Pass a nil dst to force
+// every write to return io.ErrShortBuffer (useful for probing size when
+// BinByteCount is not available).
+func NewEncoderIntoWithEncoding(dst []byte, enc Encoding) *Encoder {
+	if !isValidEncoding(enc) {
+		panic(fmt.Sprintf("provided encoding is not valid: %s", enc))
+	}
+	return &Encoder{
+		encoding: enc,
+		buf:      dst[:0:cap(dst)],
+		fixedBuf: true,
+	}
+}
+
+func NewBinEncoderInto(dst []byte) *Encoder {
+	return NewEncoderIntoWithEncoding(dst, EncodingBin)
+}
+
+func NewBorshEncoderInto(dst []byte) *Encoder {
+	return NewEncoderIntoWithEncoding(dst, EncodingBorsh)
+}
+
+func NewCompactU16EncoderInto(dst []byte) *Encoder {
+	return NewEncoderIntoWithEncoding(dst, EncodingCompactU16)
+}
+
 // Bytes returns the encoded payload accumulated in buffered mode. The slice
 // aliases the encoder's internal buffer; copy it if you need to retain it
 // across a Reset() / further writes.
@@ -124,7 +172,9 @@ func (e *Encoder) Bytes() []byte {
 }
 
 // Reset clears the encoder's internal state (count, buffer, current option)
-// so it can be reused for another message. The output writer is preserved.
+// so it can be reused for another message. The output writer is preserved,
+// and fixed-buffer mode (see NewEncoderIntoWithEncoding) is preserved so
+// repeat encodes into the same dst slice keep the bounds check active.
 func (e *Encoder) Reset() {
 	e.count = 0
 	e.buf = e.buf[:0]
@@ -132,10 +182,28 @@ func (e *Encoder) Reset() {
 	e.skipMarshalerCheck = false
 }
 
+// ResetInto re-targets the encoder at a new caller-supplied dst buffer and
+// clears per-message state. After ResetInto the encoder is in fixed-buffer
+// mode: writes go into dst up to cap(dst) and return io.ErrShortBuffer past
+// that. Useful for reusing a pooled or long-lived *Encoder across many
+// messages without a per-message Encoder allocation.
+func (e *Encoder) ResetInto(dst []byte) {
+	e.count = 0
+	e.buf = dst[:0:cap(dst)]
+	e.fixedBuf = true
+	e.output = nil
+	e.currentFieldOpt = option{}
+	e.skipMarshalerCheck = false
+}
+
 // Grow ensures the internal buffer has at least n free bytes available.
 // Useful in buffered mode to amortize append-driven growth when the encoded
-// size is known in advance.
+// size is known in advance. No-op in fixed-buffer mode: the caller already
+// sized dst and growing would defeat the zero-allocation guarantee.
 func (e *Encoder) Grow(n int) {
+	if e.fixedBuf {
+		return
+	}
 	if cap(e.buf)-len(e.buf) >= n {
 		return
 	}
@@ -158,13 +226,23 @@ func (e *Encoder) Encode(v interface{}) (err error) {
 }
 
 func (e *Encoder) toWriter(bytes []byte) (err error) {
+	if e.output == nil {
+		if e.fixedBuf && len(e.buf)+len(bytes) > cap(e.buf) {
+			// Don't advance count — the write failed, so Written() reports
+			// the successful prefix, which is useful for debugging
+			// short-buffer failures.
+			return io.ErrShortBuffer
+		}
+		e.buf = append(e.buf, bytes...)
+		e.count += len(bytes)
+		if traceEnabled {
+			zlog.Debug("	> encode: appending", zap.Stringer("hex", HexBytes(bytes)), zap.Int("pos", e.count))
+		}
+		return nil
+	}
 	e.count += len(bytes)
 	if traceEnabled {
 		zlog.Debug("	> encode: appending", zap.Stringer("hex", HexBytes(bytes)), zap.Int("pos", e.count))
-	}
-	if e.output == nil {
-		e.buf = append(e.buf, bytes...)
-		return nil
 	}
 	_, err = e.output.Write(bytes)
 	return

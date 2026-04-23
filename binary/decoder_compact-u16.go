@@ -19,7 +19,6 @@ package bin
 
 import (
 	"fmt"
-	"io"
 	"reflect"
 
 	"go.uber.org/zap"
@@ -188,8 +187,8 @@ func (dec *Decoder) decodeCompactU16(rv reflect.Value, opt option) (err error) {
 			zlog.Debug("reading slice", zap.Int("len", l), typeField("type", rv))
 		}
 
-		if l > dec.Remaining() {
-			return io.ErrUnexpectedEOF
+		if err := dec.checkSliceLen(l, sliceElemMinWireSize(rv.Type().Elem())); err != nil {
+			return err
 		}
 
 		switch k := rv.Type().Elem().Kind(); k {
@@ -221,6 +220,9 @@ func (dec *Decoder) decodeCompactU16(rv reflect.Value, opt option) (err error) {
 		if l == 0 {
 			// If the map has no content, keep it nil.
 			return nil
+		}
+		if err := dec.checkMapLen(l); err != nil {
+			return err
 		}
 		rv.Set(reflect.MakeMap(rt))
 		mapOpt := option{Order: opt.Order}

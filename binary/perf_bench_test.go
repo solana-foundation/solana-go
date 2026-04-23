@@ -227,6 +227,58 @@ func BenchmarkEncode_Struct_Borsh_Buffered(b *testing.B) {
 	}
 }
 
+// MarshalBorsh goes through the pool and returns a freshly-allocated []byte
+// (one alloc for the result + pool overhead). Baseline for Into.
+func BenchmarkMarshal_Struct_Borsh(b *testing.B) {
+	s := makePerfBenchStruct()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = MarshalBorsh(&s)
+	}
+}
+
+// MarshalBorshInto writes into a caller-owned buffer: no result allocation,
+// no staging buffer. Compared against BenchmarkMarshal_Struct_Borsh this
+// isolates the savings from the fixed-buffer fast path.
+func BenchmarkMarshalInto_Struct_Borsh(b *testing.B) {
+	s := makePerfBenchStruct()
+	size, err := BorshByteCount(&s)
+	if err != nil {
+		b.Fatal(err)
+	}
+	dst := make([]byte, size)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = MarshalBorshInto(&s, dst)
+	}
+}
+
+// Bin-encoding variants of the two benchmarks above.
+func BenchmarkMarshal_Struct_Bin(b *testing.B) {
+	s := makePerfBenchStruct()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = MarshalBin(&s)
+	}
+}
+
+func BenchmarkMarshalInto_Struct_Bin(b *testing.B) {
+	s := makePerfBenchStruct()
+	size, err := BinByteCount(&s)
+	if err != nil {
+		b.Fatal(err)
+	}
+	dst := make([]byte, size)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = MarshalBinInto(&s, dst)
+	}
+}
+
 func BenchmarkEncode_WriteUint64_Buffered(b *testing.B) {
 	e := NewBorshEncoderBuf()
 	b.ReportAllocs()

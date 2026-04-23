@@ -20,7 +20,6 @@ package bin
 import (
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 
 	"go.uber.org/zap"
@@ -230,8 +229,8 @@ func (dec *Decoder) decodeBorsh(rv reflect.Value, opt option) (err error) {
 			// Empty slices are left nil
 			return
 		}
-		if l > dec.Remaining() {
-			return io.ErrUnexpectedEOF
+		if err := dec.checkSliceLen(l, sliceElemMinWireSize(rv.Type().Elem())); err != nil {
+			return err
 		}
 
 		switch k := rv.Type().Elem().Kind(); k {
@@ -265,6 +264,9 @@ func (dec *Decoder) decodeBorsh(rv reflect.Value, opt option) (err error) {
 		if l == 0 {
 			// If the map has no content, keep it nil.
 			return nil
+		}
+		if err := dec.checkMapLen(int(l)); err != nil {
+			return err
 		}
 		rv.Set(reflect.MakeMap(rt))
 		mapOpt := option{Order: opt.Order}

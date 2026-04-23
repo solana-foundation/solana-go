@@ -102,6 +102,26 @@ func pooledMarshal(pool *sync.Pool, v any) ([]byte, error) {
 	return out, nil
 }
 
+// pooledMarshalInto runs enc.Encode(v) on a pooled encoder whose internal
+// buffer is temporarily swapped for the caller's dst. On return the pool's
+// original buffer is restored so the encoder stays pool-safe. If the
+// caller's dst is too small, the error surfaces as io.ErrShortBuffer and
+// the partial write in dst[:written] is still valid (same convention as
+// io.Writer short writes).
+func pooledMarshalInto(pool *sync.Pool, v any, dst []byte) (int, error) {
+	enc := pool.Get().(*Encoder)
+	savedBuf := enc.buf
+	enc.buf = dst[:0:cap(dst)]
+	enc.fixedBuf = true
+	err := enc.Encode(v)
+	n := len(enc.buf)
+	enc.buf = savedBuf
+	enc.fixedBuf = false
+	enc.Reset()
+	pool.Put(enc)
+	return n, err
+}
+
 // pooledUnmarshal runs dec.Decode(v) on a pooled decoder over the
 // provided bytes, then returns the decoder to the pool. Shared
 // implementation behind UnmarshalBin / UnmarshalBorsh /
@@ -140,6 +160,33 @@ func MarshalBorsh(v any) ([]byte, error) {
 
 func MarshalCompactU16(v any) ([]byte, error) {
 	return pooledMarshal(&compactU16EncoderPool, v)
+}
+
+// MarshalBinInto encodes v into the caller-supplied dst buffer using the
+// bincode-like "bin" encoding and returns the number of bytes written. If
+// dst is too small to hold the payload, the returned error is
+// io.ErrShortBuffer; dst[:n] contains the successful prefix.
+//
+// This is the zero-allocation encode path: dst is never reallocated and
+// no intermediate buffer is produced. Pre-size dst via BinByteCount when
+// the size is not statically known:
+//
+//	size, _ := BinByteCount(v)
+//	buf := make([]byte, size)
+//	n, err := MarshalBinInto(v, buf)
+func MarshalBinInto(v any, dst []byte) (int, error) {
+	return pooledMarshalInto(&binEncoderPool, v, dst)
+}
+
+// MarshalBorshInto is the Borsh-encoding counterpart to MarshalBinInto.
+func MarshalBorshInto(v any, dst []byte) (int, error) {
+	return pooledMarshalInto(&borshEncoderPool, v, dst)
+}
+
+// MarshalCompactU16Into is the CompactU16-encoding counterpart to
+// MarshalBinInto.
+func MarshalCompactU16Into(v any, dst []byte) (int, error) {
+	return pooledMarshalInto(&compactU16EncoderPool, v, dst)
 }
 
 func UnmarshalBin(v any, b []byte) error {

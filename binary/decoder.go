@@ -116,6 +116,26 @@ type Decoder struct {
 	currentFieldOpt option
 
 	encoding Encoding
+
+	// maxSliceLen caps the number of elements a wire-declared slice length
+	// prefix is allowed to claim before MakeSlice is called. Zero means
+	// unlimited (backward compatible). Non-zero callers typically set this
+	// when parsing untrusted input (e.g. RPC/WS payloads) to bound the
+	// allocation that can result from a malicious length prefix.
+	//
+	// The natural bound "l <= Remaining()" is already enforced — but it
+	// treats every element as taking at least 1 wire byte, so a []BigStruct
+	// where BigStruct is 1 KiB in memory can still produce a 1 KiB * l
+	// allocation from only l wire bytes. maxSliceLen lets the caller cap
+	// the element count directly.
+	maxSliceLen int
+
+	// maxMapLen is the analogous cap for map length prefixes. Unlike
+	// slices, maps historically had no bound at all: a length of 2^32
+	// would run 2^32 SetMapIndex iterations. With maxMapLen set, or by
+	// virtue of the Remaining()/2 lower bound always enforced now, the
+	// decoder fails fast instead.
+	maxMapLen int
 }
 
 // Reset resets the decoder to decode a new message.
@@ -150,6 +170,116 @@ func NewDecoderWithEncoding(data []byte, enc Encoding) *Decoder {
 // SetEncoding sets the encoding scheme to use for decoding.
 func (dec *Decoder) SetEncoding(enc Encoding) {
 	dec.encoding = enc
+}
+
+// SetMaxSliceLen sets a hard cap on wire-declared slice lengths. A length
+// prefix that claims more than n elements makes Decode fail with an error
+// before any MakeSlice is called. Pass 0 to disable (unlimited, the
+// default).
+//
+// Use this when decoding untrusted input. A safe starting value is an
+// application-specific bound, e.g. 256 for Solana transaction account
+// lists or 1024 for instruction data blobs.
+func (dec *Decoder) SetMaxSliceLen(n int) *Decoder {
+	dec.maxSliceLen = n
+	return dec
+}
+
+// SetMaxMapLen sets a hard cap on wire-declared map lengths. See
+// SetMaxSliceLen for rationale. Defaults to 0 (unlimited).
+func (dec *Decoder) SetMaxMapLen(n int) *Decoder {
+	dec.maxMapLen = n
+	return dec
+}
+
+// MaxSliceLen returns the configured slice-length cap, or 0 for unlimited.
+func (dec *Decoder) MaxSliceLen() int { return dec.maxSliceLen }
+
+// MaxMapLen returns the configured map-length cap, or 0 for unlimited.
+func (dec *Decoder) MaxMapLen() int { return dec.maxMapLen }
+
+// ErrSliceLenTooLarge is returned when a decoded slice length prefix
+// exceeds the caller-configured MaxSliceLen cap or is negative. When the
+// length merely overruns the wire buffer (i.e. there are not enough
+// bytes left to decode l elements), the decoder returns
+// io.ErrUnexpectedEOF instead to preserve backward compatibility with
+// error-handling code that has long keyed off of it.
+var ErrSliceLenTooLarge = errors.New("decode: slice length exceeds bound")
+
+// ErrMapLenTooLarge is returned when a decoded map length prefix exceeds
+// the MaxMapLen cap or is negative. As with ErrSliceLenTooLarge, the
+// "not enough bytes" case returns io.ErrUnexpectedEOF.
+var ErrMapLenTooLarge = errors.New("decode: map length exceeds bound")
+
+// checkSliceLen validates a wire-declared slice length before it is used
+// to allocate a slice. elemMinSize is the minimum number of wire bytes a
+// single element must consume — pass 1 for variable-size element types
+// (strings, nested slices, general structs), or the exact fixed size for
+// PoD elements. Returns ErrSliceLenTooLarge for pathological inputs
+// (negative length, cap violation), or io.ErrUnexpectedEOF when the
+// claimed payload simply won't fit in Remaining() bytes.
+//
+// Uses int64 arithmetic so l * elemMinSize cannot wrap on 32-bit hosts.
+func (dec *Decoder) checkSliceLen(l, elemMinSize int) error {
+	if l < 0 {
+		return fmt.Errorf("%w: negative length %d", ErrSliceLenTooLarge, l)
+	}
+	if dec.maxSliceLen > 0 && l > dec.maxSliceLen {
+		return fmt.Errorf("%w: length %d > MaxSliceLen=%d", ErrSliceLenTooLarge, l, dec.maxSliceLen)
+	}
+	if elemMinSize <= 0 {
+		elemMinSize = 1
+	}
+	if int64(l)*int64(elemMinSize) > int64(dec.Remaining()) {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+// sliceElemMinWireSize returns a conservative lower bound on how many wire
+// bytes a single element of the given type must consume. Used by
+// checkSliceLen to tighten the "wire length * elem >= allocation" check
+// for homogeneous fixed-size element kinds. For variable-size elements
+// (structs, strings, nested slices) it returns 1 — the true lower bound
+// without knowing the concrete wire layout.
+//
+// Note: this is *wire* size, not Go memory size. For a type alias like
+// `type PublicKey [32]byte` the wire form is 32 bytes regardless of how
+// the Go type is declared.
+func sliceElemMinWireSize(t reflect.Type) int {
+	switch t.Kind() {
+	case reflect.Uint8, reflect.Int8, reflect.Bool:
+		return 1
+	case reflect.Uint16, reflect.Int16:
+		return TypeSizeUint16
+	case reflect.Uint32, reflect.Int32, reflect.Float32:
+		return TypeSizeUint32
+	case reflect.Uint64, reflect.Int64, reflect.Float64:
+		return TypeSizeUint64
+	case reflect.Array:
+		// [N]T with T fixed-size becomes N * minWireSize(T). Recurse.
+		per := sliceElemMinWireSize(t.Elem())
+		return t.Len() * per
+	default:
+		return 1
+	}
+}
+
+// checkMapLen validates a wire-declared map length before MakeMap /
+// SetMapIndex loops run. Each entry consumes at least two wire bytes
+// (one for key, one for value) so Remaining()/2 is the natural upper
+// bound in addition to the caller's MaxMapLen cap.
+func (dec *Decoder) checkMapLen(l int) error {
+	if l < 0 {
+		return fmt.Errorf("%w: negative length %d", ErrMapLenTooLarge, l)
+	}
+	if dec.maxMapLen > 0 && l > dec.maxMapLen {
+		return fmt.Errorf("%w: length %d > MaxMapLen=%d", ErrMapLenTooLarge, l, dec.maxMapLen)
+	}
+	if int64(l)*2 > int64(dec.Remaining()) {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 
 func NewBinDecoder(data []byte) *Decoder {
