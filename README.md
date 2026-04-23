@@ -344,9 +344,25 @@ func decodeSystemTransfer(tx *solana.Transaction) {
   // OR
   {
     // There is a more general instruction decoder: `solana.DecodeInstruction`.
-    // But before you can use `solana.DecodeInstruction`,
-    // you must register a decoder for each program ID beforehand
-    // by using `solana.RegisterInstructionDecoder` (all solana-go program clients do it automatically with the default program IDs).
+    // It looks up the decoder for `progKey` in a central registry, so it
+    // works for any program ID regardless of what you know at compile time.
+    //
+    // Each `programs/<name>` package registers its decoder via init(),
+    // which only runs when the package is imported. If you are not
+    // already using the package's builders (e.g. `system.NewTransferInstruction`),
+    // blank-import it so the decoder is available - same idiom as
+    // database/sql drivers:
+    //
+    //     import (
+    //         _ "github.com/gagliardetto/solana-go/programs/system"
+    //         _ "github.com/gagliardetto/solana-go/programs/token"
+    //         // ...add more as needed
+    //     )
+    //
+    // For a program that solana-go does not ship (e.g. a custom Anchor
+    // program), register its decoder yourself:
+    //
+    //     solana.MustRegisterInstructionDecoder(myProgramID, myDecoderFunc)
     decodedInstruction, err := solana.DecodeInstruction(
       progKey,
       accounts,
@@ -362,9 +378,6 @@ func decodeSystemTransfer(tx *solana.Transaction) {
     if !reflect.DeepEqual(inst, decodedInstruction) {
       panic("they are NOT equal (this would never happen)")
     }
-
-    // To register other (not yet registered decoders), you can add them with
-    // `solana.RegisterInstructionDecoder` function.
   }
 
   {
