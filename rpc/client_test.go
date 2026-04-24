@@ -470,6 +470,44 @@ func TestClient_GetBlockWithOpts(t *testing.T) {
 	// - test also when requesting only signatures
 }
 
+func TestClient_GetBlockWithOpts_EncodingJSON(t *testing.T) {
+	responseBody := `{}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+
+	client := New(server.URL)
+
+	block := 42
+	_, err := client.GetBlockWithOpts(
+		context.Background(),
+		uint64(block),
+		&GetBlockOpts{
+			Encoding: solana.EncodingJSON,
+		},
+	)
+	require.NoError(t, err)
+
+	// the ID is random, so we can't assert it; let's check that it is set, and then remove it
+	reqBody := server.RequestBody(t)
+	assert.NotNil(t, reqBody["id"])
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getBlock",
+			"params": []any{
+				float64(block),
+				map[string]any{
+					"encoding": string(solana.EncodingJSON),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
 func TestClient_GetBlockWithOpts_AccountsMode(t *testing.T) {
 	responseBody := `{"blockHeight":69213636,"blockTime":1625227950,"blockhash":"5M77sHdwzH6rckuQwF8HL1w52n7hjrh4GVTFiF6T8QyB","parentSlot":83987983,"previousBlockhash":"Aq9jSXe1jRzfiaBcRFLe4wm7j499vWVEeFQrq5nnXfZN","rewards":[],"transactions":[{"meta":{"err":null,"fee":5000,"innerInstructions":[],"logMessages":[],"postBalances":[441866063495,40905918933763,1],"postTokenBalances":[],"preBalances":[441866068495,40905918933763,1],"preTokenBalances":[],"rewards":[],"status":{"Ok":null}},"transaction":{"signatures":["D8emaP3CaepSGigD3TCrev7j67yPLMi82qfzTb9iZYPxHcCmm6sQBKTU4bzAee4445zbnbWduVAZ87WfbWbXoAU"],"accountKeys":[{"pubkey":"EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes","signer":true,"writable":true,"source":"transaction"},{"pubkey":"72miaovmbPqccdbAA861r2uxwB5yL1sMjrgbCnc4JfVT","signer":false,"writable":true,"source":"transaction"},{"pubkey":"Vote111111111111111111111111111111111111111","signer":false,"writable":false,"source":"lookupTable"}]},"version":0}]}`
 	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
