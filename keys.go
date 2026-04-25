@@ -156,7 +156,7 @@ func (k PrivateKey) PublicKey() PublicKey {
 // PK is a convenience alias for PublicKey
 type PK = PublicKey
 
-// done to keep verify the same as stdlib crypto/voied25519
+// done to keep verify the same as stdlib crypto/ed25519
 var verifyOptsStdLib = &voied25519.Options{
 	Verify: voied25519.VerifyOptionsStdLib,
 }
