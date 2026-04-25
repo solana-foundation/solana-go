@@ -192,14 +192,14 @@ func reflectValueCanIsNil(value reflect.Value) bool {
 	}
 }
 
-func Diff(left any, right any, opts ...Option) {
+func Diff(left any, right any, opts ...Option) error {
 	options := options{}
 	for _, opt := range opts {
 		opt.apply(&options)
 	}
 
 	if options.onEvent == nil {
-		panic("the option diff.OnEvent(...) must always be defined")
+		return fmt.Errorf("the option diff.OnEvent(...) must always be defined")
 	}
 
 	reporter := &diffReporter{notify: options.onEvent}
@@ -207,6 +207,7 @@ func Diff(left any, right any, opts ...Option) {
 		[]cmp.Option{cmp.Reporter(reporter)},
 		options.cmpOptions...,
 	)...)
+	return nil
 }
 
 type diffReporter struct {

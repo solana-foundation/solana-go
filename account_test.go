@@ -212,8 +212,9 @@ func TestSplitFrom(t *testing.T) {
 		require.Len(t, part1, 5)
 		require.Len(t, part2, 0)
 	}
-	require.Panics(t,
-		func() {
-			slice.SplitFrom(-1)
-		})
+	{
+		part1, part2 := slice.SplitFrom(-1)
+		require.Len(t, part1, 0)
+		require.Len(t, part2, 5)
+	}
 }
