@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12
 	github.com/mr-tron/base58 v1.2.0
+	github.com/tyler-smith/go-bip39 v1.1.0
 	go.mongodb.org/mongo-driver/v2 v2.5.0
 )
 

@@ -1,0 +1,95 @@
+{
+  "from_seed": [
+    {
+      "name": "all_zero_32",
+      "seed_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "ae_key_hex": "ad56c35cab5063b9e7ea568314ec81c4",
+      "elgamal_secret_hex": "97e676b07bfa0d85006fc9c443428e90083a83a61116e65ccc2ba760ea66ab04"
+    },
+    {
+      "name": "all_one_32",
+      "seed_hex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "ae_key_hex": "0c96e4cfe1285f5c2b9033c3ef50bbca",
+      "elgamal_secret_hex": "23c6e7a2a3eeb66e823d6d8d113100f816b90467aabaf2244758c4e0a4882d06"
+    },
+    {
+      "name": "ascending_64",
+      "seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "ae_key_hex": "cb29601efbee71f4dfbb7f1c2bdaeafd",
+      "elgamal_secret_hex": "ac5aeea5fc28ef2541a9ee1805f7f3e530c290139f82cbd426b50cc9ce4c670e"
+    },
+    {
+      "name": "mixed_48",
+      "seed_hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "ae_key_hex": "5e2771d81531881122aaf5b0e03541cc",
+      "elgamal_secret_hex": "65aa89be80a1a2bd7a57c7f826fa55db8000f33f4b071575bfa915e6b1484a0f"
+    }
+  ],
+  "from_signature": [
+    {
+      "name": "sig_deadbeef",
+      "signature_hex": "dee5ecf3fa01080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b82899097",
+      "ae_key_hex": "83d76b6e585202327352f43cb937f222",
+      "elgamal_secret_hex": "d971ca8cfb4fe603c38d0994284eafc783f7a79fd834246f012cc27715333405"
+    },
+    {
+      "name": "sig_increment",
+      "signature_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "ae_key_hex": "10de808f82059adfa2992d0cdaa845df",
+      "elgamal_secret_hex": "d4a09f7c774de4c629e8cce1c8943709c95026a54c079ed63ee98cd15307610f"
+    }
+  ],
+  "from_signer": [
+    {
+      "name": "keypair_a_empty_seed",
+      "keypair_secret_hex": "112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00",
+      "public_seed_hex": "",
+      "ae_key_hex": "c22f9bd211f5f0758517a316d99c7842",
+      "elgamal_secret_hex": "1c39bd311012f04bff07474a87fe32dd240e9dc53c5f0e50c81cda1b972f9d08"
+    },
+    {
+      "name": "keypair_a_mint_seed",
+      "keypair_secret_hex": "112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00",
+      "public_seed_hex": "736f6d652d6d696e742d7075626b6579",
+      "ae_key_hex": "4d844c1ca59daf8547106b218e612b26",
+      "elgamal_secret_hex": "2b1de3492590211b779acba99048339c845e5c7cf5c95f2bf1d4352ff105d50c"
+    },
+    {
+      "name": "keypair_b_mint_seed",
+      "keypair_secret_hex": "7e577e57aabbccddeeff00112233445566778899aabbccddeeff001122334455",
+      "public_seed_hex": "736f6d652d6d696e742d7075626b6579",
+      "ae_key_hex": "15715bd1aa276dd1653c9dd28e780971",
+      "elgamal_secret_hex": "8d3a6cb60be0b4a01c1cfab479487c2a701c3e71d28ad9cf422f9262d06aef04"
+    },
+    {
+      "name": "keypair_b_long_seed",
+      "keypair_secret_hex": "7e577e57aabbccddeeff00112233445566778899aabbccddeeff001122334455",
+      "public_seed_hex": "612d7261746865722d6c6f6e6765722d7075626c69632d736565642d757365642d666f722d646f6d61696e2d73657061726174696f6e",
+      "ae_key_hex": "2da6c7bc25bd3b82b19b2cfba74d6e0d",
+      "elgamal_secret_hex": "a529aef3895d534e2140e06a6b558bbb20b6a124d548c01385de9f3a90272300"
+    }
+  ],
+  "from_mnemonic": [
+    {
+      "name": "trezor_all_abandon_no_passphrase",
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "ae_key_hex": "23f20b9df0405b4675fd27d682bb2a30",
+      "elgamal_secret_hex": "55def0e683cd64d0918c93672835def6253d8ba5bee85df27c4daa34abeb5e03"
+    },
+    {
+      "name": "trezor_all_abandon_trezor_passphrase",
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "TREZOR",
+      "ae_key_hex": "c7cca7af94c37e320752a00aef3425cb",
+      "elgamal_secret_hex": "3297e41ec815c1d17368a20c925d0f4d786967fa8e96f1179b2dcd646ffa6905"
+    },
+    {
+      "name": "legal_winner_trezor",
+      "mnemonic": "legal winner thank year wave sausage worth useful legal winner thank yellow",
+      "passphrase": "TREZOR",
+      "ae_key_hex": "da372f904b8542269d20d80fec8c4188",
+      "elgamal_secret_hex": "f2fb947e011587f12047631c94e80777177486437c12b1db93d146f4a2823b0b"
+    }
+  ]
+}
