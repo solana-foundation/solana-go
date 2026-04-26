@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/solana-foundation/solana-go/compare/v1.19.0...v1.19.1) (2026-04-26)
+
+
+### Performance Improvements
+
+* migrate to curve25519-voi for ed25519 operations ([20713fb](https://github.com/solana-foundation/solana-go/commit/20713fbbe52d4d20cab792a702771790346f19c7))
+
 ## [1.19.0](https://github.com/solana-foundation/solana-go/compare/v1.18.0...v1.19.0) (2026-04-23)
 
 
