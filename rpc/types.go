@@ -116,9 +116,22 @@ func (twm TransactionWithMeta) MustGetTransaction() *solana.Transaction {
 }
 
 func (twm TransactionWithMeta) GetTransaction() (*solana.Transaction, error) {
+	if twm.Transaction == nil {
+		return nil, fmt.Errorf("transaction is nil")
+	}
+	// EncodingJSON: the RPC returned a JSON object — unmarshal directly.
+	if raw := twm.Transaction.GetRawJSON(); raw != nil {
+		var tx solana.Transaction
+		if err := json.Unmarshal(raw, &tx); err != nil {
+			return nil, err
+		}
+		if tx.Message.AccountKeys == nil {
+			return nil, fmt.Errorf("transaction has no message: block may have been fetched with transactionDetails=accounts; use GetAccountKeys instead")
+		}
+		return &tx, nil
+	}
 	tx := new(solana.Transaction)
-	err := tx.UnmarshalWithDecoder(bin.NewBinDecoder(twm.Transaction.GetBinary()))
-	if err != nil {
+	if err := tx.UnmarshalWithDecoder(bin.NewBinDecoder(twm.Transaction.GetBinary())); err != nil {
 		return nil, err
 	}
 	return tx, nil
