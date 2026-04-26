@@ -15,7 +15,7 @@
 package token
 
 import (
-	ag_binary "github.com/gagliardetto/binary"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 )
 
 type AuthorityType ag_binary.BorshEnum

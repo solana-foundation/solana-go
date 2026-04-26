@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 

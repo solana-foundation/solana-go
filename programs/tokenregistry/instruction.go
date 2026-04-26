@@ -24,12 +24,17 @@ import (
 
 	"github.com/gagliardetto/solana-go/text"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 func init() {
 	solana.MustRegisterInstructionDecoder(ProgramID(), registryDecodeInstruction)
+	// Eliminate the first-encode reflect-walk cost for the package's
+	// marshaled types so the typePlan cache is populated by the time the
+	// process makes its first call.
+	bin.PrewarmVariantDefinition(InstructionDefVariant)
+	bin.PrewarmTypes(TokenMeta{})
 }
 
 func registryDecodeInstruction(accounts []*solana.AccountMeta, data []byte) (any, error) {

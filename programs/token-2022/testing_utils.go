@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 )
 
 func encodeT(data any, buf *bytes.Buffer) error {

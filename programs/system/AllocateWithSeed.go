@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -170,7 +170,7 @@ func (inst *AllocateWithSeed) EncodeToTree(parent ag_treeout.Branches) {
 func (inst AllocateWithSeed) MarshalWithEncoder(encoder *ag_binary.Encoder) error {
 	// Serialize `Base` param:
 	{
-		err := encoder.Encode(*inst.Base)
+		err := encoder.WriteBytes(inst.Base[:], false)
 		if err != nil {
 			return err
 		}
@@ -184,14 +184,14 @@ func (inst AllocateWithSeed) MarshalWithEncoder(encoder *ag_binary.Encoder) erro
 	}
 	// Serialize `Space` param:
 	{
-		err := encoder.Encode(*inst.Space)
+		err := encoder.WriteUint64(*inst.Space, binary.LittleEndian)
 		if err != nil {
 			return err
 		}
 	}
 	// Serialize `Owner` param:
 	{
-		err := encoder.Encode(*inst.Owner)
+		err := encoder.WriteBytes(inst.Owner[:], false)
 		if err != nil {
 			return err
 		}

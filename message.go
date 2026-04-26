@@ -21,9 +21,9 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/treeout"
-	jsoniter "github.com/json-iterator/go"
+	gojson "github.com/goccy/go-json"
 
 	"github.com/gagliardetto/solana-go/text"
 )
@@ -242,7 +242,7 @@ func (mx *Message) UnmarshalJSON(data []byte) error {
 		Header              MessageHeader         `json:"header"`
 		RecentBlockhash     Hash                  `json:"recentBlockhash"`
 		Instructions        []CompiledInstruction `json:"instructions"`
-		AddressTableLookups *jsoniter.RawMessage  `json:"addressTableLookups"`
+		AddressTableLookups *gojson.RawMessage    `json:"addressTableLookups"`
 	}{}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -335,22 +335,30 @@ func (mx *Message) MarshalLegacy() ([]byte, error) {
 		mx.Header.NumReadonlyUnsignedAccounts,
 	)
 
-	bin.EncodeCompactU16Length(&buf, len(mx.AccountKeys))
+	if err := bin.EncodeCompactU16Length(&buf, len(mx.AccountKeys)); err != nil {
+		return nil, err
+	}
 	for _, key := range mx.AccountKeys {
 		buf = append(buf, key[:]...)
 	}
 
 	buf = append(buf, mx.RecentBlockhash[:]...)
 
-	bin.EncodeCompactU16Length(&buf, len(mx.Instructions))
+	if err := bin.EncodeCompactU16Length(&buf, len(mx.Instructions)); err != nil {
+		return nil, err
+	}
 	for i := range mx.Instructions {
 		buf = append(buf, byte(mx.Instructions[i].ProgramIDIndex))
-		bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Accounts))
+		if err := bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Accounts)); err != nil {
+			return nil, err
+		}
 		for _, accountIdx := range mx.Instructions[i].Accounts {
 			buf = append(buf, byte(accountIdx))
 		}
 
-		bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Data))
+		if err := bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Data)); err != nil {
+			return nil, err
+		}
 		buf = append(buf, mx.Instructions[i].Data...)
 	}
 	return buf, nil
@@ -388,34 +396,48 @@ func (mx *Message) MarshalV0() ([]byte, error) {
 	)
 
 	// Encode only the keys that are not in the address table lookups.
-	bin.EncodeCompactU16Length(&buf, len(staticAccountKeys))
+	if err := bin.EncodeCompactU16Length(&buf, len(staticAccountKeys)); err != nil {
+		return nil, err
+	}
 	for _, key := range staticAccountKeys {
 		buf = append(buf, key[:]...)
 	}
 
 	buf = append(buf, mx.RecentBlockhash[:]...)
 
-	bin.EncodeCompactU16Length(&buf, len(mx.Instructions))
+	if err := bin.EncodeCompactU16Length(&buf, len(mx.Instructions)); err != nil {
+		return nil, err
+	}
 	for i := range mx.Instructions {
 		buf = append(buf, byte(mx.Instructions[i].ProgramIDIndex))
-		bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Accounts))
+		if err := bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Accounts)); err != nil {
+			return nil, err
+		}
 		for _, accountIdx := range mx.Instructions[i].Accounts {
 			buf = append(buf, byte(accountIdx))
 		}
 
-		bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Data))
+		if err := bin.EncodeCompactU16Length(&buf, len(mx.Instructions[i].Data)); err != nil {
+			return nil, err
+		}
 		buf = append(buf, mx.Instructions[i].Data...)
 	}
 
-	bin.EncodeCompactU16Length(&buf, len(mx.AddressTableLookups))
+	if err := bin.EncodeCompactU16Length(&buf, len(mx.AddressTableLookups)); err != nil {
+		return nil, err
+	}
 	for i := range mx.AddressTableLookups {
 		// write account pubkey
 		buf = append(buf, mx.AddressTableLookups[i].AccountKey[:]...)
 		// write writable indexes
-		bin.EncodeCompactU16Length(&buf, len(mx.AddressTableLookups[i].WritableIndexes))
+		if err := bin.EncodeCompactU16Length(&buf, len(mx.AddressTableLookups[i].WritableIndexes)); err != nil {
+			return nil, err
+		}
 		buf = append(buf, mx.AddressTableLookups[i].WritableIndexes...)
 		// write readonly indexes
-		bin.EncodeCompactU16Length(&buf, len(mx.AddressTableLookups[i].ReadonlyIndexes))
+		if err := bin.EncodeCompactU16Length(&buf, len(mx.AddressTableLookups[i].ReadonlyIndexes)); err != nil {
+			return nil, err
+		}
 		buf = append(buf, mx.AddressTableLookups[i].ReadonlyIndexes...)
 	}
 

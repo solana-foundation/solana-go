@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 // StakeAccountSize is the fixed size of a stake account (200 bytes).

@@ -17,8 +17,8 @@ package stake
 import (
 	"encoding/binary"
 
-	bin "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 type StakeAuthorize uint32
@@ -71,7 +71,7 @@ func (args *LockupArgs) MarshalWithEncoder(encoder *bin.Encoder) error {
 			if err := encoder.WriteOption(true); err != nil {
 				return err
 			}
-			if err := encoder.Encode(*args.Custodian); err != nil {
+			if err := encoder.WriteBytes(args.Custodian[:], false); err != nil {
 				return err
 			}
 		} else {
@@ -209,7 +209,7 @@ type AuthorizeWithSeedArgs struct {
 
 func (args *AuthorizeWithSeedArgs) MarshalWithEncoder(encoder *bin.Encoder) error {
 	{
-		err := encoder.Encode(*args.NewAuthorizedPubkey)
+		err := encoder.WriteBytes(args.NewAuthorizedPubkey[:], false)
 		if err != nil {
 			return err
 		}
@@ -227,7 +227,7 @@ func (args *AuthorizeWithSeedArgs) MarshalWithEncoder(encoder *bin.Encoder) erro
 		}
 	}
 	{
-		err := encoder.Encode(*args.AuthorityOwner)
+		err := encoder.WriteBytes(args.AuthorityOwner[:], false)
 		if err != nil {
 			return err
 		}
@@ -286,7 +286,7 @@ func (args *AuthorizeCheckedWithSeedArgs) MarshalWithEncoder(encoder *bin.Encode
 		}
 	}
 	{
-		err := encoder.Encode(*args.AuthorityOwner)
+		err := encoder.WriteBytes(args.AuthorityOwner[:], false)
 		if err != nil {
 			return err
 		}

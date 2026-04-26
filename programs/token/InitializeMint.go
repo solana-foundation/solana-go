@@ -17,8 +17,8 @@ package token
 import (
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -171,12 +171,12 @@ func (inst *InitializeMint) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj InitializeMint) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `Decimals` param:
-	err = encoder.Encode(obj.Decimals)
+	err = encoder.WriteByte(*obj.Decimals)
 	if err != nil {
 		return err
 	}
 	// Serialize `MintAuthority` param:
-	err = encoder.Encode(obj.MintAuthority)
+	err = encoder.WriteBytes(obj.MintAuthority[:], false)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (obj InitializeMint) MarshalWithEncoder(encoder *ag_binary.Encoder) (err er
 			if err != nil {
 				return err
 			}
-			err = encoder.Encode(obj.FreezeAuthority)
+			err = encoder.WriteBytes(obj.FreezeAuthority[:], false)
 			if err != nil {
 				return err
 			}

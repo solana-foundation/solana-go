@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

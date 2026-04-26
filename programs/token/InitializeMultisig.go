@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -193,7 +193,7 @@ func (inst *InitializeMultisig) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj InitializeMultisig) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `M` param:
-	err = encoder.Encode(obj.M)
+	err = encoder.WriteByte(*obj.M)
 	if err != nil {
 		return err
 	}

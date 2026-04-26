@@ -15,11 +15,12 @@
 package stake
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -93,7 +94,7 @@ func (inst *MoveLamports) UnmarshalWithDecoder(dec *bin.Decoder) error {
 
 func (inst *MoveLamports) MarshalWithEncoder(encoder *bin.Encoder) error {
 	{
-		err := encoder.Encode(*inst.Lamports)
+		err := encoder.WriteUint64(*inst.Lamports, binary.LittleEndian)
 		if err != nil {
 			return err
 		}

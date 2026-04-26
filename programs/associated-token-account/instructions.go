@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	spew "github.com/davecgh/go-spew/spew"
-	bin "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	text "github.com/gagliardetto/solana-go/text"
 	treeout "github.com/gagliardetto/treeout"
 )
@@ -36,6 +36,7 @@ const ProgramName = "AssociatedTokenAccount"
 
 func init() {
 	solana.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
+	bin.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 const (

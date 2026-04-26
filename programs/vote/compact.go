@@ -9,7 +9,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 // writeCompactU16Len writes a Solana compact-u16 (short_vec) length prefix.

@@ -15,10 +15,11 @@
 package stake
 
 import (
+	"encoding/binary"
 	"errors"
 
-	bin "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 type Lockup struct {
@@ -54,19 +55,19 @@ func (lockup *Lockup) UnmarshalWithDecoder(dec *bin.Decoder) error {
 
 func (lockup *Lockup) MarshalWithEncoder(encoder *bin.Encoder) error {
 	{
-		err := encoder.Encode(*lockup.UnixTimestamp)
+		err := encoder.WriteInt64(*lockup.UnixTimestamp, binary.LittleEndian)
 		if err != nil {
 			return err
 		}
 	}
 	{
-		err := encoder.Encode(*lockup.Epoch)
+		err := encoder.WriteUint64(*lockup.Epoch, binary.LittleEndian)
 		if err != nil {
 			return err
 		}
 	}
 	{
-		err := encoder.Encode(*lockup.Custodian)
+		err := encoder.WriteBytes(lockup.Custodian[:], false)
 		if err != nil {
 			return err
 		}

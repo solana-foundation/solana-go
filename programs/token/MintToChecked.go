@@ -15,11 +15,12 @@
 package token
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -214,12 +215,12 @@ func (inst *MintToChecked) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj MintToChecked) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `Amount` param:
-	err = encoder.Encode(obj.Amount)
+	err = encoder.WriteUint64(*obj.Amount, binary.LittleEndian)
 	if err != nil {
 		return err
 	}
 	// Serialize `Decimals` param:
-	err = encoder.Encode(obj.Decimals)
+	err = encoder.WriteByte(*obj.Decimals)
 	if err != nil {
 		return err
 	}

@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -58,13 +58,13 @@ func (inst *Initialize) UnmarshalWithDecoder(dec *bin.Decoder) error {
 
 func (inst *Initialize) MarshalWithEncoder(encoder *bin.Encoder) error {
 	{
-		err := encoder.Encode(*inst.Authorized)
+		err := inst.Authorized.MarshalWithEncoder(encoder)
 		if err != nil {
 			return err
 		}
 	}
 	{
-		err := encoder.Encode(*inst.Lockup)
+		err := inst.Lockup.MarshalWithEncoder(encoder)
 		if err != nil {
 			return err
 		}

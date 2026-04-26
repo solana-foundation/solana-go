@@ -15,10 +15,11 @@
 package computebudget
 
 import (
+	"encoding/binary"
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -91,7 +92,7 @@ func (inst *SetLoadedAccountsDataSizeLimit) EncodeToTree(parent ag_treeout.Branc
 
 func (obj SetLoadedAccountsDataSizeLimit) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `Bytes` param:
-	err = encoder.Encode(obj.Bytes)
+	err = encoder.WriteUint32(obj.Bytes, binary.LittleEndian)
 	if err != nil {
 		return err
 	}

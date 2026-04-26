@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	ag_spew "github.com/davecgh/go-spew/spew"
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_text "github.com/gagliardetto/solana-go/text"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -38,6 +38,7 @@ func init() {
 	if !ProgramID.IsZero() {
 		ag_solanago.MustRegisterInstructionDecoder(ProgramID, registryDecodeInstruction)
 	}
+	ag_binary.PrewarmVariantDefinition(InstructionImplDef)
 }
 
 const (

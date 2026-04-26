@@ -18,8 +18,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	bin "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

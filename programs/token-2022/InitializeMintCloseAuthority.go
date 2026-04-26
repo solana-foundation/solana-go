@@ -3,8 +3,8 @@ package token2022
 import (
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -108,7 +108,7 @@ func (obj InitializeMintCloseAuthority) MarshalWithEncoder(encoder *ag_binary.En
 			if err != nil {
 				return err
 			}
-			err = encoder.Encode(obj.CloseAuthority)
+			err = encoder.WriteBytes(obj.CloseAuthority[:], false)
 			if err != nil {
 				return err
 			}

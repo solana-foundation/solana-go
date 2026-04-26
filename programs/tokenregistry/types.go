@@ -19,7 +19,7 @@ package tokenregistry
 import (
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 
 	"github.com/gagliardetto/solana-go"
 )
@@ -36,6 +36,116 @@ type TokenMeta struct {
 	Name                  Name
 	Website               Website
 	Symbol                Symbol
+}
+
+// MarshalWithEncoder is a hand-written marshaler that bypasses the
+// per-field plan-walk overhead of the generic reflect path. The cost
+// of the boilerplate is justified for TokenMeta because it is the
+// largest reflect-marshaled struct in the repo (9 fields including 4
+// nested fixed-size byte arrays and 2 foreign-package pointer types).
+//
+// We use the explicit Write* methods on the encoder rather than the
+// generic encoder.Encode(v any) entry point, because the latter would
+// box every [N]byte field into an interface{} on the way in, paying a
+// 32-64 byte heap allocation per call. WriteBytes takes a []byte
+// directly with no boxing.
+func (obj *TokenMeta) MarshalWithEncoder(encoder *bin.Encoder) error {
+	if err := encoder.WriteBool(obj.IsInitialized); err != nil {
+		return err
+	}
+	if err := encoder.WriteBytes(obj.Reg[:], false); err != nil {
+		return err
+	}
+	if err := encoder.WriteByte(obj.DataType); err != nil {
+		return err
+	}
+	if obj.MintAddress != nil {
+		if err := encoder.WriteBytes(obj.MintAddress[:], false); err != nil {
+			return err
+		}
+	} else {
+		var zero solana.PublicKey
+		if err := encoder.WriteBytes(zero[:], false); err != nil {
+			return err
+		}
+	}
+	if obj.RegistrationAuthority != nil {
+		if err := encoder.WriteBytes(obj.RegistrationAuthority[:], false); err != nil {
+			return err
+		}
+	} else {
+		var zero solana.PublicKey
+		if err := encoder.WriteBytes(zero[:], false); err != nil {
+			return err
+		}
+	}
+	if err := encoder.WriteBytes(obj.Logo[:], false); err != nil {
+		return err
+	}
+	if err := encoder.WriteBytes(obj.Name[:], false); err != nil {
+		return err
+	}
+	if err := encoder.WriteBytes(obj.Website[:], false); err != nil {
+		return err
+	}
+	if err := encoder.WriteBytes(obj.Symbol[:], false); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UnmarshalWithDecoder reads each field directly into its destination
+// with no per-field reflect or option-construction cost. The two
+// *solana.PublicKey allocations are unavoidable because the field
+// types are pointers.
+func (obj *TokenMeta) UnmarshalWithDecoder(decoder *bin.Decoder) error {
+	var err error
+	if obj.IsInitialized, err = decoder.ReadBool(); err != nil {
+		return err
+	}
+	regBytes, err := decoder.ReadNBytes(3)
+	if err != nil {
+		return err
+	}
+	copy(obj.Reg[:], regBytes)
+	if obj.DataType, err = decoder.ReadByte(); err != nil {
+		return err
+	}
+	mint := new(solana.PublicKey)
+	mintBytes, err := decoder.ReadNBytes(32)
+	if err != nil {
+		return err
+	}
+	copy(mint[:], mintBytes)
+	obj.MintAddress = mint
+	auth := new(solana.PublicKey)
+	authBytes, err := decoder.ReadNBytes(32)
+	if err != nil {
+		return err
+	}
+	copy(auth[:], authBytes)
+	obj.RegistrationAuthority = auth
+	logoBytes, err := decoder.ReadNBytes(64)
+	if err != nil {
+		return err
+	}
+	copy(obj.Logo[:], logoBytes)
+	nameBytes, err := decoder.ReadNBytes(32)
+	if err != nil {
+		return err
+	}
+	copy(obj.Name[:], nameBytes)
+	siteBytes, err := decoder.ReadNBytes(32)
+	if err != nil {
+		return err
+	}
+	copy(obj.Website[:], siteBytes)
+	symBytes, err := decoder.ReadNBytes(32)
+	if err != nil {
+		return err
+	}
+	copy(obj.Symbol[:], symBytes)
+	return nil
 }
 
 func DecodeTokenMeta(in []byte) (*TokenMeta, error) {

@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -187,7 +187,7 @@ func (inst *SetAuthority) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj SetAuthority) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `AuthorityType` param:
-	err = encoder.Encode(obj.AuthorityType)
+	err = encoder.WriteByte(uint8(*obj.AuthorityType))
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func (obj SetAuthority) MarshalWithEncoder(encoder *ag_binary.Encoder) (err erro
 			if err != nil {
 				return err
 			}
-			err = encoder.Encode(obj.NewAuthority)
+			err = encoder.WriteBytes(obj.NewAuthority[:], false)
 			if err != nil {
 				return err
 			}

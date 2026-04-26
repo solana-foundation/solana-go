@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"math/big"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	stdjson "github.com/goccy/go-json"
 )
 

@@ -15,10 +15,11 @@
 package computebudget
 
 import (
+	"encoding/binary"
 	"errors"
 
-	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_binary "github.com/gagliardetto/solana-go/binary"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
@@ -109,13 +110,13 @@ func (inst *RequestUnitsDeprecated) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj RequestUnitsDeprecated) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `Units` param:
-	err = encoder.Encode(obj.Units)
+	err = encoder.WriteUint32(obj.Units, binary.LittleEndian)
 	if err != nil {
 		return err
 	}
 
 	// Serialize `AdditionalFee` param:
-	err = encoder.Encode(obj.AdditionalFee)
+	err = encoder.WriteUint32(obj.AdditionalFee, binary.LittleEndian)
 	if err != nil {
 		return err
 	}

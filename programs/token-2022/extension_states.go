@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 )
 
 // TLV entry header for extensions in Token-2022 account data.

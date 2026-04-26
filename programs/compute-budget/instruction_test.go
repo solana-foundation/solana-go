@@ -19,7 +19,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	bin "github.com/gagliardetto/binary"
+	bin "github.com/gagliardetto/solana-go/binary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

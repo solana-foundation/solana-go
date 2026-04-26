@@ -19,9 +19,9 @@ import (
 	"strconv"
 	"testing"
 
-	bin "github.com/gagliardetto/binary"
 	ag_gofuzz "github.com/gagliardetto/gofuzz"
 	"github.com/gagliardetto/solana-go"
+	bin "github.com/gagliardetto/solana-go/binary"
 	ag_require "github.com/stretchr/testify/require"
 )
 
