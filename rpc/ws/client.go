@@ -186,13 +186,38 @@ func getUint64WithOk(data []byte, path ...string) (uint64, bool) {
 	return 0, false
 }
 
+func getRPCError(data []byte) error {
+	rawErr, dataType, _, err := jsonparser.Get(data, "error")
+	if err != nil || dataType == jsonparser.Null {
+		return nil
+	}
+
+	if dataType != jsonparser.Object {
+		return fmt.Errorf("rpc error: %s", string(rawErr))
+	}
+
+	parsed := new(json2.Error)
+	if err := json.Unmarshal(rawErr, parsed); err != nil {
+		return fmt.Errorf("rpc error: %s", string(rawErr))
+	}
+	return parsed
+}
+
 func (c *Client) handleMessage(message []byte) {
 	// when receiving message with id. the result will be a subscription number.
 	// that number will be associated to all future message destine to this request
 
 	requestID, ok := getUint64WithOk(message, "id")
 	if ok {
-		subID, _ := getUint64WithOk(message, "result")
+		if rpcErr := getRPCError(message); rpcErr != nil {
+			c.closeSubscription(requestID, rpcErr)
+			return
+		}
+		subID, ok := getUint64WithOk(message, "result")
+		if !ok {
+			c.closeSubscription(requestID, fmt.Errorf("subscription response missing result for request_id=%d", requestID))
+			return
+		}
 		c.handleNewSubscriptionMessage(requestID, subID)
 		return
 	}
