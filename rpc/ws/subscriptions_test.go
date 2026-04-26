@@ -330,7 +330,7 @@ func TestConfigParams_Wire(t *testing.T) {
 		require.NotNil(t, got["dataSlice"])
 		require.Equal(t, uint64(100), got["minContextSlot"])
 		// MinContextSlot is written as a plain uint64, not as a pointer,
-		// so JSON marshalling lands on a number (matching Agave).
+		// so JSON marshaling lands on a number (matching Agave).
 		require.IsType(t, uint64(0), got["minContextSlot"])
 	})
 

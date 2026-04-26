@@ -117,7 +117,7 @@ func (v *SignatureResultValue) UnmarshalJSON(data []byte) error {
 }
 
 // SignatureSubscribe subscribes to confirmation notifications for a
-// single transaction signature. The subscription is cancelled by the
+// single transaction signature. The subscription is canceled by the
 // server once the notification fires.
 func (cl *Client) SignatureSubscribe(
 	signature solana.Signature,
