@@ -20,7 +20,6 @@ package solana
 import (
 	"bytes"
 	"crypto"
-	"crypto/ed25519"
 	crypto_rand "crypto/rand"
 	"crypto/sha256"
 	"errors"
@@ -29,9 +28,10 @@ import (
 	"os"
 	"sort"
 
-	"filippo.io/edwards25519/field"
 	"github.com/gagliardetto/solana-go/base58"
 	mrtronbase58 "github.com/mr-tron/base58"
+	"github.com/oasisprotocol/curve25519-voi/curve"
+	voied25519 "github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -69,14 +69,14 @@ func PrivateKeyFromBase58(privkey string) (PrivateKey, error) {
 }
 
 func ValidatePrivateKey(b []byte) (bool, error) {
-	if len(b) != ed25519.PrivateKeySize {
-		return false, fmt.Errorf("invalid private key size, expected %v, got %d", ed25519.PrivateKeySize, len(b))
+	if len(b) != voied25519.PrivateKeySize {
+		return false, fmt.Errorf("invalid private key size, expected %v, got %d", voied25519.PrivateKeySize, len(b))
 	}
 
 	// ed25519 private keys are seed(32) + public(32); ensure they match.
-	derived := ed25519.NewKeyFromSeed(b[:ed25519.SeedSize])
+	derived := voied25519.NewKeyFromSeed(b[:voied25519.SeedSize])
 	if !bytes.Equal(derived, b) {
-		if !IsOnCurve(b[ed25519.SeedSize:]) {
+		if !IsOnCurve(b[voied25519.SeedSize:]) {
 			return false, errors.New("invalid private key: seed/public key mismatch (provided public key is NOT on the ed25519 curve)")
 		}
 		return false, errors.New("invalid private key: seed/public key mismatch")
@@ -114,7 +114,7 @@ func (k PrivateKey) String() string {
 }
 
 func NewRandomPrivateKey() (PrivateKey, error) {
-	pub, priv, err := ed25519.GenerateKey(crypto_rand.Reader)
+	pub, priv, err := voied25519.GenerateKey(crypto_rand.Reader)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (k PrivateKey) Sign(payload []byte) (Signature, error) {
 	if err := k.Validate(); err != nil {
 		return Signature{}, err
 	}
-	p := ed25519.PrivateKey(k)
+	p := voied25519.PrivateKey(k)
 	signData, err := p.Sign(crypto_rand.Reader, payload, crypto.Hash(0))
 	if err != nil {
 		return Signature{}, err
@@ -143,8 +143,10 @@ func (k PrivateKey) PublicKeyOrErr() (PublicKey, error) {
 	if err := k.Validate(); err != nil {
 		return PublicKey{}, err
 	}
-	p := ed25519.PrivateKey(k)
-	pub := p.Public().(ed25519.PublicKey)
+
+	p := voied25519.PrivateKey(k)
+	pub := p.Public().(voied25519.PublicKey)
+
 	var publicKey PublicKey
 	copy(publicKey[:], pub)
 	return publicKey, nil
@@ -158,9 +160,13 @@ func (k PrivateKey) PublicKey() PublicKey {
 // PK is a convenience alias for PublicKey
 type PK = PublicKey
 
+// done to keep verify the same as stdlib crypto/ed25519
+var verifyOptsStdLib = &voied25519.Options{
+	Verify: voied25519.VerifyOptionsStdLib,
+}
+
 func (p PublicKey) Verify(message []byte, signature Signature) bool {
-	pub := ed25519.PublicKey(p[:])
-	return ed25519.Verify(pub, message, signature[:])
+	return voied25519.VerifyWithOptions(p[:], message, signature[:], verifyOptsStdLib)
 }
 
 type PublicKey [PublicKeyLength]byte
@@ -302,7 +308,7 @@ func (p PublicKey) Bytes() []byte {
 	return []byte(p[:])
 }
 
-// Check if a `Pubkey` is on the ed25519 curve.
+// Check if a `Pubkey` is on the voied25519 curve.
 func (p PublicKey) IsOnCurve() bool {
 	return IsOnCurve(p[:])
 }
@@ -623,7 +629,7 @@ const (
 	SignatureLength = 64
 
 	// Number of bytes in a private key.
-	PrivateKeyLength = ed25519.PrivateKeySize
+	PrivateKeyLength = voied25519.PrivateKeySize
 
 	// // Maximum string length of a base58 encoded pubkey.
 	// MaxBase58Length = 44
@@ -684,32 +690,20 @@ func CreateProgramAddress(seeds [][]byte, programID PublicKey) (PublicKey, error
 	return PublicKeyFromBytes(hash[:]), nil
 }
 
-var feOne = new(field.Element).One()
-var d, _ = new(field.Element).SetBytes([]byte{
-	0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75,
-	0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00,
-	0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c,
-	0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52})
-
 // Check if the provided `b` is on the ed25519 curve.
 func IsOnCurve(b []byte) bool {
-	if len(b) != ed25519.PublicKeySize {
+	if len(b) != voied25519.PublicKeySize {
 		return false
 	}
-	//_, err := new(edwards25519.Point).SetBytes(b)
-	y, err := new(field.Element).SetBytes(b)
-	if err != nil {
+	var compressed curve.CompressedEdwardsY
+	if _, err := compressed.SetBytes(b); err != nil {
 		return false
 	}
-
-	y2 := new(field.Element).Square(y)
-	u := new(field.Element).Subtract(y2, feOne)
-
-	vv := new(field.Element).Multiply(y2, d)
-	vv = vv.Add(vv, feOne)
-
-	_, wasSquare := new(field.Element).SqrtRatio(u, vv)
-	return wasSquare != 0
+	var p curve.EdwardsPoint
+	if _, err := p.SetCompressedY(&compressed); err != nil {
+		return false
+	}
+	return true
 }
 
 // Find a valid program address and its corresponding bump seed.
