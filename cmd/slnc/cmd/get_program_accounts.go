@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/text"
 	json "github.com/goccy/go-json"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/text"
 	"github.com/spf13/cobra"
 )
 

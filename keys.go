@@ -30,8 +30,8 @@ import (
 	"sort"
 
 	"filippo.io/edwards25519/field"
-	"github.com/gagliardetto/solana-go/base58"
 	mrtronbase58 "github.com/mr-tron/base58"
+	"github.com/solana-foundation/solana-go/v2/base58"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 

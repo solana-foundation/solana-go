@@ -1,6 +1,6 @@
 package rpc
 
-import "github.com/gagliardetto/solana-go"
+import "github.com/solana-foundation/solana-go/v2"
 
 // Redefined locally to avoid a cycle with the token2022 sub-package, which
 // imports rpc. Canonical copies: token2022.MINT_SIZE / ACCOUNT_SIZE /

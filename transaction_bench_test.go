@@ -11,7 +11,8 @@ import (
 //
 // numInstructions: how many instructions in the transaction.
 // accountsPerIx:   how many AccountMeta entries each instruction references.
-//                  (first is always a signer; second is always writable; rest readonly)
+//
+//	(first is always a signer; second is always writable; rest readonly)
 func buildBenchInstructions(numInstructions, accountsPerIx int) ([]Instruction, Hash) {
 	// Pre-generate a pool of unique accounts so instructions share some accounts
 	// (realistic — the same fee payer / writable state account appears in many ixs)
@@ -98,9 +99,9 @@ func buildBenchInstructionsWithLookups(numInstructions, accountsPerIx int) ([]In
 // Upper bound is ~10 instructions / ~30 accounts per ix — beyond that
 // becomes a synthetic stress shape that doesn't represent real traffic.
 var benchTxShapes = []struct {
-	name           string
+	name            string
 	numInstructions int
-	accountsPerIx  int
+	accountsPerIx   int
 }{
 	{"small_2ix_5accts", 2, 5},
 	{"medium_5ix_15accts", 5, 15},

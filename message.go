@@ -23,9 +23,9 @@ import (
 
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/treeout"
-	jsoniter "github.com/json-iterator/go"
+	gojson "github.com/goccy/go-json"
 
-	"github.com/gagliardetto/solana-go/text"
+	"github.com/solana-foundation/solana-go/v2/text"
 )
 
 type MessageAddressTableLookupSlice []MessageAddressTableLookup
@@ -242,7 +242,7 @@ func (mx *Message) UnmarshalJSON(data []byte) error {
 		Header              MessageHeader         `json:"header"`
 		RecentBlockhash     Hash                  `json:"recentBlockhash"`
 		Instructions        []CompiledInstruction `json:"instructions"`
-		AddressTableLookups *jsoniter.RawMessage  `json:"addressTableLookups"`
+		AddressTableLookups *gojson.RawMessage    `json:"addressTableLookups"`
 	}{}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
