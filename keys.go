@@ -139,9 +139,9 @@ func (k PrivateKey) Sign(payload []byte) (Signature, error) {
 	return signature, err
 }
 
-func (k PrivateKey) PublicKey() PublicKey {
+func (k PrivateKey) PublicKeyOrErr() (PublicKey, error) {
 	if err := k.Validate(); err != nil {
-		panic(err)
+		return PublicKey{}, err
 	}
 
 	p := voied25519.PrivateKey(k)
@@ -149,8 +149,12 @@ func (k PrivateKey) PublicKey() PublicKey {
 
 	var publicKey PublicKey
 	copy(publicKey[:], pub)
+	return publicKey, nil
+}
 
-	return publicKey
+func (k PrivateKey) PublicKey() PublicKey {
+	pub, _ := k.PublicKeyOrErr()
+	return pub
 }
 
 // PK is a convenience alias for PublicKey

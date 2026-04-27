@@ -196,14 +196,14 @@ func TestDiff_EventMatch(t *testing.T) {
 // only single event but starts to act weirdly when there > 1, like the Event's Path is all wrong. It's
 // better to try to avoid it when possible.
 func accumulateDiff(left, right any) (out []Event) {
-	Diff(left, right, OnEvent(func(event Event) {
+	_ = Diff(left, right, OnEvent(func(event Event) {
 		out = append(out, event)
 	}))
 	return
 }
 
 func accumulateDiffStrings(left, right any) (out []string) {
-	Diff(left, right, OnEvent(func(event Event) {
+	_ = Diff(left, right, OnEvent(func(event Event) {
 		out = append(out, eventToString(&event))
 	}))
 	return
