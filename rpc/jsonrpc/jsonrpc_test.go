@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"testing"
 
-	stdjson "github.com/goccy/go-json"
+	gojson "github.com/goccy/go-json"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/require"
 )
@@ -386,14 +386,14 @@ func TestRpcJsonResponseStruct(t *testing.T) {
 	res, err = rpcClient.Call(context.Background(), "something", 1, 2, 3)
 	<-requestChan
 	Expect(err).To(BeNil())
-	Expect(res.Result).To(Equal(stdjson.RawMessage([]byte(strconv.Quote("ok")))))
+	Expect(res.Result).To(Equal(gojson.RawMessage([]byte(strconv.Quote("ok")))))
 
 	// result with error null is ok
 	responseBody = `{"result": "ok", "error": null}`
 	res, err = rpcClient.Call(context.Background(), "something", 1, 2, 3)
 	<-requestChan
 	Expect(err).To(BeNil())
-	Expect(res.Result).To(Equal(stdjson.RawMessage([]byte(strconv.Quote("ok")))))
+	Expect(res.Result).To(Equal(gojson.RawMessage([]byte(strconv.Quote("ok")))))
 
 	// error with result null is ok
 	responseBody = `{"error": {"code": 123, "message": "something wrong"}, "result": null}`
@@ -655,8 +655,8 @@ func TestRpcBatchJsonResponseStruct(t *testing.T) {
 	})
 	<-requestChan
 	Expect(err).To(BeNil())
-	Expect(res[0].Result).To(Equal(stdjson.RawMessage([]byte(strconv.Quote("ok")))))
-	Expect(res[0].ID).To(Equal(stdjson.Number("1")))
+	Expect(res[0].Result).To(Equal(gojson.RawMessage([]byte(strconv.Quote("ok")))))
+	Expect(res[0].ID).To(Equal(gojson.Number("1")))
 
 	// result with error null is ok
 	responseBody = `[{"result": "ok", "error": null}]`
@@ -665,7 +665,7 @@ func TestRpcBatchJsonResponseStruct(t *testing.T) {
 	})
 	<-requestChan
 	Expect(err).To(BeNil())
-	Expect(res[0].Result).To(Equal(stdjson.RawMessage([]byte(strconv.Quote("ok")))))
+	Expect(res[0].Result).To(Equal(gojson.RawMessage([]byte(strconv.Quote("ok")))))
 
 	// error with result null is ok
 	responseBody = `[{"error": {"code": 123, "message": "something wrong"}, "result": null}]`
@@ -731,10 +731,10 @@ func TestRpcBatchJsonResponseStruct(t *testing.T) {
 	Expect(err).To(BeNil())
 
 	Expect(res[0].Error).To(BeNil())
-	Expect(res[0].ID).To(Equal(stdjson.Number("1")))
+	Expect(res[0].ID).To(Equal(gojson.Number("1")))
 
 	Expect(res[1].Error).To(BeNil())
-	Expect(res[1].ID).To(Equal(stdjson.Number("2")))
+	Expect(res[1].ID).To(Equal(gojson.Number("2")))
 
 	err = res[0].GetObject(&p)
 	require.NoError(t, err)
