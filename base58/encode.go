@@ -5,6 +5,74 @@ import (
 	"unsafe"
 )
 
+// Encode encodes a byte slice to a base58 string. Each leading zero byte in
+// src produces a leading '1' in the output. Empty input produces an empty
+// string.
+//
+// Inputs of exactly 32 or 64 bytes — the common Solana sizes (pubkey, hash,
+// signature, private key) — are dispatched to the matrix-multiply fast paths
+// and are ~20x faster than the long-division fallback used for other lengths.
+func Encode(buf []byte) string {
+	switch len(buf) {
+	case 0:
+		return ""
+	case 32:
+		return Encode32((*[32]byte)(buf))
+	case 64:
+		return Encode64((*[64]byte)(buf))
+	default:
+		return encodeVariable(buf)
+	}
+}
+
+// encodeVariable is a long-division base58 encoder for inputs of arbitrary
+// length. Adapted from github.com/mr-tron/base58 (FastBase58Encoding); the
+// output-buffer size is corrected to zcount+size-j (upstream's
+// binsz-zcount+(size-j) panics on all-zero input and over-allocates otherwise,
+// leaving NUL bytes at the tail of the returned string).
+func encodeVariable(bin []byte) string {
+	binsz := len(bin)
+	zcount := 0
+	for zcount < binsz && bin[zcount] == 0 {
+		zcount++
+	}
+
+	// Upper bound on encoded non-zero portion: ceil(n * log(256)/log(58)) ~
+	// n * 1.366. Use 138/100 + 1 for safety.
+	size := (binsz-zcount)*138/100 + 1
+	buf := make([]byte, size)
+
+	high := size - 1
+	for i := zcount; i < binsz; i++ {
+		j := size - 1
+		for carry := uint32(bin[i]); j > high || carry != 0; j-- {
+			carry += 256 * uint32(buf[j])
+			buf[j] = byte(carry % 58)
+			carry /= 58
+			if j == 0 {
+				break
+			}
+		}
+		high = j
+	}
+
+	// Skip leading zero digits in the working buffer.
+	j := 0
+	for j < size && buf[j] == 0 {
+		j++
+	}
+
+	b58 := make([]byte, zcount+size-j)
+	for i := range zcount {
+		b58[i] = base58Chars[0]
+	}
+	for i := zcount; j < size; i++ {
+		b58[i] = base58Chars[buf[j]]
+		j++
+	}
+	return string(b58)
+}
+
 // Encode32 encodes a 32-byte array to a base58 string.
 //
 // Allocates exactly one []byte of the encoded length. For zero-allocation

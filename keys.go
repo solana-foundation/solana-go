@@ -29,7 +29,6 @@ import (
 	"sort"
 
 	"github.com/gagliardetto/solana-go/base58"
-	mrtronbase58 "github.com/mr-tron/base58"
 	"github.com/oasisprotocol/curve25519-voi/curve"
 	voied25519 "github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -57,11 +56,10 @@ func MustPrivateKeyFromBase58(in string) PrivateKey {
 }
 
 func PrivateKeyFromBase58(privkey string) (PrivateKey, error) {
-	res, err := mrtronbase58.Decode(privkey)
+	res, err := base58.Decode(privkey)
 	if err != nil {
 		return nil, err
 	}
-	// validate
 	if _, err := ValidatePrivateKey(res); err != nil {
 		return nil, err
 	}
@@ -110,7 +108,7 @@ func PrivateKeyFromSolanaKeygenFileBytes(content []byte) (PrivateKey, error) {
 }
 
 func (k PrivateKey) String() string {
-	return mrtronbase58.Encode(k)
+	return base58.Encode(k)
 }
 
 func NewRandomPrivateKey() (PrivateKey, error) {
@@ -199,7 +197,7 @@ func PublicKeyFromBase58(in string) (out PublicKey, err error) {
 	if err = base58.Decode32(in, (*[32]byte)(&out)); err != nil {
 		// Fall back to the variable-length decoder to produce a more
 		// informative error when the input decodes to a wrong-length value.
-		val, decErr := mrtronbase58.Decode(in)
+		val, decErr := base58.Decode(in)
 		if decErr != nil {
 			return out, fmt.Errorf("decode: %w", decErr)
 		}
@@ -326,7 +324,7 @@ func (p *PublicKey) Set(s string) (err error) {
 }
 
 func (p PublicKey) String() string {
-	return base58.Encode32((*[32]byte)(&p))
+	return base58.Encode(p[:])
 }
 
 // Short returns a shortened pubkey string,

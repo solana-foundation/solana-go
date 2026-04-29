@@ -25,9 +25,9 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	bin "github.com/gagliardetto/binary"
+	"github.com/gagliardetto/solana-go/base58"
 	"github.com/gagliardetto/solana-go/text"
 	"github.com/gagliardetto/treeout"
-	"github.com/mr-tron/base58"
 	"go.uber.org/zap"
 )
 
