@@ -17,6 +17,8 @@ package memo
 import (
 	"errors"
 	"fmt"
+	"unicode/utf8"
+
 	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
 	ag_format "github.com/gagliardetto/solana-go/text/format"
@@ -27,15 +29,16 @@ type Create struct {
 	// The memo message
 	Message []byte
 
-	// [0] = [SIGNER] Signer
-	// ··········· The account that will pay for the transaction
+	// [0..N] = [SIGNER] Signers
+	// ··········· Optional signers that approve the memo.
+	// ··········· If zero signers are provided, the memo is unsigned.
 	ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 }
 
 // NewMemoInstructionBuilder creates a new `Memo` instruction builder.
 func NewMemoInstructionBuilder() *Create {
 	nd := &Create{
-		AccountMetaSlice: make(ag_solanago.AccountMetaSlice, 1),
+		AccountMetaSlice: make(ag_solanago.AccountMetaSlice, 0),
 	}
 	return nd
 }
@@ -46,18 +49,28 @@ func (inst *Create) SetMessage(message []byte) *Create {
 	return inst
 }
 
-// SetSigner sets the signer account
+// SetSigner sets a single signer account (replaces any existing signers).
 func (inst *Create) SetSigner(signer ag_solanago.PublicKey) *Create {
-	inst.AccountMetaSlice[0] = ag_solanago.Meta(signer).SIGNER()
+	inst.AccountMetaSlice = ag_solanago.AccountMetaSlice{
+		ag_solanago.Meta(signer).SIGNER(),
+	}
+	return inst
+}
+
+// AddSigner appends a signer account to the list of signers.
+func (inst *Create) AddSigner(signer ag_solanago.PublicKey) *Create {
+	inst.AccountMetaSlice = append(inst.AccountMetaSlice, ag_solanago.Meta(signer).SIGNER())
 	return inst
 }
 
 func (inst *Create) GetSigner() *ag_solanago.AccountMeta {
+	if len(inst.AccountMetaSlice) == 0 {
+		return nil
+	}
 	return inst.AccountMetaSlice[0]
 }
 
 func (inst Create) Build() *MemoInstruction {
-
 	return &MemoInstruction{BaseVariant: ag_binary.BaseVariant{
 		Impl:   inst,
 		TypeID: ag_binary.NoTypeIDDefaultID,
@@ -75,23 +88,22 @@ func (inst Create) ValidateAndBuild() (*MemoInstruction, error) {
 }
 
 func (inst *Create) Validate() error {
-	// Check whether all (required) parameters are set:
-	{
-		if len(inst.Message) == 0 {
-			return errors.New("Message not set")
-		}
+	if len(inst.Message) == 0 {
+		return errors.New("message not set")
+	}
+	if !utf8.Valid(inst.Message) {
+		return errors.New("message is not valid UTF-8")
 	}
 
-	// Check whether all accounts are set:
 	for accIndex, acc := range inst.AccountMetaSlice {
 		if acc == nil {
-			return fmt.Errorf("ins.AccountMetaSlice[%v] is not set", accIndex)
+			return fmt.Errorf("ins.AccountMetaSlice[%d] is not set", accIndex)
 		}
 	}
 	return nil
 }
 func (inst *Create) EncodeToTree(parent ag_treeout.Branches) {
-	parent.Child(ag_format.Program("Memo", ag_solanago.MemoProgramID)).
+	parent.Child(ag_format.Program("Memo", ProgramID)).
 		ParentFunc(func(programBranch ag_treeout.Branches) {
 			programBranch.Child(ag_format.Instruction("Create")).
 				ParentFunc(func(instructionBranch ag_treeout.Branches) {
@@ -102,42 +114,36 @@ func (inst *Create) EncodeToTree(parent ag_treeout.Branches) {
 
 					// Accounts of the instruction:
 					instructionBranch.Child("Accounts").ParentFunc(func(accountsBranch ag_treeout.Branches) {
-						accountsBranch.Child(ag_format.Meta("Signer", inst.AccountMetaSlice[0]))
+						for i, signer := range inst.AccountMetaSlice {
+							accountsBranch.Child(ag_format.Meta(fmt.Sprintf("Signer[%d]", i), signer))
+						}
 					})
 				})
 		})
 }
 
 func (inst Create) MarshalWithEncoder(encoder *ag_binary.Encoder) error {
-	// Serialize `Message` param:
-	{
-		err := encoder.WriteBytes(inst.Message, false)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return encoder.WriteBytes(inst.Message, false)
 }
 
 func (inst *Create) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
-	// Deserialize `Message` param:
-	{
-		var err error
-		inst.Message, err = decoder.ReadBytes(decoder.Len())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	var err error
+	inst.Message, err = decoder.ReadBytes(decoder.Len())
+	return err
 }
 
 // NewMemoInstruction declares a new Memo instruction with the provided parameters and accounts.
+// Accepts zero or more signers. If no signers are provided, the memo is unsigned.
 func NewMemoInstruction(
 	// Parameters:
 	message []byte,
 	// Accounts:
-	signer ag_solanago.PublicKey) *Create {
-	return NewMemoInstructionBuilder().
-		SetMessage(message).
-		SetSigner(signer)
+	signers ...ag_solanago.PublicKey,
+) *Create {
+	builder := NewMemoInstructionBuilder().
+		SetMessage(message)
+	for _, signer := range signers {
+		builder.AddSigner(signer)
+	}
+	return builder
 }

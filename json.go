@@ -15,7 +15,24 @@
 package solana
 
 import (
-	jsoniter "github.com/json-iterator/go"
+	"io"
+
+	gojson "github.com/goccy/go-json"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+// json is a package-local alias for the JSON library in use. It keeps the
+// existing `json.Marshal`/`json.Unmarshal`/`json.NewDecoder`/`json.NewEncoder`
+// call sites working while the underlying library is swapped.
+var json = struct {
+	Marshal       func(v any) ([]byte, error)
+	MarshalIndent func(v any, prefix, indent string) ([]byte, error)
+	Unmarshal     func(data []byte, v any) error
+	NewDecoder    func(r io.Reader) *gojson.Decoder
+	NewEncoder    func(w io.Writer) *gojson.Encoder
+}{
+	Marshal:       gojson.Marshal,
+	MarshalIndent: gojson.MarshalIndent,
+	Unmarshal:     gojson.Unmarshal,
+	NewDecoder:    gojson.NewDecoder,
+	NewEncoder:    gojson.NewEncoder,
+}

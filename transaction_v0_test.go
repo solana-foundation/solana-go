@@ -31,7 +31,7 @@ func TestTransactionV0(t *testing.T) {
 			MPK("2jGpE3ADYRoJPMjyGC4tvqqDfobvdvwGr3vhd66zA1rc"),
 			MPK("FKN5imdi7yadX4axe4hxaqBET4n6DBDRF5LKo5aBF53j"),
 			MPK("3or4uF7ZyuQW5GGmcmdXDJasNiSZUURF2az1UrRPYQTg"),
-			MPK("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+			MemoProgramID,
 		},
 	}
 	// set the address tables
@@ -55,7 +55,7 @@ func TestTransactionV0(t *testing.T) {
 			MPK("G6NDx85GM481GPjT5kUBAvjLxzDMsgRMQ1EAxzGswEJn"),
 			MPK("81o7hHYN5a8fc5wdjjfznK9ziJ9wcuKXwbZnuYpanxMQ"),
 			SystemProgramID,
-			MPK("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+			MemoProgramID,
 			MPK("FKN5imdi7yadX4axe4hxaqBET4n6DBDRF5LKo5aBF53j"),
 			MPK("3or4uF7ZyuQW5GGmcmdXDJasNiSZUURF2az1UrRPYQTg"),
 			MPK("2jGpE3ADYRoJPMjyGC4tvqqDfobvdvwGr3vhd66zA1rc"),
@@ -88,7 +88,7 @@ func TestTransactionV0(t *testing.T) {
 					MPK("G6NDx85GM481GPjT5kUBAvjLxzDMsgRMQ1EAxzGswEJn"),
 					MPK("81o7hHYN5a8fc5wdjjfznK9ziJ9wcuKXwbZnuYpanxMQ"),
 					SystemProgramID,
-					MPK("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+					MemoProgramID,
 					MPK("FKN5imdi7yadX4axe4hxaqBET4n6DBDRF5LKo5aBF53j"),
 					MPK("3or4uF7ZyuQW5GGmcmdXDJasNiSZUURF2az1UrRPYQTg"),
 					MPK("2jGpE3ADYRoJPMjyGC4tvqqDfobvdvwGr3vhd66zA1rc"),

@@ -1,23 +1,43 @@
-# Change log
+# Changelog
 
-The format is based on
-[Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this
-project adheres to
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html). See
-[MAINTAINERS.md](./MAINTAINERS.md) for instructions to keep up to
-date.
+## [1.19.0](https://github.com/solana-foundation/solana-go/compare/v1.18.0...v1.19.0) (2026-04-23)
 
-```
-⚠️ solana-go works using SemVer but in 0 version, which means that the 'minor' will be changed when some broken changes are introduced into the application, and the 'patch' will be changed when a new feature with new changes is added or for bug fixing. As soon as v1.0.0 be released, solana-go will start to use SemVer as usual.
-```
 
-# [v0.1.0] 2020-11-09
+### Features
 
-First release
+* is token mint classifier ([4f72982](https://github.com/solana-foundation/solana-go/commit/4f72982442c9b3c166b72dbb2de730f58b575539))
 
-# Includes the following features:
 
-* Get basic information from the chain about accounts, balances, etc.
-* Issue SOL native token transfer
-* Issue SPL token transfers
-* Get Project SERUM markets list and live market data
+### Bug Fixes
+
+* enhance getUint64 function to handle string inputs ([5309095](https://github.com/solana-foundation/solana-go/commit/53090952ffc598c1870617b1727179135994ec65))
+* keep websocket request IDs within JSON-safe range ([8ed3105](https://github.com/solana-foundation/solana-go/commit/8ed31050f7af62f26b5615f40546bb498cab9219))
+* **message:** json version detection ([1fd2201](https://github.com/solana-foundation/solana-go/commit/1fd2201431de71d9164d281eef2c62f858fb5016))
+* **message:** use gojson ([8d211d5](https://github.com/solana-foundation/solana-go/commit/8d211d5dc9e610b54fb84f662d83e2f55668e9d4))
+* reject malformed ed25519 private keys in PrivateKeyFromBase58 ([edcedcc](https://github.com/solana-foundation/solana-go/commit/edcedcc2ba5ebd01c65baf64b8a22bf879cb0d55))
+* **rpc:** match ParsedTransactionMeta to TransactionMeta ([a0f95c2](https://github.com/solana-foundation/solana-go/commit/a0f95c23eac6031c0f44e3095b763da531b8b2b7))
+
+### Performance Improvements
+
+* **json:** swap encoding/json and jsoniter for goccy/go-json ([c445f76](https://github.com/solana-foundation/solana-go/commit/c445f76c249d944731983fd720c2a9e6a874dc62))
+* **transaction:** add cap hints and use pk instead of str ([91e8cec](https://github.com/solana-foundation/solana-go/commit/91e8cec9785fccd2663f28e61c8cc5353f38c419))
+
+
+## [1.18.0](https://github.com/solana-foundation/solana-go/compare/v1.17.0...v1.18.0) (2026-04-16)
+
+
+### Features
+
+* add getters to txn with meta
+* add token-2022 extensions 
+* stake state types & ext tests 
+* vote program complete 
+
+### Bug Fixes
+
+* allign rpc client with agave 
+* memo program parity 
+
+### Performance Improvements
+
+* **message:** eliminate complex scans, struct copies, and redundant allocs

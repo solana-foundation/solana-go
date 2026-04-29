@@ -82,9 +82,9 @@ func (inst *Instruction) EncodeToTree(parent treeout.Branches) {
 var InstructionImplDef = bin.NewVariantDefinition(
 	bin.Uint8TypeIDEncoding,
 	[]bin.VariantType{
-		{"Create", (*Create)(nil)},
-		{"CreateIdempotent", (*CreateIdempotent)(nil)},
-		{"RecoverNested", (*RecoverNested)(nil)},
+		{Name: "Create", Type: (*Create)(nil)},
+		{Name: "CreateIdempotent", Type: (*CreateIdempotent)(nil)},
+		{Name: "RecoverNested", Type: (*RecoverNested)(nil)},
 	},
 )
 

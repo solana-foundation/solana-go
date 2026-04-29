@@ -22,30 +22,19 @@ import (
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	// Testnet has few validators; mainnet-beta has the real schedule.
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	{
-		out, err := client.GetBlockProduction(context.TODO())
-		if err != nil {
-			panic(err)
-		}
-		spew.Dump(out)
+	out, err := client.GetBlockProductionWithOpts(
+		ctx,
+		&rpc.GetBlockProductionOpts{
+			Commitment: rpc.CommitmentFinalized,
+			// Range: &rpc.SlotRangeRequest{ FirstSlot: ..., Identity: ... },
+		},
+	)
+	if err != nil {
+		panic(err)
 	}
-	{
-		out, err := client.GetBlockProductionWithOpts(
-			context.TODO(),
-			&rpc.GetBlockProductionOpts{
-				Commitment: rpc.CommitmentFinalized,
-				// Range: &rpc.SlotRangeRequest{
-				// 	FirstSlot: XXXXXX,
-				// 	Identity:  solana.MustPublicKeyFromBase58("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"),
-				// },
-			},
-		)
-		if err != nil {
-			panic(err)
-		}
-		spew.Dump(out)
-	}
+	spew.Dump(out)
 }

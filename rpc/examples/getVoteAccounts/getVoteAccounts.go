@@ -16,24 +16,30 @@ package main
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	out, err := client.GetVoteAccounts(
-		context.TODO(),
-		&rpc.GetVoteAccountsOpts{
-			VotePubkey: solana.MustPublicKeyFromBase58("vot33MHDqT6nSwubGzqtc6m16ChcUywxV7tNULF19Vu").ToPointer(),
-		},
-	)
+	// Without options, returns every vote account on the cluster. To
+	// filter to one validator, pass &GetVoteAccountsOpts{VotePubkey: &...}.
+	out, err := client.GetVoteAccounts(ctx, nil)
 	if err != nil {
 		panic(err)
 	}
-	spew.Dump(out)
+
+	// Full response is large on mainnet; print a summary.
+	fmt.Println("current vote accounts:", len(out.Current))
+	fmt.Println("delinquent vote accounts:", len(out.Delinquent))
+	for i, v := range out.Current {
+		if i >= 5 {
+			break
+		}
+		fmt.Printf("  %s  stake=%d commission=%d%%\n",
+			v.VotePubkey, v.ActivatedStake, v.Commission)
+	}
 }

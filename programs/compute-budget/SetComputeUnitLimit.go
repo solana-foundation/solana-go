@@ -70,10 +70,10 @@ func (inst *SetComputeUnitLimit) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Units == 0 {
-			return errors.New("Units parameter is not set")
+			return errors.New("units parameter is not set")
 		}
 		if inst.Units > MAX_COMPUTE_UNIT_LIMIT {
-			return errors.New("Units parameter exceeds the maximum compute unit")
+			return errors.New("units parameter exceeds the maximum compute unit")
 		}
 	}
 	return nil

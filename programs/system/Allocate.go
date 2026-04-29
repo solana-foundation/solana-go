@@ -80,7 +80,7 @@ func (inst *Allocate) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Space == nil {
-			return errors.New("Space parameter is not set")
+			return errors.New("space parameter is not set")
 		}
 	}
 

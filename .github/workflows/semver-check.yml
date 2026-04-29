@@ -1,0 +1,22 @@
+name: semver-check
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gorelease:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Install gorelease
+        run: go install golang.org/x/exp/cmd/gorelease@latest
+
+      - name: Check API compatibility
+        run: gorelease

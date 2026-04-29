@@ -67,7 +67,7 @@ func (inst SetLoadedAccountsDataSizeLimit) ValidateAndBuild() (*Instruction, err
 func (inst *SetLoadedAccountsDataSizeLimit) Validate() error {
 	// Check whether all (required) parameters are set:
 	if inst.Bytes == 0 {
-		return errors.New("Bytes parameter is not set")
+		return errors.New("bytes parameter is not set")
 	}
 
 	return nil

@@ -22,8 +22,7 @@ import (
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
 	out, err := client.GetInflationRate(
 		context.TODO(),

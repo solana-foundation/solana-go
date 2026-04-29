@@ -16,22 +16,51 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
+// GetFeeForMessage returns the fee for a base64-encoded Solana Message
+// (not a full Transaction). Here we construct a realistic Transfer
+// message to show how the base64 argument is produced.
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	example, err := client.GetFeeForMessage(
-		context.Background(),
-		"AQABAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQAA",
+	from := solana.NewWallet().PublicKey()
+	to := solana.NewWallet().PublicKey()
+
+	recent, err := client.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
+	if err != nil {
+		panic(fmt.Errorf("get blockhash: %w", err))
+	}
+
+	tx, err := solana.NewTransaction(
+		[]solana.Instruction{
+			system.NewTransferInstruction(
+				solana.LAMPORTS_PER_SOL/1000, // 0.001 SOL
+				from,
+				to,
+			).Build(),
+		},
+		recent.Value.Blockhash,
+		solana.TransactionPayer(from),
+	)
+	if err != nil {
+		panic(fmt.Errorf("build tx: %w", err))
+	}
+
+	out, err := client.GetFeeForMessage(
+		ctx,
+		tx.Message.ToBase64(),
 		rpc.CommitmentProcessed,
 	)
 	if err != nil {
 		panic(err)
 	}
-	spew.Dump(example)
+	spew.Dump(out)
 }

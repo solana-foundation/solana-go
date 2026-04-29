@@ -23,16 +23,23 @@ import (
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	pubKey := solana.MustPublicKeyFromBase58("6dmNQ5jwLeLk5REvio1JcMshcbvkYMwy26sJ8pbkvStu")
+	// Fetch any currently-voting validator so the example keeps working
+	// across epochs without a hardcoded pubkey.
+	voteAccounts, err := client.GetVoteAccounts(ctx, nil)
+	if err != nil {
+		panic(err)
+	}
+	if len(voteAccounts.Current) == 0 {
+		panic("no current vote accounts")
+	}
+	votePubkey := voteAccounts.Current[0].VotePubkey
 
 	out, err := client.GetInflationReward(
-		context.TODO(),
-		[]solana.PublicKey{
-			pubKey,
-		},
+		ctx,
+		[]solana.PublicKey{votePubkey},
 		&rpc.GetInflationRewardOpts{
 			Commitment: rpc.CommitmentFinalized,
 		},

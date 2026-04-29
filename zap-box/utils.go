@@ -24,8 +24,9 @@ import (
 // the given level.
 //
 // *Important!* This does not work with all underlying core
-//              implementation. See https://github.com/uber-go/zap/issues/581#issuecomment-600641485
-//              for details.
+//
+//	implementation. See https://github.com/uber-go/zap/issues/581#issuecomment-600641485
+//	for details.
 func WithLevel(level zapcore.Level) zap.Option {
 	return zap.WrapCore(func(core zapcore.Core) zapcore.Core {
 		return &coreWithLevel{

@@ -18,12 +18,12 @@
 package rpc
 
 import (
-	stdjson "encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	stdjson "github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 )
 

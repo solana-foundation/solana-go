@@ -16,10 +16,11 @@ package token
 
 import (
 	"bytes"
-	ag_gofuzz "github.com/gagliardetto/gofuzz"
-	ag_require "github.com/stretchr/testify/require"
 	"strconv"
 	"testing"
+
+	ag_gofuzz "github.com/gagliardetto/gofuzz"
+	ag_require "github.com/stretchr/testify/require"
 )
 
 func TestEncodeDecode_InitializeMint2(t *testing.T) {

@@ -10,10 +10,10 @@ import (
 // --- Encode fuzz: our output must match mr-tron for every input ---
 
 func FuzzEncode32_MatchesMrTron(f *testing.F) {
-	f.Add(make([]byte, 32))                // all zeros
-	f.Add(bytes.Repeat([]byte{0xff}, 32))  // all 0xFF
-	f.Add(append([]byte{1}, make([]byte, 31)...))  // single leading byte
-	f.Add(append(make([]byte, 31), 1))     // trailing 1
+	f.Add(make([]byte, 32))                       // all zeros
+	f.Add(bytes.Repeat([]byte{0xff}, 32))         // all 0xFF
+	f.Add(append([]byte{1}, make([]byte, 31)...)) // single leading byte
+	f.Add(append(make([]byte, 31), 1))            // trailing 1
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if len(data) != 32 {
@@ -119,14 +119,14 @@ func FuzzDecode64_MatchesMrTron(f *testing.F) {
 
 func FuzzDecode32_NoPanic(f *testing.F) {
 	f.Add([]byte(""))
-	f.Add([]byte("0"))                        // invalid char
-	f.Add([]byte("O"))                        // invalid char
-	f.Add([]byte("I"))                        // invalid char
-	f.Add([]byte("l"))                        // invalid char
-	f.Add([]byte("\x00"))                     // null byte
-	f.Add([]byte("\xff"))                     // high byte
-	f.Add(bytes.Repeat([]byte("z"), 45))     // too long
-	f.Add(bytes.Repeat([]byte("1"), 50))     // way too long
+	f.Add([]byte("0"))                   // invalid char
+	f.Add([]byte("O"))                   // invalid char
+	f.Add([]byte("I"))                   // invalid char
+	f.Add([]byte("l"))                   // invalid char
+	f.Add([]byte("\x00"))                // null byte
+	f.Add([]byte("\xff"))                // high byte
+	f.Add(bytes.Repeat([]byte("z"), 45)) // too long
+	f.Add(bytes.Repeat([]byte("1"), 50)) // way too long
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var dst [32]byte

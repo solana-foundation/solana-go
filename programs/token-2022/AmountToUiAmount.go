@@ -68,7 +68,7 @@ func (inst *AmountToUiAmount) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Amount == nil {
-			return errors.New("Amount parameter is not set")
+			return errors.New("amount parameter is not set")
 		}
 	}
 

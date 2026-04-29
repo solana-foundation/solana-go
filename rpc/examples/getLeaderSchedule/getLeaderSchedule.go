@@ -16,20 +16,29 @@ package main
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	out, err := client.GetLeaderSchedule(
-		context.TODO(),
-	)
+	out, err := client.GetLeaderSchedule(ctx)
 	if err != nil {
 		panic(err)
 	}
-	spew.Dump(out) // NOTE: this creates a lot of output
+
+	// The response maps every validator in the current epoch to its
+	// scheduled slots; on mainnet this is huge. Only print a summary.
+	fmt.Println("validators in current epoch:", len(out))
+	count := 0
+	for validator, slots := range out {
+		if count >= 5 {
+			break
+		}
+		fmt.Printf("  %s -> %d slots\n", validator, len(slots))
+		count++
+	}
 }

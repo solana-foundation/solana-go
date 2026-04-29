@@ -71,6 +71,10 @@ var (
 	// and know they were approved by zero or more addresses
 	// by inspecting the transaction log from a trusted provider.
 	MemoProgramID = MustPublicKeyFromBase58("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
+
+	// MemoProgramIDV1 is the deprecated v1 Memo program.
+	// Some legacy transactions still reference this program ID.
+	MemoProgramIDV1 = MustPublicKeyFromBase58("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo")
 )
 
 var (

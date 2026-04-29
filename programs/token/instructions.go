@@ -241,67 +241,67 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint8TypeIDEncoding,
 	[]ag_binary.VariantType{
 		{
-			"InitializeMint", (*InitializeMint)(nil),
+			Name: "InitializeMint", Type: (*InitializeMint)(nil),
 		},
 		{
-			"InitializeAccount", (*InitializeAccount)(nil),
+			Name: "InitializeAccount", Type: (*InitializeAccount)(nil),
 		},
 		{
-			"InitializeMultisig", (*InitializeMultisig)(nil),
+			Name: "InitializeMultisig", Type: (*InitializeMultisig)(nil),
 		},
 		{
-			"Transfer", (*Transfer)(nil),
+			Name: "Transfer", Type: (*Transfer)(nil),
 		},
 		{
-			"Approve", (*Approve)(nil),
+			Name: "Approve", Type: (*Approve)(nil),
 		},
 		{
-			"Revoke", (*Revoke)(nil),
+			Name: "Revoke", Type: (*Revoke)(nil),
 		},
 		{
-			"SetAuthority", (*SetAuthority)(nil),
+			Name: "SetAuthority", Type: (*SetAuthority)(nil),
 		},
 		{
-			"MintTo", (*MintTo)(nil),
+			Name: "MintTo", Type: (*MintTo)(nil),
 		},
 		{
-			"Burn", (*Burn)(nil),
+			Name: "Burn", Type: (*Burn)(nil),
 		},
 		{
-			"CloseAccount", (*CloseAccount)(nil),
+			Name: "CloseAccount", Type: (*CloseAccount)(nil),
 		},
 		{
-			"FreezeAccount", (*FreezeAccount)(nil),
+			Name: "FreezeAccount", Type: (*FreezeAccount)(nil),
 		},
 		{
-			"ThawAccount", (*ThawAccount)(nil),
+			Name: "ThawAccount", Type: (*ThawAccount)(nil),
 		},
 		{
-			"TransferChecked", (*TransferChecked)(nil),
+			Name: "TransferChecked", Type: (*TransferChecked)(nil),
 		},
 		{
-			"ApproveChecked", (*ApproveChecked)(nil),
+			Name: "ApproveChecked", Type: (*ApproveChecked)(nil),
 		},
 		{
-			"MintToChecked", (*MintToChecked)(nil),
+			Name: "MintToChecked", Type: (*MintToChecked)(nil),
 		},
 		{
-			"BurnChecked", (*BurnChecked)(nil),
+			Name: "BurnChecked", Type: (*BurnChecked)(nil),
 		},
 		{
-			"InitializeAccount2", (*InitializeAccount2)(nil),
+			Name: "InitializeAccount2", Type: (*InitializeAccount2)(nil),
 		},
 		{
-			"SyncNative", (*SyncNative)(nil),
+			Name: "SyncNative", Type: (*SyncNative)(nil),
 		},
 		{
-			"InitializeAccount3", (*InitializeAccount3)(nil),
+			Name: "InitializeAccount3", Type: (*InitializeAccount3)(nil),
 		},
 		{
-			"InitializeMultisig2", (*InitializeMultisig2)(nil),
+			Name: "InitializeMultisig2", Type: (*InitializeMultisig2)(nil),
 		},
 		{
-			"InitializeMint2", (*InitializeMint2)(nil),
+			Name: "InitializeMint2", Type: (*InitializeMint2)(nil),
 		},
 	},
 )

@@ -16,23 +16,43 @@ package main
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
+// getProgramAccounts returns every account owned by a program. Public
+// mainnet RPCs reject it without a restrictive filter because the
+// response would be too large. This example filters Token-2022 accounts
+// down to just mint accounts (82-byte data) and prints the first few.
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	out, err := client.GetProgramAccounts(
-		context.TODO(),
-		solana.MustPublicKeyFromBase58("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
+	out, err := client.GetProgramAccountsWithOpts(
+		ctx,
+		solana.Token2022ProgramID,
+		&rpc.GetProgramAccountsOpts{
+			Commitment: rpc.CommitmentFinalized,
+			Filters: []rpc.RPCFilter{
+				{DataSize: 82}, // SPL Token mint account size
+			},
+			// Only fetch the first byte of data so the response stays small.
+			DataSlice: &rpc.DataSlice{Offset: ptrU64(0), Length: ptrU64(1)},
+		},
 	)
 	if err != nil {
 		panic(err)
 	}
-	spew.Dump(len(out))
-	spew.Dump(out) // NOTE: this can generate a lot of output
+
+	fmt.Println("Token-2022 mints found:", len(out))
+	for i, acc := range out {
+		if i >= 5 {
+			break
+		}
+		fmt.Printf("  %d: %s\n", i, acc.Pubkey)
+	}
 }
+
+func ptrU64(v uint64) *uint64 { return &v }

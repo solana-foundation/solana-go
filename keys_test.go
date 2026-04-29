@@ -18,6 +18,7 @@
 package solana
 
 import (
+	"crypto/ed25519"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -141,6 +142,43 @@ func TestPrivateKeyFromSolanaKeygenFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPrivateKeyFromBase58RejectsMismatchedSeedAndPublicKey(t *testing.T) {
+	original := MustPrivateKeyFromBase58("66cDvko73yAf8LYvFMM3r8vF5vJtkk7JKMgEKwkmBC86oHdq41C7i1a2vS3zE1yCcdLLk6VUatUb32ZzVjSBXtRs")
+	require.Len(t, original, PrivateKeyLength)
+
+	tampered := append([]byte(nil), original...)
+	tampered[0] ^= 0xFF
+
+	valid, err := ValidatePrivateKey(tampered)
+	require.False(t, valid)
+	require.EqualError(t, err, "invalid private key: seed/public key mismatch")
+
+	_, err = PrivateKeyFromBase58(PrivateKey(tampered).String())
+	require.EqualError(t, err, "invalid private key: seed/public key mismatch")
+}
+
+func TestPrivateKeyFromBase58ReturnsDiagnosticForOffCurvePublicKey(t *testing.T) {
+	original := MustPrivateKeyFromBase58("66cDvko73yAf8LYvFMM3r8vF5vJtkk7JKMgEKwkmBC86oHdq41C7i1a2vS3zE1yCcdLLk6VUatUb32ZzVjSBXtRs")
+	require.Len(t, original, PrivateKeyLength)
+
+	tampered := append([]byte(nil), original...)
+	offCurve := make([]byte, ed25519.PublicKeySize)
+	found := false
+	for i := uint32(0); i < 100_000; i++ {
+		binary.LittleEndian.PutUint32(offCurve[:4], i)
+		if !IsOnCurve(offCurve) {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "expected to find an off-curve public key test vector")
+	copy(tampered[ed25519.SeedSize:], offCurve)
+
+	valid, err := ValidatePrivateKey(tampered)
+	require.False(t, valid)
+	require.EqualError(t, err, "invalid private key: seed/public key mismatch (provided public key is NOT on the ed25519 curve)")
 }
 
 func TestPublicKey_MarshalText(t *testing.T) {

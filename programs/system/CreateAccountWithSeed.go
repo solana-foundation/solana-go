@@ -147,19 +147,19 @@ func (inst *CreateAccountWithSeed) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Base == nil {
-			return errors.New("Base parameter is not set")
+			return errors.New("base parameter is not set")
 		}
 		if inst.Seed == nil {
-			return errors.New("Seed parameter is not set")
+			return errors.New("seed parameter is not set")
 		}
 		if inst.Lamports == nil {
-			return errors.New("Lamports parameter is not set")
+			return errors.New("lamports parameter is not set")
 		}
 		if inst.Space == nil {
-			return errors.New("Space parameter is not set")
+			return errors.New("space parameter is not set")
 		}
 		if inst.Owner == nil {
-			return errors.New("Owner parameter is not set")
+			return errors.New("owner parameter is not set")
 		}
 	}
 

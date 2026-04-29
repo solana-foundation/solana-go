@@ -108,7 +108,7 @@ func (inst ExtendLookupTable) ValidateAndBuild() (*Instruction, error) {
 
 func (inst *ExtendLookupTable) Validate() error {
 	if len(inst.Addresses) == 0 {
-		return errors.New("Addresses parameter is empty")
+		return errors.New("addresses parameter is empty")
 	}
 	// Check required accounts (first 2).
 	for accIndex := 0; accIndex < 2; accIndex++ {

@@ -67,7 +67,7 @@ func (cl *Client) GetLeaderScheduleWithOpts(
 	if err != nil {
 		return nil, err
 	}
-	// TODO: check that this behaviour is implemented everywhere:
+	// TODO: check that this behavior is implemented everywhere:
 	if out == nil {
 		return nil, ErrNotFound
 	}

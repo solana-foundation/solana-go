@@ -35,5 +35,5 @@ type GetInflationRateResult struct {
 	Foundation float64 `json:"foundation"`
 
 	// Epoch for which these values are valid.
-	Epoch float64 `json:"epoch"`
+	Epoch uint64 `json:"epoch"`
 }

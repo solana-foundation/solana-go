@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 	bin "github.com/gagliardetto/binary"
@@ -24,28 +25,34 @@ import (
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	txSig := solana.MustSignatureFromBase58("4bjVLV1g9SAfv7BSAdNnuSPRbSscADHFe4HegL6YVcuEBMY83edLEvtfjE4jfr6rwdLwKBQbaFiGgoLGtVicDzHq")
-	{
-		out, err := client.GetTransaction(
-			context.TODO(),
-			txSig,
-			nil,
-		)
-		if err != nil {
-			panic(err)
-		}
-		spew.Dump(out)
-		spew.Dump(out.Transaction.GetTransaction())
+	// Fetch a fresh signature so the example keeps working as the
+	// cluster advances. The SPL Token program always has recent activity
+	// on mainnet-beta.
+	limit := 1
+	sigs, err := client.GetSignaturesForAddressWithOpts(
+		ctx,
+		solana.TokenProgramID,
+		&rpc.GetSignaturesForAddressOpts{Limit: &limit},
+	)
+	if err != nil {
+		panic(fmt.Errorf("getSignaturesForAddress: %w", err))
 	}
+	if len(sigs) == 0 {
+		panic("no recent signatures found")
+	}
+	txSig := sigs[0].Signature
+	fmt.Println("fetching tx:", txSig)
+
+	maxVersion := uint64(0)
 	{
 		out, err := client.GetTransaction(
-			context.TODO(),
+			ctx,
 			txSig,
 			&rpc.GetTransactionOpts{
-				Encoding: solana.EncodingJSON,
+				MaxSupportedTransactionVersion: &maxVersion,
 			},
 		)
 		if err != nil {
@@ -56,24 +63,26 @@ func main() {
 	}
 	{
 		out, err := client.GetTransaction(
-			context.TODO(),
+			ctx,
 			txSig,
 			&rpc.GetTransactionOpts{
-				Encoding: solana.EncodingBase58,
+				Encoding:                       solana.EncodingJSON,
+				MaxSupportedTransactionVersion: &maxVersion,
 			},
 		)
 		if err != nil {
 			panic(err)
 		}
 		spew.Dump(out)
-		spew.Dump(out.Transaction.GetBinary())
+		spew.Dump(out.Transaction.GetTransaction())
 	}
 	{
 		out, err := client.GetTransaction(
-			context.TODO(),
+			ctx,
 			txSig,
 			&rpc.GetTransactionOpts{
-				Encoding: solana.EncodingBase64,
+				Encoding:                       solana.EncodingBase64,
+				MaxSupportedTransactionVersion: &maxVersion,
 			},
 		)
 		if err != nil {

@@ -16,26 +16,29 @@ package main
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	// The testnet airdrop faucet is frequently dry; devnet is reliable.
+	client := rpc.New(rpc.DevNet_RPC)
 
-	amount := solana.LAMPORTS_PER_SOL // 1 sol
-	pubKey := solana.MustPublicKeyFromBase58("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-	out, err := client.RequestAirdrop(
-		context.TODO(),
-		pubKey,
-		amount,
-		"",
+	wallet := solana.NewWallet()
+	fmt.Println("airdropping to:", wallet.PublicKey())
+
+	sig, err := client.RequestAirdrop(
+		ctx,
+		wallet.PublicKey(),
+		solana.LAMPORTS_PER_SOL, // 1 SOL
+		rpc.CommitmentFinalized,
 	)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("airdrop: %w", err))
 	}
-	spew.Dump(out)
+
+	fmt.Println("airdrop signature:", sig)
 }

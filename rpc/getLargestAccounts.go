@@ -27,6 +27,12 @@ const (
 	LargestAccountsFilterNonCirculating LargestAccountsFilterType = "nonCirculating"
 )
 
+type GetLargestAccountsOpts struct {
+	Commitment  CommitmentType
+	Filter      LargestAccountsFilterType
+	SortResults *bool
+}
+
 // GetLargestAccounts returns the 20 largest accounts,
 // by lamport balance (results may be cached up to two hours).
 func (cl *Client) GetLargestAccounts(
@@ -34,13 +40,30 @@ func (cl *Client) GetLargestAccounts(
 	commitment CommitmentType,
 	filter LargestAccountsFilterType, // filter results by account type; currently supported: circulating|nonCirculating
 ) (out *GetLargestAccountsResult, err error) {
+	return cl.GetLargestAccountsWithOpts(ctx, &GetLargestAccountsOpts{
+		Commitment: commitment,
+		Filter:     filter,
+	})
+}
+
+// GetLargestAccountsWithOpts returns the 20 largest accounts,
+// by lamport balance (results may be cached up to two hours).
+func (cl *Client) GetLargestAccountsWithOpts(
+	ctx context.Context,
+	opts *GetLargestAccountsOpts,
+) (out *GetLargestAccountsResult, err error) {
 	params := []any{}
 	obj := M{}
-	if commitment != "" {
-		obj["commitment"] = commitment
-	}
-	if filter != "" {
-		obj["filter"] = filter
+	if opts != nil {
+		if opts.Commitment != "" {
+			obj["commitment"] = opts.Commitment
+		}
+		if opts.Filter != "" {
+			obj["filter"] = opts.Filter
+		}
+		if opts.SortResults != nil {
+			obj["sortResults"] = *opts.SortResults
+		}
 	}
 	if len(obj) > 0 {
 		params = append(params, obj)

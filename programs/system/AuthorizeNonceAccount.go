@@ -93,7 +93,7 @@ func (inst *AuthorizeNonceAccount) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.Authorized == nil {
-			return errors.New("Authorized parameter is not set")
+			return errors.New("authorized parameter is not set")
 		}
 	}
 

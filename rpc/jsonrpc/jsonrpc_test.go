@@ -2,7 +2,6 @@ package jsonrpc
 
 import (
 	"context"
-	stdjson "encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 	"testing"
 
+	stdjson "github.com/goccy/go-json"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/require"
 )
@@ -602,13 +602,13 @@ func TestRpcBatchJsonResponseStruct(t *testing.T) {
 
 	// result must be wrapped in array on batch request
 	responseBody = `{"result": null}`
-	res, err = rpcClient.CallBatch(context.Background(), RPCRequests{
+	_, err = rpcClient.CallBatch(context.Background(), RPCRequests{
 		NewRequest("something", 1, 2, 3),
 	})
 	<-requestChan
 	Expect(err.Error()).NotTo(BeNil())
 
-	// result ok since in arrary
+	// result ok since in array
 	responseBody = `[{"result": null}]`
 	res, err = rpcClient.CallBatch(context.Background(), RPCRequests{
 		NewRequest("something", 1, 2, 3),

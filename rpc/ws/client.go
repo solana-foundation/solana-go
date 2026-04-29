@@ -170,10 +170,12 @@ func getUint64(data []byte, keys ...string) (val uint64, err error) {
 	if e != nil {
 		return 0, e
 	}
-	if t != jsonparser.Number {
-		return 0, fmt.Errorf("Value is not a number: %s", string(v))
+	switch t {
+	case jsonparser.Number, jsonparser.String:
+		return strconv.ParseUint(string(v), 10, 64)
+	default:
+		return 0, fmt.Errorf("value is not a number/string: type=%d data=%s", t, string(v))
 	}
-	return strconv.ParseUint(string(v), 10, 64)
 }
 
 func getUint64WithOk(data []byte, path ...string) (uint64, bool) {

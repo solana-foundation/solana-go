@@ -86,6 +86,9 @@ type VoteAccountsResult struct {
 	// Percentage (0-100) of rewards payout owed to the vote account.
 	Commission uint8 `json:"commission,omitempty"`
 
+	// Commission in basis points for inflation rewards.
+	InflationRewardsCommissionBps *uint16 `json:"inflationRewardsCommissionBps,omitempty"`
+
 	// Most recent slot voted on by this vote account.
 	LastVote uint64 `json:"lastVote,omitempty"`
 

@@ -134,6 +134,69 @@ const (
 
 	// Initialize the close account authority on a new mint.
 	Instruction_InitializeMintCloseAuthority
+
+	// Transfer fee extension instructions.
+	Instruction_TransferFeeExtension
+
+	// Confidential transfer extension instructions.
+	Instruction_ConfidentialTransferExtension
+
+	// Default account state extension instructions.
+	Instruction_DefaultAccountStateExtension
+
+	// Reallocate an account to hold additional extensions.
+	Instruction_Reallocate
+
+	// Memo transfer extension instructions.
+	Instruction_MemoTransferExtension
+
+	// Create the native mint for Token-2022.
+	Instruction_CreateNativeMint
+
+	// Initialize the non-transferable extension for a mint.
+	Instruction_InitializeNonTransferableMint
+
+	// Interest-bearing mint extension instructions.
+	Instruction_InterestBearingMintExtension
+
+	// CPI guard extension instructions.
+	Instruction_CpiGuardExtension
+
+	// Initialize a permanent delegate for a mint.
+	Instruction_InitializePermanentDelegate
+
+	// Transfer hook extension instructions.
+	Instruction_TransferHookExtension
+
+	// Confidential transfer fee extension instructions.
+	Instruction_ConfidentialTransferFeeExtension
+
+	// Withdraw excess lamports from an account.
+	Instruction_WithdrawExcessLamports
+
+	// Metadata pointer extension instructions.
+	Instruction_MetadataPointerExtension
+
+	// Group pointer extension instructions.
+	Instruction_GroupPointerExtension
+
+	// Group member pointer extension instructions.
+	Instruction_GroupMemberPointerExtension
+
+	// Confidential mint/burn extension instructions.
+	Instruction_ConfidentialMintBurnExtension
+
+	// Scaled UI amount extension instructions.
+	Instruction_ScaledUiAmountExtension
+
+	// Pausable extension instructions.
+	Instruction_PausableExtension
+
+	// Unwrap native SOL lamports.
+	Instruction_UnwrapLamports
+
+	// Permissioned burn extension instructions.
+	Instruction_PermissionedBurnExtension
 )
 
 // InstructionIDToName returns the name of the instruction given its ID.
@@ -191,6 +254,48 @@ func InstructionIDToName(id uint8) string {
 		return "UiAmountToAmount"
 	case Instruction_InitializeMintCloseAuthority:
 		return "InitializeMintCloseAuthority"
+	case Instruction_TransferFeeExtension:
+		return "TransferFeeExtension"
+	case Instruction_ConfidentialTransferExtension:
+		return "ConfidentialTransferExtension"
+	case Instruction_DefaultAccountStateExtension:
+		return "DefaultAccountStateExtension"
+	case Instruction_Reallocate:
+		return "Reallocate"
+	case Instruction_MemoTransferExtension:
+		return "MemoTransferExtension"
+	case Instruction_CreateNativeMint:
+		return "CreateNativeMint"
+	case Instruction_InitializeNonTransferableMint:
+		return "InitializeNonTransferableMint"
+	case Instruction_InterestBearingMintExtension:
+		return "InterestBearingMintExtension"
+	case Instruction_CpiGuardExtension:
+		return "CpiGuardExtension"
+	case Instruction_InitializePermanentDelegate:
+		return "InitializePermanentDelegate"
+	case Instruction_TransferHookExtension:
+		return "TransferHookExtension"
+	case Instruction_ConfidentialTransferFeeExtension:
+		return "ConfidentialTransferFeeExtension"
+	case Instruction_WithdrawExcessLamports:
+		return "WithdrawExcessLamports"
+	case Instruction_MetadataPointerExtension:
+		return "MetadataPointerExtension"
+	case Instruction_GroupPointerExtension:
+		return "GroupPointerExtension"
+	case Instruction_GroupMemberPointerExtension:
+		return "GroupMemberPointerExtension"
+	case Instruction_ConfidentialMintBurnExtension:
+		return "ConfidentialMintBurnExtension"
+	case Instruction_ScaledUiAmountExtension:
+		return "ScaledUiAmountExtension"
+	case Instruction_PausableExtension:
+		return "PausableExtension"
+	case Instruction_UnwrapLamports:
+		return "UnwrapLamports"
+	case Instruction_PermissionedBurnExtension:
+		return "PermissionedBurnExtension"
 	default:
 		return ""
 	}
@@ -212,82 +317,145 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint8TypeIDEncoding,
 	[]ag_binary.VariantType{
 		{
-			"InitializeMint", (*InitializeMint)(nil),
+			Name: "InitializeMint", Type: (*InitializeMint)(nil),
 		},
 		{
-			"InitializeAccount", (*InitializeAccount)(nil),
+			Name: "InitializeAccount", Type: (*InitializeAccount)(nil),
 		},
 		{
-			"InitializeMultisig", (*InitializeMultisig)(nil),
+			Name: "InitializeMultisig", Type: (*InitializeMultisig)(nil),
 		},
 		{
-			"Transfer", (*Transfer)(nil),
+			Name: "Transfer", Type: (*Transfer)(nil),
 		},
 		{
-			"Approve", (*Approve)(nil),
+			Name: "Approve", Type: (*Approve)(nil),
 		},
 		{
-			"Revoke", (*Revoke)(nil),
+			Name: "Revoke", Type: (*Revoke)(nil),
 		},
 		{
-			"SetAuthority", (*SetAuthority)(nil),
+			Name: "SetAuthority", Type: (*SetAuthority)(nil),
 		},
 		{
-			"MintTo", (*MintTo)(nil),
+			Name: "MintTo", Type: (*MintTo)(nil),
 		},
 		{
-			"Burn", (*Burn)(nil),
+			Name: "Burn", Type: (*Burn)(nil),
 		},
 		{
-			"CloseAccount", (*CloseAccount)(nil),
+			Name: "CloseAccount", Type: (*CloseAccount)(nil),
 		},
 		{
-			"FreezeAccount", (*FreezeAccount)(nil),
+			Name: "FreezeAccount", Type: (*FreezeAccount)(nil),
 		},
 		{
-			"ThawAccount", (*ThawAccount)(nil),
+			Name: "ThawAccount", Type: (*ThawAccount)(nil),
 		},
 		{
-			"TransferChecked", (*TransferChecked)(nil),
+			Name: "TransferChecked", Type: (*TransferChecked)(nil),
 		},
 		{
-			"ApproveChecked", (*ApproveChecked)(nil),
+			Name: "ApproveChecked", Type: (*ApproveChecked)(nil),
 		},
 		{
-			"MintToChecked", (*MintToChecked)(nil),
+			Name: "MintToChecked", Type: (*MintToChecked)(nil),
 		},
 		{
-			"BurnChecked", (*BurnChecked)(nil),
+			Name: "BurnChecked", Type: (*BurnChecked)(nil),
 		},
 		{
-			"InitializeAccount2", (*InitializeAccount2)(nil),
+			Name: "InitializeAccount2", Type: (*InitializeAccount2)(nil),
 		},
 		{
-			"SyncNative", (*SyncNative)(nil),
+			Name: "SyncNative", Type: (*SyncNative)(nil),
 		},
 		{
-			"InitializeAccount3", (*InitializeAccount3)(nil),
+			Name: "InitializeAccount3", Type: (*InitializeAccount3)(nil),
 		},
 		{
-			"InitializeMultisig2", (*InitializeMultisig2)(nil),
+			Name: "InitializeMultisig2", Type: (*InitializeMultisig2)(nil),
 		},
 		{
-			"InitializeMint2", (*InitializeMint2)(nil),
+			Name: "InitializeMint2", Type: (*InitializeMint2)(nil),
 		},
 		{
-			"GetAccountDataSize", (*GetAccountDataSize)(nil),
+			Name: "GetAccountDataSize", Type: (*GetAccountDataSize)(nil),
 		},
 		{
-			"InitializeImmutableOwner", (*InitializeImmutableOwner)(nil),
+			Name: "InitializeImmutableOwner", Type: (*InitializeImmutableOwner)(nil),
 		},
 		{
-			"AmountToUiAmount", (*AmountToUiAmount)(nil),
+			Name: "AmountToUiAmount", Type: (*AmountToUiAmount)(nil),
 		},
 		{
-			"UiAmountToAmount", (*UiAmountToAmount)(nil),
+			Name: "UiAmountToAmount", Type: (*UiAmountToAmount)(nil),
 		},
 		{
-			"InitializeMintCloseAuthority", (*InitializeMintCloseAuthority)(nil),
+			Name: "InitializeMintCloseAuthority", Type: (*InitializeMintCloseAuthority)(nil),
+		},
+		{
+			Name: "TransferFeeExtension", Type: (*TransferFeeExtension)(nil),
+		},
+		{
+			Name: "ConfidentialTransferExtension", Type: (*ConfidentialTransferExtension)(nil),
+		},
+		{
+			Name: "DefaultAccountStateExtension", Type: (*DefaultAccountStateExtension)(nil),
+		},
+		{
+			Name: "Reallocate", Type: (*Reallocate)(nil),
+		},
+		{
+			Name: "MemoTransferExtension", Type: (*MemoTransferExtension)(nil),
+		},
+		{
+			Name: "CreateNativeMint", Type: (*CreateNativeMint)(nil),
+		},
+		{
+			Name: "InitializeNonTransferableMint", Type: (*InitializeNonTransferableMint)(nil),
+		},
+		{
+			Name: "InterestBearingMintExtension", Type: (*InterestBearingMintExtension)(nil),
+		},
+		{
+			Name: "CpiGuardExtension", Type: (*CpiGuardExtension)(nil),
+		},
+		{
+			Name: "InitializePermanentDelegate", Type: (*InitializePermanentDelegate)(nil),
+		},
+		{
+			Name: "TransferHookExtension", Type: (*TransferHookExtension)(nil),
+		},
+		{
+			Name: "ConfidentialTransferFeeExtension", Type: (*ConfidentialTransferFeeExtension)(nil),
+		},
+		{
+			Name: "WithdrawExcessLamports", Type: (*WithdrawExcessLamports)(nil),
+		},
+		{
+			Name: "MetadataPointerExtension", Type: (*MetadataPointerExtension)(nil),
+		},
+		{
+			Name: "GroupPointerExtension", Type: (*GroupPointerExtension)(nil),
+		},
+		{
+			Name: "GroupMemberPointerExtension", Type: (*GroupMemberPointerExtension)(nil),
+		},
+		{
+			Name: "ConfidentialMintBurnExtension", Type: (*ConfidentialMintBurnExtension)(nil),
+		},
+		{
+			Name: "ScaledUiAmountExtension", Type: (*ScaledUiAmountExtension)(nil),
+		},
+		{
+			Name: "PausableExtension", Type: (*PausableExtension)(nil),
+		},
+		{
+			Name: "UnwrapLamports", Type: (*UnwrapLamports)(nil),
+		},
+		{
+			Name: "PermissionedBurnExtension", Type: (*PermissionedBurnExtension)(nil),
 		},
 	},
 )

@@ -19,11 +19,10 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/gagliardetto/solana-go"
-
+	json "github.com/goccy/go-json"
 	"github.com/spf13/cobra"
 )
 

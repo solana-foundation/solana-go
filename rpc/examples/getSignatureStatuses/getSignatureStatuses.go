@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gagliardetto/solana-go"
@@ -23,15 +24,34 @@ import (
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
+
+	// Fetch fresh signatures so the example keeps working as the
+	// cluster advances.
+	limit := 2
+	sigs, err := client.GetSignaturesForAddressWithOpts(
+		ctx,
+		solana.TokenProgramID,
+		&rpc.GetSignaturesForAddressOpts{Limit: &limit},
+	)
+	if err != nil {
+		panic(fmt.Errorf("getSignaturesForAddress: %w", err))
+	}
+	if len(sigs) == 0 {
+		panic("no recent signatures found")
+	}
+
+	toLookup := make([]solana.Signature, 0, len(sigs))
+	for _, s := range sigs {
+		toLookup = append(toLookup, s.Signature)
+	}
+	fmt.Println("querying statuses for", len(toLookup), "signatures")
 
 	out, err := client.GetSignatureStatuses(
-		context.TODO(),
-		true,
-		// All the transactions you want the get the status for:
-		solana.MustSignatureFromBase58("2CwH8SqVZWFa1EvsH7vJXGFors1NdCuWJ7Z85F8YqjCLQ2RuSHQyeGKkfo1Tj9HitSTeLoMWnxpjxF2WsCH8nGWh"),
-		solana.MustSignatureFromBase58("5YJHZPeHZuZjhunBc1CCB1NDRNf2tTJNpdb3azGsR7PfyEncCDhr95wG8EWrvjNXBc4wCKixkheSbCxoC2NCG3X7"),
+		ctx,
+		true, // searchTransactionHistory
+		toLookup...,
 	)
 	if err != nil {
 		panic(err)

@@ -47,15 +47,15 @@ func GetTokenRegistryEntry(ctx context.Context, rpcCli *rpc.Client, mintAddress 
 		return nil, fmt.Errorf("resp empty... cannot find account")
 	}
 
-	for _, keyedAcct := range resp {
-		acct := keyedAcct.Account
-		t, err := DecodeTokenMeta(acct.Data.GetBinary())
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode token meta %q: %w", acct.Owner.String(), err)
-		}
-		return t, nil
+	if len(resp) == 0 {
+		return nil, rpc.ErrNotFound
 	}
-	return nil, rpc.ErrNotFound
+	acct := resp[0].Account
+	t, err := DecodeTokenMeta(acct.Data.GetBinary())
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode token meta %q: %w", acct.Owner.String(), err)
+	}
+	return t, nil
 }
 
 func GetEntries(ctx context.Context, rpcCli *rpc.Client) (out []*TokenMeta, err error) {

@@ -339,7 +339,7 @@ TEXT ·decodeMatMul32(SB), NOSPLIT|NOFRAME, $0-16
 	IMULQ	BX, AX
 	ADDQ	AX, R15
 
-	// Row 8: table[8] = {0,0,0,0,0,0,0,1} → bin[7] += intermediate[8]
+	// Row 8: table[8] = {0,0,0,0,0,0,0,1} -> bin[7] += intermediate[8]
 	MOVQ	64(SI), BX
 	ADDQ	BX, R15
 

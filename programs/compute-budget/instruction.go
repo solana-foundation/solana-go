@@ -96,19 +96,19 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint8TypeIDEncoding,
 	[]ag_binary.VariantType{
 		{
-			"RequestUnitsDeprecated", (*RequestUnitsDeprecated)(nil),
+			Name: "RequestUnitsDeprecated", Type: (*RequestUnitsDeprecated)(nil),
 		},
 		{
-			"RequestHeapFrame", (*RequestHeapFrame)(nil),
+			Name: "RequestHeapFrame", Type: (*RequestHeapFrame)(nil),
 		},
 		{
-			"SetComputeUnitLimit", (*SetComputeUnitLimit)(nil),
+			Name: "SetComputeUnitLimit", Type: (*SetComputeUnitLimit)(nil),
 		},
 		{
-			"SetComputeUnitPrice", (*SetComputeUnitPrice)(nil),
+			Name: "SetComputeUnitPrice", Type: (*SetComputeUnitPrice)(nil),
 		},
 		{
-			"SetLoadedAccountsDataSizeLimit", (*SetLoadedAccountsDataSizeLimit)(nil),
+			Name: "SetLoadedAccountsDataSizeLimit", Type: (*SetLoadedAccountsDataSizeLimit)(nil),
 		},
 	},
 )

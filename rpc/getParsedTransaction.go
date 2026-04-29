@@ -83,7 +83,7 @@ func (wrap *InstructionInfoEnvelope) UnmarshalJSON(data []byte) error {
 			return json.Unmarshal(data, &wrap.asInstructionInfo)
 		}
 	default:
-		return fmt.Errorf("Unknown kind: %v", data)
+		return fmt.Errorf("unknown kind: %v", data)
 	}
 
 	return nil

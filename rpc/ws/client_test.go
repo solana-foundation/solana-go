@@ -38,8 +38,8 @@ func Test_AccountSubscribe(t *testing.T) {
 	zlog, _ = zap.NewDevelopment()
 
 	c, err := Connect(context.Background(), "ws://api.mainnet-beta.solana.com:80")
-	defer c.Close()
 	require.NoError(t, err)
+	defer c.Close()
 
 	accountID := solana.MustPublicKeyFromBase58("SqJP6vrvMad5XBQK5PCFEZjeuQSFi959sdpqtSNvnsX")
 	sub, err := c.AccountSubscribe(accountID, "")
@@ -53,7 +53,6 @@ func Test_AccountSubscribe(t *testing.T) {
 	text.NewEncoder(os.Stdout).Encode(data, nil)
 	fmt.Println("OpenOrders: ", data.Value.Owner)
 	fmt.Println("data: ", data.Value.Data)
-	return
 }
 
 func Test_AccountSubscribeWithHttpHeader(t *testing.T) {
@@ -72,8 +71,8 @@ func Test_AccountSubscribeWithHttpHeader(t *testing.T) {
 	}
 
 	c, err := ConnectWithOptions(context.TODO(), "ws://api.mainnet-beta.solana.com:80", opt)
-	defer c.Close()
 	require.NoError(t, err)
+	defer c.Close()
 
 	accountID := solana.MustPublicKeyFromBase58("SqJP6vrvMad5XBQK5PCFEZjeuQSFi959sdpqtSNvnsX")
 	sub, err := c.AccountSubscribe(accountID, "")
@@ -142,8 +141,8 @@ func Test_SlotSubscribe(t *testing.T) {
 	zlog, _ = zap.NewDevelopment()
 
 	c, err := Connect(context.Background(), "ws://api.mainnet-beta.solana.com:80")
-	defer c.Close()
 	require.NoError(t, err)
+	defer c.Close()
 
 	sub, err := c.SlotSubscribe()
 	require.NoError(t, err)
@@ -154,5 +153,4 @@ func Test_SlotSubscribe(t *testing.T) {
 		return
 	}
 	fmt.Println("data received: ", data.Parent)
-	return
 }

@@ -43,12 +43,12 @@ var tokenListMintsCmd = &cobra.Command{
 				fmt.Sprintf("%d", m.Decimals),
 			}
 			if m.MintAuthority != nil {
-				line = append(line, fmt.Sprintf("%s", m.MintAuthority))
+				line = append(line, m.MintAuthority.String())
 			} else {
 				line = append(line, "No mint authority")
 			}
 			if m.FreezeAuthority != nil {
-				line = append(line, fmt.Sprintf("%s", m.FreezeAuthority))
+				line = append(line, m.FreezeAuthority.String())
 			} else {
 				line = append(line, "No freeze authority")
 			}

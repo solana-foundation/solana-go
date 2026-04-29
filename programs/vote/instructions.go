@@ -54,18 +54,26 @@ func (inst *Instruction) EncodeToTree(parent treeout.Branches) {
 var InstructionImplDef = bin.NewVariantDefinition(
 	bin.Uint32TypeIDEncoding,
 	[]bin.VariantType{
-		{
-			"InitializeAccount", (*InitializeAccount)(nil),
-		},
-		{
-			"Authorize", (*Authorize)(nil),
-		},
-		{
-			"Vote", (*Vote)(nil),
-		},
-		{
-			"Withdraw", (*Withdraw)(nil),
-		},
+		{Name: "InitializeAccount", Type: (*InitializeAccount)(nil)},
+		{Name: "Authorize", Type: (*Authorize)(nil)},
+		{Name: "Vote", Type: (*Vote)(nil)},
+		{Name: "Withdraw", Type: (*Withdraw)(nil)},
+		{Name: "UpdateValidatorIdentity", Type: (*UpdateValidatorIdentity)(nil)},
+		{Name: "UpdateCommission", Type: (*UpdateCommission)(nil)},
+		{Name: "VoteSwitch", Type: (*VoteSwitch)(nil)},
+		{Name: "AuthorizeChecked", Type: (*AuthorizeChecked)(nil)},
+		{Name: "UpdateVoteState", Type: (*UpdateVoteState)(nil)},
+		{Name: "UpdateVoteStateSwitch", Type: (*UpdateVoteStateSwitch)(nil)},
+		{Name: "AuthorizeWithSeed", Type: (*AuthorizeWithSeed)(nil)},
+		{Name: "AuthorizeCheckedWithSeed", Type: (*AuthorizeCheckedWithSeed)(nil)},
+		{Name: "CompactUpdateVoteState", Type: (*CompactUpdateVoteState)(nil)},
+		{Name: "CompactUpdateVoteStateSwitch", Type: (*CompactUpdateVoteStateSwitch)(nil)},
+		{Name: "TowerSync", Type: (*TowerSync)(nil)},
+		{Name: "TowerSyncSwitch", Type: (*TowerSyncSwitch)(nil)},
+		{Name: "InitializeAccountV2", Type: (*InitializeAccountV2)(nil)},
+		{Name: "UpdateCommissionCollector", Type: (*UpdateCommissionCollector)(nil)},
+		{Name: "UpdateCommissionBps", Type: (*UpdateCommissionBps)(nil)},
+		{Name: "DepositDelegatorRewards", Type: (*DepositDelegatorRewards)(nil)},
 	},
 )
 

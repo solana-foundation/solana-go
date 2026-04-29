@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gagliardetto/solana-go"
@@ -23,36 +24,40 @@ import (
 )
 
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
+	ctx := context.Background()
+	client := rpc.New(rpc.MainNetBeta_RPC)
 
-	slot, err := client.GetSlot(context.TODO(), rpc.CommitmentFinalized)
+	slot, err := client.GetSlot(ctx, rpc.CommitmentFinalized)
 	if err != nil {
 		panic(err)
 	}
 
+	// Mainnet blocks contain v0 (versioned) transactions; GetBlock
+	// requires MaxSupportedTransactionVersion or it errors out.
+	maxVersion := uint64(0)
+
 	{
-		out, err := client.GetBlock(context.TODO(), slot)
+		out, err := client.GetBlockWithOpts(ctx, slot, &rpc.GetBlockOpts{
+			MaxSupportedTransactionVersion: &maxVersion,
+		})
 		if err != nil {
 			panic(err)
 		}
-		// spew.Dump(out) // NOTE: This generates a lot of output.
-		spew.Dump(len(out.Transactions))
+		// Full block is large; just show the tx count.
+		fmt.Println("transactions in block:", len(out.Transactions))
 	}
 
 	{
 		includeRewards := false
 		out, err := client.GetBlockWithOpts(
-			context.TODO(),
+			ctx,
 			slot,
-			// You can specify more options here:
 			&rpc.GetBlockOpts{
-				Encoding:   solana.EncodingBase64,
-				Commitment: rpc.CommitmentFinalized,
-				// Get only signatures:
-				TransactionDetails: rpc.TransactionDetailsSignatures,
-				// Exclude rewards:
-				Rewards: &includeRewards,
+				Encoding:                       solana.EncodingBase64,
+				Commitment:                     rpc.CommitmentFinalized,
+				TransactionDetails:             rpc.TransactionDetailsSignatures,
+				Rewards:                        &includeRewards,
+				MaxSupportedTransactionVersion: &maxVersion,
 			},
 		)
 		if err != nil {

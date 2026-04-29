@@ -16,26 +16,82 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
+	"time"
 
+	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
+// SendRawTransaction takes already-serialized, fully-signed transaction
+// bytes — useful when a wallet or external service hands you the bytes
+// to relay. This example builds and signs a transaction here only to
+// produce those bytes; in real code you would receive them.
+//
+// If you have a *solana.Transaction, use SendTransaction instead
+// (see the sendTransaction example). If you have base64 instead of
+// raw bytes, use SendEncodedTransaction (see sendEncodedTransaction).
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
-	base64Tx := "AfjEs3XhTc3hrxEvlnMPkm/cocvAUbFNbCl00qKnrFue6J53AhEqIFmcJJlJW3EDP5RmcMz+cNTTcZHW/WJYwAcBAAEDO8hh4VddzfcO5jbCt95jryl6y8ff65UcgukHNLWH+UQGgxCGGpgyfQVQV02EQYqm4QwzUt2qf9f1gVLM7rI4hwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA6ANIF55zOZWROWRkeh+lExxZBnKFqbvIxZDLE7EijjoBAgIAAQwCAAAAOTAAAAAAAAA="
+	ctx := context.Background()
+	client := rpc.New(rpc.DevNet_RPC)
 
-	txRaw, err := base64.StdEncoding.DecodeString(base64Tx)
+	sender := solana.NewWallet()
+	fmt.Println("sender:", sender.PublicKey())
+
+	airdropSig, err := client.RequestAirdrop(
+		ctx,
+		sender.PublicKey(),
+		solana.LAMPORTS_PER_SOL,
+		rpc.CommitmentFinalized,
+	)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("airdrop: %w", err))
+	}
+	fmt.Println("airdrop signature:", airdropSig)
+	time.Sleep(20 * time.Second) // wait for the airdrop to finalize
+
+	recipient := solana.NewWallet().PublicKey()
+
+	recent, err := client.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
+	if err != nil {
+		panic(fmt.Errorf("get blockhash: %w", err))
 	}
 
-	sig, err := client.SendRawTransaction(context.TODO(), txRaw)
+	tx, err := solana.NewTransaction(
+		[]solana.Instruction{
+			system.NewTransferInstruction(
+				solana.LAMPORTS_PER_SOL/1000,
+				sender.PublicKey(),
+				recipient,
+			).Build(),
+		},
+		recent.Value.Blockhash,
+		solana.TransactionPayer(sender.PublicKey()),
+	)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("build tx: %w", err))
 	}
 
-	fmt.Println("Submitted tx signature: ", sig.String())
+	if _, err := tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
+		if sender.PublicKey().Equals(key) {
+			return &sender.PrivateKey
+		}
+		return nil
+	}); err != nil {
+		panic(fmt.Errorf("sign: %w", err))
+	}
+
+	// Serialize the fully-signed transaction to its wire bytes.
+	raw, err := tx.MarshalBinary()
+	if err != nil {
+		panic(fmt.Errorf("marshal: %w", err))
+	}
+
+	sig, err := client.SendRawTransaction(ctx, raw)
+	if err != nil {
+		panic(fmt.Errorf("send raw: %w", err))
+	}
+
+	fmt.Println("submitted tx signature:", sig.String())
 }

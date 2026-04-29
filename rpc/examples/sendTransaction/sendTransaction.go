@@ -16,33 +16,78 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
+	"time"
 
-	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
+// This example builds, signs, and submits a SOL transfer on devnet.
+// It demonstrates the idiomatic flow for `client.SendTransaction`, which
+// accepts a *solana.Transaction directly.
+//
+// For submitting a transaction that is already serialized, see the
+// sibling examples `sendRawTransaction` (raw bytes) and
+// `sendEncodedTransaction` (base64 string).
 func main() {
-	endpoint := rpc.TestNet_RPC
-	client := rpc.New(endpoint)
-	base64Tx := "AfjEs3XhTc3hrxEvlnMPkm/cocvAUbFNbCl00qKnrFue6J53AhEqIFmcJJlJW3EDP5RmcMz+cNTTcZHW/WJYwAcBAAEDO8hh4VddzfcO5jbCt95jryl6y8ff65UcgukHNLWH+UQGgxCGGpgyfQVQV02EQYqm4QwzUt2qf9f1gVLM7rI4hwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA6ANIF55zOZWROWRkeh+lExxZBnKFqbvIxZDLE7EijjoBAgIAAQwCAAAAOTAAAAAAAAA="
+	ctx := context.Background()
+	client := rpc.New(rpc.DevNet_RPC)
 
-	data, err := base64.StdEncoding.DecodeString(base64Tx)
+	// Generate a fresh sender and fund it via airdrop. In real code, load
+	// an existing keypair instead, e.g.:
+	//   sender, _ := solana.PrivateKeyFromSolanaKeygenFile("/path/to/id.json")
+	sender := solana.NewWallet()
+	fmt.Println("sender:", sender.PublicKey())
+
+	airdropSig, err := client.RequestAirdrop(
+		ctx,
+		sender.PublicKey(),
+		solana.LAMPORTS_PER_SOL,
+		rpc.CommitmentFinalized,
+	)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("airdrop: %w", err))
+	}
+	fmt.Println("airdrop signature:", airdropSig)
+	time.Sleep(20 * time.Second) // wait for the airdrop to finalize
+
+	recipient := solana.NewWallet().PublicKey()
+
+	recent, err := client.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
+	if err != nil {
+		panic(fmt.Errorf("get blockhash: %w", err))
 	}
 
-	tx, err := solana.TransactionFromDecoder(bin.NewBinDecoder(data))
+	tx, err := solana.NewTransaction(
+		[]solana.Instruction{
+			system.NewTransferInstruction(
+				solana.LAMPORTS_PER_SOL/1000, // 0.001 SOL
+				sender.PublicKey(),
+				recipient,
+			).Build(),
+		},
+		recent.Value.Blockhash,
+		solana.TransactionPayer(sender.PublicKey()),
+	)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("build tx: %w", err))
 	}
 
-	sig, err := client.SendTransaction(context.TODO(), tx)
-	if err != nil {
-		panic(err)
+	if _, err := tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
+		if sender.PublicKey().Equals(key) {
+			return &sender.PrivateKey
+		}
+		return nil
+	}); err != nil {
+		panic(fmt.Errorf("sign: %w", err))
 	}
 
-	fmt.Println("Submitted tx signature: ", sig.String())
+	sig, err := client.SendTransaction(ctx, tx)
+	if err != nil {
+		panic(fmt.Errorf("send: %w", err))
+	}
+
+	fmt.Println("submitted tx signature:", sig.String())
 }

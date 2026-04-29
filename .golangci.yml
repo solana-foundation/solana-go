@@ -1,0 +1,121 @@
+version: "2"
+
+run:
+  timeout: 10m
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - errorlint
+    - misspell
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - (net.Listener).Close
+        - (*net.TCPConn).Close
+        - (*net.UDPConn).Close
+        - (*bytes.Buffer).WriteString
+        - (*bytes.Buffer).WriteByte
+        - (*bytes.Buffer).Write
+        - (*strings.Builder).WriteString
+        - (*strings.Builder).WriteByte
+        - (*strings.Builder).WriteRune
+        - (*strings.Builder).Write
+        - (*go.uber.org/zap/buffer.Buffer).Write
+        - (*github.com/gorilla/websocket.Conn).SetReadDeadline
+        - (*github.com/gorilla/websocket.Conn).SetWriteDeadline
+        - fmt.Fprint
+        - fmt.Fprintln
+        - fmt.Fprintf
+        - github.com/gagliardetto/binary.EncodeCompactU16Length
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    staticcheck:
+      checks:
+        - all
+        # Known follow-ups — tracked separately, not in scope for the lint rollout:
+        - -SA1019 # deprecated API usage (logging package, ssh/terminal -> x/term, cloudkms.New)
+        - -ST1001 # dot imports (text/format, zap-box) — refactor-scale change
+        - -ST1003 # underscore naming in exported consts/params — breaking API change
+        - -ST1016 # receiver name consistency — ws pkg mixes "c"/"cl", refactor-scale
+        - -ST1019 # duplicate imports (same files)
+        - -QF1008 # could remove embedded field selector — stylistic, keep for legibility
+        - -SA9003 # empty branches — scaffolding in rpc/ws/examples/
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      # Test files: allow unchecked errors and legacy error comparisons.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - errorlint
+      # CLI / cmd binaries: unchecked errors on stdout prints are fine.
+      - path: cmd/
+        linters:
+          - errcheck
+      - path: cli/
+        linters:
+          - errcheck
+      # WS subscription examples are demo code using `if false {}` to show
+      # multiple patterns side by side. Exclude from lint.
+      - path: rpc/ws/examples/
+        linters:
+          - govet
+          - staticcheck
+      # Unused identifiers that are either intentionally kept (lookup tables
+      # reserved for future work, logging-side-effect registrations) or live
+      # in code paths pending refactor. Tracked as follow-up.
+      - path: base58/tables\.go
+        linters:
+          - unused
+      - path: logging\.go
+        linters:
+          - unused
+      - path: diff/
+        linters:
+          - unused
+          - staticcheck
+      - path: text/encoder\.go
+        linters:
+          - staticcheck
+      - path: zap-box/
+        linters:
+          - unused
+      - path: programs/token(-2022)?/json\.go
+        linters:
+          - unused
+      - path: rpc/client\.go
+        linters:
+          - unused
+      - path: rpc/ws/client\.go
+        linters:
+          - unused
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax

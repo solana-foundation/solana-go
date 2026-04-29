@@ -81,7 +81,7 @@ func (inst *Redelegate) GetStakeAccount() *solana.AccountMeta {
 func (inst *Redelegate) GetUninitializedStakeAccount() *solana.AccountMeta {
 	return inst.AccountMetaSlice[1]
 }
-func (inst *Redelegate) GetVoteAccount() *solana.AccountMeta  { return inst.AccountMetaSlice[2] }
+func (inst *Redelegate) GetVoteAccount() *solana.AccountMeta   { return inst.AccountMetaSlice[2] }
 func (inst *Redelegate) GetUnusedAccount() *solana.AccountMeta { return inst.AccountMetaSlice[3] }
 func (inst *Redelegate) GetStakeAuthority() *solana.AccountMeta {
 	return inst.AccountMetaSlice[4]

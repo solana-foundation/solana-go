@@ -61,7 +61,7 @@ func (cl *Client) ProgramSubscribeWithOpts(
 	if encoding != "" {
 		conf["encoding"] = encoding
 	}
-	if filters != nil && len(filters) > 0 {
+	if len(filters) > 0 {
 		conf["filters"] = filters
 	}
 

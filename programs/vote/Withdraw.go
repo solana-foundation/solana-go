@@ -110,6 +110,20 @@ func (inst *Withdraw) SetLamports(lamports uint64) *Withdraw {
 	return inst
 }
 
+func (inst Withdraw) Build() *Instruction {
+	return &Instruction{BaseVariant: bin.BaseVariant{
+		Impl:   inst,
+		TypeID: bin.TypeIDFromUint32(Instruction_Withdraw, bin.LE),
+	}}
+}
+
+func (inst Withdraw) ValidateAndBuild() (*Instruction, error) {
+	if err := inst.Validate(); err != nil {
+		return nil, err
+	}
+	return inst.Build(), nil
+}
+
 func (inst *Withdraw) EncodeToTree(parent treeout.Branches) {
 	parent.Child(format.Program(ProgramName, ProgramID)).
 		//

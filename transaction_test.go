@@ -550,7 +550,7 @@ func TestTransaction_SignAndVerify(t *testing.T) {
 	// Valid signature.
 	require.NoError(t, tx.VerifySignatures())
 
-	// Tamper with the signature → should fail.
+	// Tamper with the signature -> should fail.
 	tx.Signatures[0][0] ^= 0xFF
 	err = tx.VerifySignatures()
 	require.Error(t, err)
@@ -598,7 +598,7 @@ func TestTransaction_AccountCounts_Legacy(t *testing.T) {
 	}
 
 	// 2 signers (1 writable, 1 readonly), 3 unsigned (1 writable, 2 readonly)
-	// → header: 2 required, 1 readonly_signed, 2 readonly_unsigned
+	// -> header: 2 required, 1 readonly_signed, 2 readonly_unsigned
 	tx, err := NewTransaction([]Instruction{
 		newTestInstruction(
 			keys[4],

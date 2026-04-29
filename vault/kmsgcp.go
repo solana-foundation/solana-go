@@ -45,12 +45,12 @@ func NewKMSGCPBoxer(keyPath string) *KMSGCPBoxer {
 func (b *KMSGCPBoxer) Seal(in []byte) (string, error) {
 	mgr, err := NewKMSGCPManager(b.keyPath)
 	if err != nil {
-		return "", fmt.Errorf("new kms gcp manager, %s", err)
+		return "", fmt.Errorf("new kms gcp manager: %w", err)
 	}
 
 	encrypted, err := mgr.Encrypt(in)
 	if err != nil {
-		return "", fmt.Errorf("kms encryption, %s", err)
+		return "", fmt.Errorf("kms encryption: %w", err)
 	}
 
 	return base64.RawStdEncoding.EncodeToString(encrypted), nil
@@ -60,15 +60,15 @@ func (b *KMSGCPBoxer) Seal(in []byte) (string, error) {
 func (b *KMSGCPBoxer) Open(in string) ([]byte, error) {
 	mgr, err := NewKMSGCPManager(b.keyPath)
 	if err != nil {
-		return []byte{}, fmt.Errorf("new kms gcp manager, %s", err)
+		return []byte{}, fmt.Errorf("new kms gcp manager: %w", err)
 	}
 	data, err := base64.RawStdEncoding.DecodeString(in)
 	if err != nil {
-		return []byte{}, fmt.Errorf("base 64 decode, %s", err)
+		return []byte{}, fmt.Errorf("base 64 decode, %w", err)
 	}
 	out, err := mgr.Decrypt(data)
 	if err != nil {
-		return []byte{}, fmt.Errorf("base 64 decode, %s", err)
+		return []byte{}, fmt.Errorf("base 64 decode, %w", err)
 	}
 	return out, nil
 }
