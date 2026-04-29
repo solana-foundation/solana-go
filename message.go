@@ -122,6 +122,33 @@ type Message struct {
 	resolved bool // if true, the lookups have been resolved, and the `AccountKeys` slice contains all the accounts (static + dynamic).
 }
 
+// UnmarshalJSON implements custom JSON unmarshaling for Message.
+// It fixes issue #339: when parsing JSON messages from RPC responses,
+// the version field was not being populated because it's private with no JSON tag.
+// This method detects v0 messages by checking for the presence of addressTableLookups
+// and sets the version accordingly.
+func (m *Message) UnmarshalJSON(data []byte) error {
+	type Alias Message
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(m),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	// Fix for issue #339: Set the correct message version based on message features.
+	// If the message has AddressTableLookups, it's a v0 message.
+	// The version field is private and doesn't have a JSON tag,
+	// so it defaults to 0 (Legacy) even for v0 messages.
+	if len(m.AddressTableLookups) > 0 {
+		m.version = MessageVersionV0
+	}
+
+	return nil
+}
+
 // SetAddressTables sets the actual address tables used by this message.
 // Use `mx.GetAddressTableLookups().GetTableIDs()` to get the list of all address table IDs.
 // NOTE: you can call this once.
