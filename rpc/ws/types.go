@@ -68,8 +68,15 @@ type response struct {
 }
 
 type params struct {
-	Result       *stdjson.RawMessage `json:"result"`
-	Subscription int                 `json:"subscription"`
+	Result *stdjson.RawMessage `json:"result"`
+	// Subscription is the validator-assigned subscription id. The validator
+	// emits these as JSON unsigned 64-bit integers, so the field must use
+	// uint64 to round-trip safely. Using int here failed JSON decoding on
+	// 32-bit builds and on any value above math.MaxInt64 (issue #286). The
+	// value is not consumed downstream — the routing key is parsed
+	// separately via getUint64WithOk in handleMessage — but the field is
+	// kept so encoding/json does not error on the incoming notification.
+	Subscription uint64 `json:"subscription"`
 }
 
 type Options struct {
