@@ -32,6 +32,8 @@ var (
 	// Deploys, upgrades, and executes programs on the chain.
 	BPFLoaderProgramID            = MustPublicKeyFromBase58("BPFLoader2111111111111111111111111111111111")
 	BPFLoaderUpgradeableProgramID = MustPublicKeyFromBase58("BPFLoaderUpgradeab1e11111111111111111111111")
+	LoaderV4ProgramID             = MustPublicKeyFromBase58("LoaderV411111111111111111111111111111111111")
+	NativeLoaderID                = MustPublicKeyFromBase58("NativeLoader1111111111111111111111111111111")
 
 	// Verify secp256k1 public key recovery operations (ecrecover).
 	Secp256k1ProgramID = MustPublicKeyFromBase58("KeccakSecp256k11111111111111111111111111111")
