@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.20.0](https://github.com/solana-foundation/solana-go/compare/v1.19.0...v1.20.0) (2026-05-08)
+
+
+### Features
+
+* **jsonrpc:** add CustomHeader http.Header for multi-value headers ([20b37ba](https://github.com/solana-foundation/solana-go/commit/20b37ba403c438ebe914b43ff7081f9598832d0c))
+
+
+### Performance Improvements
+
+* migrate to curve25519-voi for ed25519 operations ([20713fb](https://github.com/solana-foundation/solana-go/commit/20713fbbe52d4d20cab792a702771790346f19c7))
+
 ## [1.19.0](https://github.com/solana-foundation/solana-go/compare/v1.18.0...v1.19.0) (2026-04-23)
 
 
