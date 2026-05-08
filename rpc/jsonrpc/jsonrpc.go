@@ -271,15 +271,40 @@ type rpcClient struct {
 	endpoint      string
 	httpClient    HTTPClient
 	customHeaders map[string]string
+	customHeader  http.Header
 }
 
-// RPCClientOpts can be provided to NewClientWithOpts() to change configuration of RPCClient.
+// RPCClientOpts can be provided to NewClientWithOpts() to change configuration
+// of RPCClient.
 //
-// HTTPClient: provide a custom http.Client (e.g. to set a proxy, or tls options)
+// HTTPClient: provide a custom http.Client (e.g. to set a proxy, or tls
+// options).
 //
-// CustomHeaders: provide custom headers, e.g. to set BasicAuth
+// CustomHeader: provide custom request headers as an http.Header. Use this for
+// any new code: it preserves multi-value semantics so headers like Cookie,
+// X-Forwarded-For, or other RFC 7230 list-form headers are sent as separate
+// header lines verbatim instead of being collapsed to a single value.
+//
+// CustomHeaders is the legacy map[string]string equivalent and is kept for
+// backward compatibility. When a name is present in both CustomHeader and
+// CustomHeaders, CustomHeader wins.
 type RPCClientOpts struct {
-	HTTPClient    HTTPClient
+	HTTPClient HTTPClient
+
+	// CustomHeader applies request headers as an http.Header, preserving
+	// multi-value entries (each value becomes its own header line on the
+	// wire). Prefer this over CustomHeaders.
+	CustomHeader http.Header
+
+	// CustomHeaders applies request headers from a name->value map. Each
+	// entry is applied via http.Header.Set, so only a single value per
+	// name survives — multiple inbound values for the same header are
+	// silently dropped and Cookie / X-Forwarded-For style headers cannot
+	// be forwarded faithfully.
+	//
+	// Deprecated: use CustomHeader instead. CustomHeaders is retained for
+	// backward compatibility; new code should use the http.Header field
+	// which supports multi-value headers correctly.
 	CustomHeaders map[string]string
 }
 
@@ -362,6 +387,10 @@ func NewClientWithOpts(endpoint string, opts *RPCClientOpts) RPCClient {
 		for k, v := range opts.CustomHeaders {
 			rpcClient.customHeaders[k] = v
 		}
+	}
+
+	if len(opts.CustomHeader) > 0 {
+		rpcClient.customHeader = opts.CustomHeader.Clone()
 	}
 
 	return rpcClient
@@ -485,9 +514,17 @@ func (client *rpcClient) newRequest(ctx context.Context, req any) (*http.Request
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 
-	// set default headers first, so that even content type and accept can be overwritten
+	// CustomHeaders (legacy, single-value) is applied first so that even
+	// Content-Type and Accept can be overwritten by callers that need to.
 	for k, v := range client.customHeaders {
 		request.Header.Set(k, v)
+	}
+
+	// CustomHeader (http.Header) is applied last so it takes precedence
+	// over CustomHeaders for any name present in both, and so multi-value
+	// entries land verbatim as separate header lines on the wire.
+	for k, vs := range client.customHeader {
+		request.Header[http.CanonicalHeaderKey(k)] = append([]string(nil), vs...)
 	}
 
 	return request, nil

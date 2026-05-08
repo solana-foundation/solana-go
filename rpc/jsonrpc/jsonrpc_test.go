@@ -57,6 +57,59 @@ func TestSimpleRpcCallHeaderCorrect(t *testing.T) {
 	Expect(req.Header.Get("Accept")).To(Equal("application/json"))
 }
 
+func TestCustomHeader_PreservesMultiValue(t *testing.T) {
+	RegisterTestingT(t)
+
+	hdr := http.Header{}
+	hdr.Add("X-Forwarded-For", "1.1.1.1")
+	hdr.Add("X-Forwarded-For", "2.2.2.2")
+	hdr.Add("Cookie", "a=1")
+	hdr.Add("Cookie", "b=2")
+	hdr.Set("Authorization", "Bearer t")
+
+	rpcClient := NewClientWithOpts(httpServer.URL, &RPCClientOpts{
+		CustomHeader: hdr,
+	})
+	rpcClient.Call(context.Background(), "noop")
+
+	req := (<-requestChan).request
+
+	Expect(req.Header.Values("X-Forwarded-For")).To(Equal([]string{"1.1.1.1", "2.2.2.2"}))
+	Expect(req.Header.Values("Cookie")).To(Equal([]string{"a=1", "b=2"}))
+	Expect(req.Header.Get("Authorization")).To(Equal("Bearer t"))
+}
+
+func TestCustomHeader_TakesPrecedenceOverCustomHeaders(t *testing.T) {
+	RegisterTestingT(t)
+
+	rpcClient := NewClientWithOpts(httpServer.URL, &RPCClientOpts{
+		CustomHeaders: map[string]string{
+			"X-Test": "from-map",
+		},
+		CustomHeader: http.Header{
+			"X-Test": []string{"from-header-a", "from-header-b"},
+		},
+	})
+	rpcClient.Call(context.Background(), "noop")
+
+	req := (<-requestChan).request
+	Expect(req.Header.Values("X-Test")).To(Equal([]string{"from-header-a", "from-header-b"}))
+}
+
+func TestCustomHeaders_StillWorks(t *testing.T) {
+	RegisterTestingT(t)
+
+	rpcClient := NewClientWithOpts(httpServer.URL, &RPCClientOpts{
+		CustomHeaders: map[string]string{
+			"X-Backcompat": "yes",
+		},
+	})
+	rpcClient.Call(context.Background(), "noop")
+
+	req := (<-requestChan).request
+	Expect(req.Header.Get("X-Backcompat")).To(Equal("yes"))
+}
+
 // test if the structure of an rpc request is built correctly by validating the data that arrived on the test server
 func TestRpcClient_Call(t *testing.T) {
 	RegisterTestingT(t)
