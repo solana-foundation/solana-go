@@ -22,10 +22,8 @@ import (
 )
 
 type LogResult struct {
-	Context struct {
-		Slot uint64
-	} `json:"context"`
-	Value struct {
+	Context RPCResponseContext `json:"context"`
+	Value   struct {
 		// The transaction signature.
 		Signature solana.Signature `json:"signature"`
 		// Error if transaction failed, null if transaction succeeded.

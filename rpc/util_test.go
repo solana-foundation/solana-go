@@ -11,19 +11,21 @@ import (
 // Layout references for the test data below:
 //
 // SPL Token (solana-program/token):
-//   Mint::LEN    = 82
-//   Account::LEN = 165
+//
+//	Mint::LEN    = 82
+//	Account::LEN = 165
 //
 // Token-2022 (solana-program/token-2022):
-//   Extended records place a 1-byte AccountType discriminator at offset
-//   Account::LEN (= 165). Mint base (82 bytes) is padded with 83 zeros so
-//   Mint and Account share the discriminator offset.
 //
-//   AccountType::Uninitialized = 0
-//   AccountType::Mint          = 1
-//   AccountType::Account       = 2
+//	Extended records place a 1-byte AccountType discriminator at offset
+//	Account::LEN (= 165). Mint base (82 bytes) is padded with 83 zeros so
+//	Mint and Account share the discriminator offset.
 //
-//   Extensions follow as TLV: [u16 LE type][u16 LE length][value...].
+//	AccountType::Uninitialized = 0
+//	AccountType::Mint          = 1
+//	AccountType::Account       = 2
+//
+//	Extensions follow as TLV: [u16 LE type][u16 LE length][value...].
 const (
 	testAccountTypeUninitialized uint8 = 0
 	testAccountTypeMint          uint8 = 1
