@@ -15,144 +15,127 @@
 package ws
 
 import (
-	"bytes"
 	"context"
+	stdjson "encoding/json"
 	"fmt"
-
-	stdjson "github.com/goccy/go-json"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
-// signatureReceivedMarker is the literal value the validator emits
-// for the "received" notification when EnableReceivedNotification is
-// set on the subscription request.
-const signatureReceivedMarker = "receivedSignature"
-
-// SignatureResult is the parsed payload of a signatureNotification.
-//
-// Value preserves the historical struct{Err any} shape so existing callers
-// continue to compile against the same exported surface. ReceivedSignature
-// is a backwards-compatible additive field set to true when the validator
-// emits the "received" marker introduced by EnableReceivedNotification.
-type SignatureResult struct {
-	Context struct {
-		Slot uint64
-	} `json:"context"`
-	Value struct {
-		Err any `json:"err"`
-	} `json:"value"`
-
-	// ReceivedSignature is true when the notification was the "received"
-	// marker the validator emits as soon as it observes the transaction
-	// in its mempool. Only ever set when EnableReceivedNotification was
-	// passed via SignatureSubscribeOpts. When true, the Value struct is
-	// left at its zero value.
-	ReceivedSignature bool `json:"-"`
+// SignatureSubscribeConfig matches Agave's RpcSignatureSubscribeConfig.
+// When EnableReceivedNotification is true, the subscription also emits
+// a "receivedSignature" notification the moment the transaction is first
+// received by the node — before confirmation. Callers must check
+// SignatureResult.Value.IsReceived / .Processed to disambiguate.
+type SignatureSubscribeConfig struct {
+	Commitment                 rpc.CommitmentType
+	EnableReceivedNotification *bool
 }
 
-// UnmarshalJSON dispatches on the shape of the notification's `value`
-// field. The wire format may be:
-//
-//   - a JSON object {"err": ...} (the status notification, the only shape
-//     emitted unless EnableReceivedNotification is set)
-//   - the JSON string "receivedSignature" (only with
-//     EnableReceivedNotification set)
-//
-// The former populates SignatureResult.Value as before; the latter sets
-// ReceivedSignature=true and leaves Value at its zero value.
-func (r *SignatureResult) UnmarshalJSON(data []byte) error {
-	// Alias avoids recursion into this UnmarshalJSON.
-	type alias struct {
-		Context struct {
-			Slot uint64
-		} `json:"context"`
-		Value stdjson.RawMessage `json:"value"`
+// params converts the config to the JSON-RPC params object the
+// signatureSubscribe method expects. Missing options are omitted so the
+// wire format matches Agave's serde(skip_serializing_if) behavior.
+func (c *SignatureSubscribeConfig) params() map[string]any {
+	conf := make(map[string]any)
+	if c == nil {
+		return conf
 	}
-	var a alias
-	if err := stdjson.Unmarshal(data, &a); err != nil {
-		return err
+	if c.Commitment != "" {
+		conf["commitment"] = c.Commitment
 	}
-	r.Context = a.Context
+	if c.EnableReceivedNotification != nil {
+		conf["enableReceivedNotification"] = *c.EnableReceivedNotification
+	}
+	return conf
+}
 
-	trimmed := bytes.TrimSpace(a.Value)
-	if len(trimmed) == 0 || string(trimmed) == "null" {
+// SignatureResult is the notification payload for signatureSubscribe.
+// The shape of .Value depends on which subscription mode is active:
+//   - standard: {"err": ...}  → Value.Processed is set, IsReceived is false.
+//   - received (EnableReceivedNotification=true): the raw string
+//     "receivedSignature" → IsReceived is true, Processed is nil.
+type SignatureResult struct {
+	Context RPCResponseContext   `json:"context"`
+	Value   SignatureResultValue `json:"value"`
+}
+
+// RPCResponseContext mirrors Agave's RpcResponseContext.
+type RPCResponseContext struct {
+	Slot       uint64  `json:"slot"`
+	APIVersion *string `json:"apiVersion,omitempty"`
+}
+
+// SignatureResultValue is a Go-friendly projection of Agave's untagged
+// RpcSignatureResult enum (ProcessedSignature | ReceivedSignature).
+type SignatureResultValue struct {
+	// IsReceived is true when the notification signals that the tx has
+	// been received by the node (pre-confirmation). Only populated when
+	// the subscription was created with EnableReceivedNotification=true.
+	IsReceived bool
+	// Processed is non-nil for the standard (post-processing) notification.
+	Processed *ProcessedSignatureResult
+}
+
+// ProcessedSignatureResult matches Agave's ProcessedSignatureResult.
+// Err is nil on success; on failure it mirrors the RPC JSON (typically
+// a map or a string identifying the TransactionError).
+type ProcessedSignatureResult struct {
+	Err any `json:"err"`
+}
+
+// receivedSignatureTag is the single string variant emitted by
+// Agave's ReceivedSignatureResult enum.
+const receivedSignatureTag = "receivedSignature"
+
+// UnmarshalJSON decodes either the object form ({"err":...}) or the
+// string form ("receivedSignature") returned by Solana.
+func (v *SignatureResultValue) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
 		return nil
 	}
-	switch trimmed[0] {
+	switch data[0] {
 	case '"':
 		var s string
-		if err := stdjson.Unmarshal(trimmed, &s); err != nil {
-			return fmt.Errorf("signatureNotification value: %w", err)
+		if err := stdjson.Unmarshal(data, &s); err != nil {
+			return fmt.Errorf("SignatureResultValue: %w", err)
 		}
-		if s != signatureReceivedMarker {
-			return fmt.Errorf("signatureNotification value: unexpected marker %q", s)
+		if s != receivedSignatureTag {
+			return fmt.Errorf("SignatureResultValue: unknown string variant %q", s)
 		}
-		r.ReceivedSignature = true
+		v.IsReceived = true
 		return nil
 	case '{':
-		var status struct {
-			Err any `json:"err"`
+		var p ProcessedSignatureResult
+		if err := stdjson.Unmarshal(data, &p); err != nil {
+			return fmt.Errorf("SignatureResultValue: %w", err)
 		}
-		if err := stdjson.Unmarshal(trimmed, &status); err != nil {
-			return fmt.Errorf("signatureNotification value: %w", err)
-		}
-		r.Value.Err = status.Err
+		v.Processed = &p
 		return nil
-	default:
-		return fmt.Errorf("signatureNotification value: unexpected JSON %s", string(trimmed))
 	}
+	return fmt.Errorf("SignatureResultValue: unexpected JSON %s", string(data))
 }
 
-// SignatureSubscribeOpts mirrors the optional configuration object the
-// signatureSubscribe RPC method accepts. See
-// https://solana.com/docs/rpc/websocket/signaturesubscribe.
-type SignatureSubscribeOpts struct {
-	// Commitment selects the bank state the validator should use when
-	// deciding the transaction has reached the requested level.
-	Commitment rpc.CommitmentType
-
-	// EnableReceivedNotification opts into the additional "received"
-	// notification emitted as soon as the validator picks the
-	// transaction up in its mempool (in addition to the final status
-	// notification). Defaults to false to match the RPC default.
-	EnableReceivedNotification bool
-}
-
-// SignatureSubscribe subscribes to a transaction signature to receive
-// notification when the transaction is confirmed On signatureNotification,
-// the subscription is automatically canceled
+// SignatureSubscribe subscribes to confirmation notifications for a
+// single transaction signature. The subscription is canceled by the
+// server once the notification fires.
 func (cl *Client) SignatureSubscribe(
-	signature solana.Signature, // Transaction Signature.
-	commitment rpc.CommitmentType, // (optional)
+	signature solana.Signature,
+	commitment rpc.CommitmentType, // optional
 ) (*SignatureSubscription, error) {
-	return cl.SignatureSubscribeWithOpts(signature, &SignatureSubscribeOpts{
-		Commitment: commitment,
-	})
+	return cl.SignatureSubscribeWithOpts(signature, &SignatureSubscribeConfig{Commitment: commitment})
 }
 
-// SignatureSubscribeWithOpts subscribes to a transaction signature and
-// forwards the full SignatureSubscribeOpts configuration object to the
-// validator, including EnableReceivedNotification.
+// SignatureSubscribeWithOpts mirrors signatureSubscribe + full config.
+// Pass EnableReceivedNotification=&true to also receive a
+// "receivedSignature" event as soon as the node sees the tx.
 func (cl *Client) SignatureSubscribeWithOpts(
 	signature solana.Signature,
-	opts *SignatureSubscribeOpts,
+	config *SignatureSubscribeConfig,
 ) (*SignatureSubscription, error) {
-	params := []any{signature.String()}
-	conf := map[string]any{}
-	if opts != nil {
-		if opts.Commitment != "" {
-			conf["commitment"] = opts.Commitment
-		}
-		if opts.EnableReceivedNotification {
-			conf["enableReceivedNotification"] = true
-		}
-	}
-
 	genSub, err := cl.subscribe(
-		params,
-		conf,
+		[]any{signature.String()},
+		config.params(),
 		"signatureSubscribe",
 		"signatureUnsubscribe",
 		func(msg []byte) (any, error) {
@@ -164,9 +147,7 @@ func (cl *Client) SignatureSubscribeWithOpts(
 	if err != nil {
 		return nil, err
 	}
-	return &SignatureSubscription{
-		sub: genSub,
-	}, nil
+	return &SignatureSubscription{sub: genSub}, nil
 }
 
 type SignatureSubscription struct {
