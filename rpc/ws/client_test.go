@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/text"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/text"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

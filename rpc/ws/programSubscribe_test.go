@@ -20,8 +20,8 @@ import (
 	stdjson "github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 // buildProgramSubscribeConf re-runs the same config-object construction
