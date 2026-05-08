@@ -20,17 +20,33 @@ import (
 	"github.com/gagliardetto/solana-go"
 )
 
+// SlotsUpdatesResult is a Go projection of Agave's SlotUpdate tagged
+// union (rename_all="camelCase", tag="type"). All variants carry
+// Slot and Timestamp; the rest of the fields are populated only for
+// the variants where they apply:
+//
+//	Type                        Extra fields
+//	-----------------------------------------
+//	firstShredReceived          (none)
+//	completed                   (none)
+//	createdBank                 Parent
+//	frozen                      Stats
+//	dead                        Err
+//	optimisticConfirmation      (none)
+//	root                        (none)
 type SlotsUpdatesResult struct {
-	// The parent slot.
-	Parent uint64 `json:"parent"`
+	// The update type (discriminator).
+	Type SlotsUpdatesType `json:"type"`
 	// The newly updated slot.
 	Slot uint64 `json:"slot"`
-	// The Unix timestamp of the update.
+	// The Unix timestamp of the update (milliseconds).
 	Timestamp *solana.UnixTimeMilliseconds `json:"timestamp"`
-	// The update type.
-	Type SlotsUpdatesType `json:"type"`
-	// Extra stats provided when a bank is frozen.
-	Stats *BankStats `json:"stats"`
+	// The parent slot. Populated only for type=createdBank.
+	Parent uint64 `json:"parent,omitempty"`
+	// Extra stats. Populated only for type=frozen.
+	Stats *BankStats `json:"stats,omitempty"`
+	// Error message. Populated only for type=dead.
+	Err string `json:"err,omitempty"`
 }
 
 type BankStats struct {

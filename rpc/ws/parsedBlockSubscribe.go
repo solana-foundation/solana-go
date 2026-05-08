@@ -16,16 +16,15 @@ package ws
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
 type ParsedBlockResult struct {
-	Context struct {
-		Slot uint64
-	} `json:"context"`
-	Value struct {
+	Context RPCResponseContext `json:"context"`
+	Value   struct {
 		Slot  uint64                    `json:"slot"`
 		Err   any                       `json:"err,omitempty"`
 		Block *rpc.GetParsedBlockResult `json:"block,omitempty"`
@@ -39,6 +38,10 @@ type ParsedBlockResult struct {
 // **This subscription is unstable and only available if the validator was started
 // with the `--rpc-pubsub-enable-block-subscription` flag. The format of this
 // subscription may change in the future**
+//
+// Deprecated: BlockSubscribe now accepts EncodingJSONParsed and will
+// populate BlockResult.Value.ParsedBlock. Prefer that single method so
+// callers do not have to branch on encoding at the call site.
 func (cl *Client) ParsedBlockSubscribe(
 	filter BlockSubscribeFilter,
 	opts *BlockSubscribeOpts,
@@ -53,6 +56,12 @@ func (cl *Client) ParsedBlockSubscribe(
 		}
 	}
 	if opts != nil {
+		if opts.Encoding != "" && opts.Encoding != solana.EncodingJSONParsed {
+			return nil, fmt.Errorf(
+				"ParsedBlockSubscribe always uses %s encoding; got opts.Encoding=%s",
+				solana.EncodingJSONParsed, opts.Encoding,
+			)
+		}
 		obj := make(rpc.M)
 		if opts.Commitment != "" {
 			obj["commitment"] = opts.Commitment

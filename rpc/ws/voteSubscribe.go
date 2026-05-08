@@ -20,13 +20,18 @@ import (
 	"github.com/gagliardetto/solana-go"
 )
 
+// VoteResult matches Agave's RpcVote.
 type VoteResult struct {
-	// The vote hash.
-	Hash solana.Hash `json:"hash"`
+	// Vote account address, as base-58 encoded string.
+	VotePubkey solana.PublicKey `json:"votePubkey"`
 	// The slots covered by the vote.
 	Slots []uint64 `json:"slots"`
+	// The vote hash.
+	Hash solana.Hash `json:"hash"`
 	// The timestamp of the vote.
 	Timestamp *solana.UnixTimeSeconds `json:"timestamp,omitempty"`
+	// Signature of the vote transaction.
+	Signature solana.Signature `json:"signature"`
 }
 
 // VoteSubscribe (UNSTABLE, disabled by default) subscribes

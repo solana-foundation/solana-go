@@ -123,15 +123,22 @@ func WaitForConfirmation(
 	timeoutCtx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
 
-	got, err := sub.Recv(timeoutCtx)
-	if err != nil {
-		if timeoutCtx.Err() == context.DeadlineExceeded {
-			return false, ErrTimeout
+	// Drain any "receivedSignature" notifications (if the caller opted in
+	// to enableReceivedNotification) until we get the processed one.
+	for {
+		got, err := sub.Recv(timeoutCtx)
+		if err != nil {
+			if timeoutCtx.Err() == context.DeadlineExceeded {
+				return false, ErrTimeout
+			}
+			return false, err
 		}
-		return false, err
+		if got.Value.IsReceived {
+			continue
+		}
+		if got.Value.Processed != nil && got.Value.Processed.Err != nil {
+			return true, fmt.Errorf("confirmed transaction with execution error: %v", got.Value.Processed.Err)
+		}
+		return true, nil
 	}
-	if got.Value.Err != nil {
-		return true, fmt.Errorf("confirmed transaction with execution error: %v", got.Value.Err)
-	}
-	return true, nil
 }
