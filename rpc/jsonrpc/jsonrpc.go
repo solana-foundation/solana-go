@@ -205,10 +205,10 @@ func NewRequest(method string, params ...any) *RPCRequest {
 //
 // See: http://www.jsonrpc.org/specification#response_object
 type RPCResponse struct {
-	JSONRPC string             `json:"jsonrpc"`
-	Result  stdjson.RawMessage `json:"result,omitempty"`
-	Error   *RPCError          `json:"error,omitempty"`
-	ID      any                `json:"id"`
+	JSONRPC string            `json:"jsonrpc"`
+	Result  gojson.RawMessage `json:"result,omitempty"`
+	Error   *RPCError         `json:"error,omitempty"`
+	ID      any               `json:"id"`
 }
 
 // RPCError represents a JSON-RPC error object if an RPC error occurred.
@@ -293,7 +293,7 @@ func (res RPCResponses) AsMap() map[any]*RPCResponse {
 	for _, r := range res {
 		actualID := r.ID
 		if actualID != nil {
-			if asFloat, ok := actualID.(stdjson.Number); ok {
+			if asFloat, ok := actualID.(gojson.Number); ok {
 				asInt64, err := asFloat.Int64()
 				if err == nil {
 					actualID = int(asInt64)
