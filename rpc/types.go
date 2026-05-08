@@ -23,8 +23,8 @@ import (
 	"math/big"
 
 	bin "github.com/gagliardetto/binary"
-	"github.com/gagliardetto/solana-go"
 	stdjson "github.com/goccy/go-json"
+	"github.com/solana-foundation/solana-go/v2"
 )
 
 type Context struct {

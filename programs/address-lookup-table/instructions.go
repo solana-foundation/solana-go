@@ -7,9 +7,9 @@ import (
 
 	spew "github.com/davecgh/go-spew/spew"
 	bin "github.com/gagliardetto/binary"
-	solana "github.com/gagliardetto/solana-go"
-	text "github.com/gagliardetto/solana-go/text"
 	treeout "github.com/gagliardetto/treeout"
+	solana "github.com/solana-foundation/solana-go/v2"
+	text "github.com/solana-foundation/solana-go/v2/text"
 )
 
 var ProgramID solana.PublicKey = solana.AddressLookupTableProgramID

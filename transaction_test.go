@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	bin "github.com/gagliardetto/binary"
-	"github.com/gagliardetto/solana-go/base58"
+	"github.com/solana-foundation/solana-go/v2/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"

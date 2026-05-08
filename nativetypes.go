@@ -25,8 +25,8 @@ import (
 	voied25519 "github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
 
 	bin "github.com/gagliardetto/binary"
-	"github.com/gagliardetto/solana-go/base58"
 	"github.com/mostynb/zstdpool-freelist"
+	"github.com/solana-foundation/solana-go/v2/base58"
 )
 
 type Padding []byte

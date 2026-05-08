@@ -17,7 +17,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 	"github.com/spf13/cobra"
 )
 

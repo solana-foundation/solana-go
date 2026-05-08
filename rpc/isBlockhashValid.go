@@ -3,7 +3,7 @@ package rpc
 import (
 	"context"
 
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 )
 
 // IsBlockhashValid returns whether a blockhash is still valid or not.

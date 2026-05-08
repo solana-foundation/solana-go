@@ -5,8 +5,9 @@ import (
 	"errors"
 
 	ag_binary "github.com/gagliardetto/binary"
-	ag_solanago "github.com/gagliardetto/solana-go"
 	ag_treeout "github.com/gagliardetto/treeout"
+	ag_solanago "github.com/solana-foundation/solana-go/v2"
+	ag_format "github.com/solana-foundation/solana-go/v2/text/format"
 )
 
 // ConfidentialTransferFee sub-instruction IDs.
