@@ -1,11 +1,11 @@
 # Solana SDK library for Go
 
-[![GoDoc](https://pkg.go.dev/badge/github.com/gagliardetto/solana-go?status.svg)](https://pkg.go.dev/github.com/gagliardetto/solana-go?tab=doc)
-[![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/gagliardetto/solana-go?include_prereleases&label=release-tag)](https://github.com/gagliardetto/solana-go/releases)
-[![Build Status](https://github.com/gagliardetto/solana-go/workflows/tests/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain)
-[![Lint Status](https://github.com/gagliardetto/solana-go/workflows/lint/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain+workflow%3Alint)
-[![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/gagliardetto/solana-go/main)](https://www.tickgit.com/browse?repo=github.com/gagliardetto/solana-go&branch=main)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gagliardetto/solana-go)](https://goreportcard.com/report/github.com/gagliardetto/solana-go)
+[![GoDoc](https://pkg.go.dev/badge/github.com/solana-foundation/solana-go/v2?status.svg)](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0?tab=doc)
+[![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/solana-foundation/solana-go?include_prereleases&label=release-tag)](https://github.com/solana-foundation/solana-go/v2/releases)
+[![Build Status](https://github.com/solana-foundation/solana-go/v2/workflows/tests/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain)
+[![Lint Status](https://github.com/solana-foundation/solana-go/v2/workflows/lint/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain+workflow%3Alint)
+[![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/solana-foundation/solana-go/v2/main)](https://www.tickgit.com/browse?repo=github.com/solana-foundation/solana-go/v2&branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/solana-foundation/solana-go/v2)](https://goreportcard.com/report/github.com/solana-foundation/solana-go/v2)
 
 Go library to interface with Solana JSON RPC and WebSocket interfaces.
 
@@ -29,7 +29,6 @@ More contracts to come.
   - [Pretty-Print transactions/instructions](#pretty-print-transactionsinstructions)
   - [SendAndConfirmTransaction](#sendandconfirmtransaction)
   - [Address Lookup Tables](#address-lookup-tables)
-  - [V1 Transactions (SIMD-0385)](#v1-transactions-simd-0385)
   - [Parse/decode an instruction from a transaction](#parsedecode-an-instruction-from-a-transaction)
   - [Borsh encoding/decoding](#borsh-encodingdecoding)
   - [ZSTD account data encoding](#zstd-account-data-encoding)
@@ -42,7 +41,6 @@ More contracts to come.
     - [Transfer Sol from one wallet to another wallet](#transfer-sol-from-one-wallet-to-another-wallet)
   - [RPC Methods](#rpc-methods)
   - [WebSocket Subscriptions](#websocket-subscriptions)
-  - [About v2](#about-v2)
   - [Contributing](#contributing)
   - [License](#license)
   - [Credits](#credits)
@@ -58,7 +56,6 @@ More contracts to come.
   - [ ] stake
   - [ ] vote
   - [x] BPF Loader
-  - [x] [compute-budget](/programs/compute-budget) (for [V1 transactions](#v1-transactions-simd-0385) use the inline `solana.TransactionConfig` instead)
   - [ ] Secp256k1
 - [ ] Clients for Solana Program Library (SPL)
   - [x] [SPL token](/programs/token)
@@ -76,12 +73,7 @@ More contracts to come.
 
 ## Current development status
 
-`solana-go` ships from two parallel branches:
-
-- **`main` (v1) — recommended default.** Backward-compatible improvements only. Latest release: [v1.22.0](https://github.com/solana-foundation/solana-go/releases/tag/v1.22.0).
-- **`v2` — opt-in.** Same content as `main` plus breaking API cleanups. Latest: `v2.0.0-rc` (release candidate). See [About v2](#about-v2) below.
-
-Most users should stay on v1. Only choose v2 if you specifically want the changes listed in [About v2](#about-v2).
+There is currently **no stable release**. The SDK is actively developed and latest is `v1.16.0` which is an `alpha` release.
 
 The RPC and WS client implementation is based on the [Solana RPC API documentation](https://solana.com/docs/rpc).
 
@@ -98,10 +90,8 @@ The RPC and WS client implementation is based on the [Solana RPC API documentati
 
 ```bash
 $ cd my-project
-$ go get github.com/gagliardetto/solana-go@latest
+$ go get github.com/solana-foundation/solana-go/v2@v1.16.0
 ```
-
-> Looking for v2? See [About v2](#about-v2).
 
 ## Pretty-Print transactions/instructions
 
@@ -132,7 +122,7 @@ fmt.Println(tx.String())
 
 ## SendAndConfirmTransaction
 
-You can wait for a transaction confirmation using the `github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction` package tools (for a complete example: [see here](#transfer-sol-from-one-wallet-to-another-wallet))
+You can wait for a transaction confirmation using the `github.com/solana-foundation/solana-go/v2/rpc/sendAndConfirmTransaction` package tools (for a complete example: [see here](#transfer-sol-from-one-wallet-to-another-wallet))
 
 ```go
 // Send transaction, and wait for confirmation:
@@ -163,9 +153,9 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/gagliardetto/solana-go"
-	lookup "github.com/gagliardetto/solana-go/programs/address-lookup-table"
-	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/solana-foundation/solana-go/v2"
+	lookup "github.com/solana-foundation/solana-go/v2/programs/address-lookup-table"
+	"github.com/solana-foundation/solana-go/v2/rpc"
 	"golang.org/x/time/rate"
 )
 
@@ -252,127 +242,6 @@ func processTransactionWithAddressLookups(txx *solana.Transaction, rpcClient *rp
 ```
 
 
-## V1 Transactions (SIMD-0385)
-
-V1 is the transaction format introduced by [SIMD-0385](https://github.com/solana-foundation/solana-improvement-documents/pull/385)
-(anza-xyz/solana-sdk [#538](https://github.com/anza-xyz/solana-sdk/pull/538)).
-Compared to legacy/v0 transactions:
-
-| | legacy / v0 | v1 |
-| --- | --- | --- |
-| max transaction size | 1232 bytes | 4096 bytes |
-| compute budget | `ComputeBudget` program instructions | inline `TransactionConfig` in the message header |
-| address lookup tables | v0 only | not supported |
-| max signatures / addresses / instructions | bounded by the 1232-byte size (indices are u8) | 12 / 64 / 64 (enforced by `Sanitize`) |
-| wire layout | `sigs (compact-u16 len) \|\| message` | `0x81 \|\| message \|\| sigs (fixed, no len)` |
-
-The Go API stays the same; you opt in with `solana.TransactionV1Config`
-(or `solana.TransactionMessageVersion(solana.MessageVersionV1)`):
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/programs/system"
-	"github.com/gagliardetto/solana-go/rpc"
-)
-
-func main() {
-	ctx := context.Background()
-	client := rpc.New(rpc.DevNet_RPC)
-
-	sender, _ := solana.PrivateKeyFromSolanaKeygenFile("/path/to/id.json")
-	recipient := solana.NewWallet().PublicKey()
-
-	recent, err := client.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
-	if err != nil {
-		panic(err)
-	}
-
-	// The compute budget lives in the message header; every field is optional.
-	config := solana.TransactionConfig{}.
-		WithComputeUnitLimit(20_000). // unset means 0 CUs -> always set it
-		WithPriorityFee(1_000)        // TOTAL lamports, not micro-lamports/CU
-	// Also available: WithLoadedAccountsDataSizeLimit(bytes), WithHeapSize(bytes)
-	// (heap must be a multiple of 1024 within [32 KiB, 256 KiB]).
-
-	tx, err := solana.NewTransaction(
-		[]solana.Instruction{
-			system.NewTransferInstruction(solana.LAMPORTS_PER_SOL/1000, sender.PublicKey(), recipient).Build(),
-		},
-		recent.Value.Blockhash,
-		solana.TransactionPayer(sender.PublicKey()),
-		solana.TransactionV1Config(config), // <- selects the V1 format
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	// Signing, sending and confirming are unchanged.
-	if _, err := tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
-		if sender.PublicKey().Equals(key) {
-			return &sender
-		}
-		return nil
-	}); err != nil {
-		panic(err)
-	}
-	sig, err := client.SendTransaction(ctx, tx)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(sig)
-}
-```
-
-Decoding is automatic (`TransactionFromBytes`, `TransactionFromBase64`,
-`rpc` results, JSON): the version byte `0x81` selects the V1 decoder.
-
-```go
-tx, err := solana.TransactionFromBase64(b64)
-if err != nil {
-	panic(err)
-}
-if tx.Message.GetVersion() == solana.MessageVersionV1 {
-	cfg := tx.Message.TransactionConfig // *uint64 / *uint32 fields, nil = not requested
-	if cfg.ComputeUnitLimit != nil {
-		fmt.Println("compute unit limit:", *cfg.ComputeUnitLimit)
-	}
-}
-if err := tx.Sanitize(); err != nil { // structural limits; the 4096-byte cap is enforced by the cluster
-	panic(err)
-}
-```
-
-When fetching transactions/blocks from the RPC, ask for version 1
-(`getTransaction`, `getBlock`, `blockSubscribe`, ... all take the same option):
-
-```go
-out, err := client.GetTransaction(ctx, sig, &rpc.GetTransactionOpts{
-	MaxSupportedTransactionVersion: &rpc.MaxSupportedTransactionVersion1,
-})
-```
-
-Things to keep in mind:
-
-- The cluster must have SIMD-0385 activated, otherwise V1 transactions are
-  rejected during sanitization.
-- `PriorityFee` is the total priority fee in lamports for the whole
-  transaction (unlike `SetComputeUnitPrice`, which is micro-lamports per CU).
-- An unset `ComputeUnitLimit` means a requested limit of 0 compute units.
-- `ComputeBudget` program instructions are no-ops in V1 transactions; `NewTransaction` rejects them for V1.
-- V1 transactions cannot use address lookup tables; combining
-  `TransactionV1Config` with `TransactionAddressTables` is an error.
-- `solana.MaxTransactionSizeV1` (4096) is the size cap including signatures (checked by the cluster, not the SDK).
-
-See [rpc/examples/sendTransactionV1](/rpc/examples/sendTransactionV1) and the
-`ExampleNewTransaction_v1` godoc example for complete programs.
-
-
 ## Parse/decode an instruction from a transaction
 
 ```go
@@ -386,10 +255,10 @@ import (
 
   "github.com/davecgh/go-spew/spew"
   bin "github.com/gagliardetto/binary"
-  "github.com/gagliardetto/solana-go"
-  "github.com/gagliardetto/solana-go/programs/system"
-  "github.com/gagliardetto/solana-go/rpc"
-  "github.com/gagliardetto/solana-go/text"
+  "github.com/solana-foundation/solana-go/v2"
+  "github.com/solana-foundation/solana-go/v2/programs/system"
+  "github.com/solana-foundation/solana-go/v2/rpc"
+  "github.com/solana-foundation/solana-go/v2/text"
 )
 
 func main() {
@@ -485,8 +354,8 @@ func decodeSystemTransfer(tx *solana.Transaction) {
     // database/sql drivers:
     //
     //     import (
-    //         _ "github.com/gagliardetto/solana-go/programs/system"
-    //         _ "github.com/gagliardetto/solana-go/programs/token"
+    //         _ "github.com/solana-foundation/solana-go/v2/programs/system"
+    //         _ "github.com/solana-foundation/solana-go/v2/programs/token"
     //         // ...add more as needed
     //     )
     //
@@ -593,7 +462,7 @@ import (
 
   "golang.org/x/time/rate"
   "github.com/davecgh/go-spew/spew"
-  "github.com/gagliardetto/solana-go/rpc"
+  "github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 func main() {
@@ -624,7 +493,7 @@ import (
 
   "golang.org/x/time/rate"
   "github.com/davecgh/go-spew/spew"
-  "github.com/gagliardetto/solana-go/rpc"
+  "github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 func main() {
@@ -672,8 +541,8 @@ import (
   "net/http"
   "time"
 
-  "github.com/gagliardetto/solana-go/rpc"
-  "github.com/gagliardetto/solana-go/rpc/jsonrpc"
+  "github.com/solana-foundation/solana-go/v2/rpc"
+  "github.com/solana-foundation/solana-go/v2/rpc/jsonrpc"
 )
 
 func NewHTTPTransport(
@@ -740,8 +609,8 @@ import (
   "context"
   "fmt"
 
-  "github.com/gagliardetto/solana-go"
-  "github.com/gagliardetto/solana-go/rpc"
+  "github.com/solana-foundation/solana-go/v2"
+  "github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 func main() {
@@ -847,13 +716,13 @@ import (
   "time"
 
   "github.com/davecgh/go-spew/spew"
-  "github.com/gagliardetto/solana-go"
-  "github.com/gagliardetto/solana-go/programs/system"
-  "github.com/gagliardetto/solana-go/rpc"
-  confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
-  "github.com/gagliardetto/solana-go/rpc/jsonrpc"
-  "github.com/gagliardetto/solana-go/rpc/ws"
-  "github.com/gagliardetto/solana-go/text"
+  "github.com/solana-foundation/solana-go/v2"
+  "github.com/solana-foundation/solana-go/v2/programs/system"
+  "github.com/solana-foundation/solana-go/v2/rpc"
+  confirm "github.com/solana-foundation/solana-go/v2/rpc/sendAndConfirmTransaction"
+  "github.com/solana-foundation/solana-go/v2/rpc/jsonrpc"
+  "github.com/solana-foundation/solana-go/v2/rpc/ws"
+  "github.com/solana-foundation/solana-go/v2/text"
 )
 
 func main() {
@@ -962,35 +831,15 @@ func main() {
 
 All RPC methods from the [Solana JSON RPC API](https://solana.com/docs/rpc) are supported.
 Each method has a testable example in [`rpc/example_test.go`](rpc/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go/rpc#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0/rpc#pkg-examples).
 
 
 ## WebSocket Subscriptions
 
 All WebSocket subscriptions from the [Solana WebSocket API](https://solana.com/docs/rpc/websocket) are supported.
 Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go/rpc/ws#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0/rpc/ws#pkg-examples).
 
-
-## About v2
-
-A `v2` branch exists in parallel with `main`. It contains everything on `main` plus three breaking changes that couldn't ship on v1 without disrupting existing users:
-
-1. **Module path** — `github.com/solana-foundation/solana-go/v2`
-2. **Loader program packages** (`programs/loader-v2` / `-v3` / `-v4`) realigned to on-chain program specs ([#410](https://github.com/solana-foundation/solana-go/pull/410))
-3. **WebSocket subscription API** aligned to the JSON-RPC spec ([#407](https://github.com/solana-foundation/solana-go/pull/407))
-
-**v1 remains the recommended default.** Choose v2 only if you specifically need one of the above.
-
-To use v2 (currently `v2.0.0-rc`, a release candidate):
-
-```
-$ go get github.com/solana-foundation/solana-go/v2@v2.0.0-rc
-```
-
-Full v2 details, release notes, and migration guide:
-- [v2 branch README](https://github.com/solana-foundation/solana-go/blob/v2/README.md)
-- [v2.0.0-rc release notes](https://github.com/solana-foundation/solana-go/releases/tag/v2.0.0-rc)
 
 ## Contributing
 

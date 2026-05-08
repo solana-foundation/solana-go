@@ -19,8 +19,8 @@ import (
 	stdjson "encoding/json"
 	"fmt"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 // SignatureSubscribeConfig matches Agave's RpcSignatureSubscribeConfig.
