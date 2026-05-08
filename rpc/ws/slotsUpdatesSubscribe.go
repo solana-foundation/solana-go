@@ -17,7 +17,7 @@ package ws
 import (
 	"context"
 
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 )
 
 // SlotsUpdatesResult is a Go projection of Agave's SlotUpdate tagged

@@ -1233,7 +1233,7 @@ func TestHasDuplicates_Loaded(t *testing.T) {
 	})
 }
 
-// Regression test for https://github.com/solana-foundation/solana-go/issues/339:
+// Regression test for https://github.com/solana-foundation/solana-go/v2/issues/339:
 // when decoding an RPC response with `encoding: json`, the Message version was
 // always left as Legacy because the private `version` field has no JSON tag.
 // The presence of `addressTableLookups` in the raw JSON now selects V0.

@@ -1,11 +1,11 @@
 # Solana SDK library for Go
 
-[![GoDoc](https://pkg.go.dev/badge/github.com/gagliardetto/solana-go?status.svg)](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0?tab=doc)
-[![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/gagliardetto/solana-go?include_prereleases&label=release-tag)](https://github.com/gagliardetto/solana-go/releases)
-[![Build Status](https://github.com/gagliardetto/solana-go/workflows/tests/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain)
-[![Lint Status](https://github.com/gagliardetto/solana-go/workflows/lint/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain+workflow%3Alint)
-[![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/gagliardetto/solana-go/main)](https://www.tickgit.com/browse?repo=github.com/gagliardetto/solana-go&branch=main)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gagliardetto/solana-go)](https://goreportcard.com/report/github.com/gagliardetto/solana-go)
+[![GoDoc](https://pkg.go.dev/badge/github.com/solana-foundation/solana-go/v2?status.svg)](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0?tab=doc)
+[![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/solana-foundation/solana-go?include_prereleases&label=release-tag)](https://github.com/solana-foundation/solana-go/v2/releases)
+[![Build Status](https://github.com/solana-foundation/solana-go/v2/workflows/tests/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain)
+[![Lint Status](https://github.com/solana-foundation/solana-go/v2/workflows/lint/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain+workflow%3Alint)
+[![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/solana-foundation/solana-go/v2/main)](https://www.tickgit.com/browse?repo=github.com/solana-foundation/solana-go/v2&branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/solana-foundation/solana-go/v2)](https://goreportcard.com/report/github.com/solana-foundation/solana-go/v2)
 
 Go library to interface with Solana JSON RPC and WebSocket interfaces.
 
@@ -90,7 +90,7 @@ The RPC and WS client implementation is based on the [Solana RPC API documentati
 
 ```bash
 $ cd my-project
-$ go get github.com/gagliardetto/solana-go@v1.16.0
+$ go get github.com/solana-foundation/solana-go/v2@v1.16.0
 ```
 
 ## Pretty-Print transactions/instructions
@@ -122,7 +122,7 @@ fmt.Println(tx.String())
 
 ## SendAndConfirmTransaction
 
-You can wait for a transaction confirmation using the `github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction` package tools (for a complete example: [see here](#transfer-sol-from-one-wallet-to-another-wallet))
+You can wait for a transaction confirmation using the `github.com/solana-foundation/solana-go/v2/rpc/sendAndConfirmTransaction` package tools (for a complete example: [see here](#transfer-sol-from-one-wallet-to-another-wallet))
 
 ```go
 // Send transaction, and wait for confirmation:
@@ -153,9 +153,9 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/gagliardetto/solana-go"
-	lookup "github.com/gagliardetto/solana-go/programs/address-lookup-table"
-	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/solana-foundation/solana-go/v2"
+	lookup "github.com/solana-foundation/solana-go/v2/programs/address-lookup-table"
+	"github.com/solana-foundation/solana-go/v2/rpc"
 	"golang.org/x/time/rate"
 )
 
@@ -255,10 +255,10 @@ import (
 
   "github.com/davecgh/go-spew/spew"
   bin "github.com/gagliardetto/binary"
-  "github.com/gagliardetto/solana-go"
-  "github.com/gagliardetto/solana-go/programs/system"
-  "github.com/gagliardetto/solana-go/rpc"
-  "github.com/gagliardetto/solana-go/text"
+  "github.com/solana-foundation/solana-go/v2"
+  "github.com/solana-foundation/solana-go/v2/programs/system"
+  "github.com/solana-foundation/solana-go/v2/rpc"
+  "github.com/solana-foundation/solana-go/v2/text"
 )
 
 func main() {
@@ -354,8 +354,8 @@ func decodeSystemTransfer(tx *solana.Transaction) {
     // database/sql drivers:
     //
     //     import (
-    //         _ "github.com/gagliardetto/solana-go/programs/system"
-    //         _ "github.com/gagliardetto/solana-go/programs/token"
+    //         _ "github.com/solana-foundation/solana-go/v2/programs/system"
+    //         _ "github.com/solana-foundation/solana-go/v2/programs/token"
     //         // ...add more as needed
     //     )
     //
@@ -462,7 +462,7 @@ import (
 
   "golang.org/x/time/rate"
   "github.com/davecgh/go-spew/spew"
-  "github.com/gagliardetto/solana-go/rpc"
+  "github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 func main() {
@@ -493,7 +493,7 @@ import (
 
   "golang.org/x/time/rate"
   "github.com/davecgh/go-spew/spew"
-  "github.com/gagliardetto/solana-go/rpc"
+  "github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 func main() {
@@ -541,8 +541,8 @@ import (
   "net/http"
   "time"
 
-  "github.com/gagliardetto/solana-go/rpc"
-  "github.com/gagliardetto/solana-go/rpc/jsonrpc"
+  "github.com/solana-foundation/solana-go/v2/rpc"
+  "github.com/solana-foundation/solana-go/v2/rpc/jsonrpc"
 )
 
 func NewHTTPTransport(
@@ -609,8 +609,8 @@ import (
   "context"
   "fmt"
 
-  "github.com/gagliardetto/solana-go"
-  "github.com/gagliardetto/solana-go/rpc"
+  "github.com/solana-foundation/solana-go/v2"
+  "github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 func main() {
@@ -716,13 +716,13 @@ import (
   "time"
 
   "github.com/davecgh/go-spew/spew"
-  "github.com/gagliardetto/solana-go"
-  "github.com/gagliardetto/solana-go/programs/system"
-  "github.com/gagliardetto/solana-go/rpc"
-  confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
-  "github.com/gagliardetto/solana-go/rpc/jsonrpc"
-  "github.com/gagliardetto/solana-go/rpc/ws"
-  "github.com/gagliardetto/solana-go/text"
+  "github.com/solana-foundation/solana-go/v2"
+  "github.com/solana-foundation/solana-go/v2/programs/system"
+  "github.com/solana-foundation/solana-go/v2/rpc"
+  confirm "github.com/solana-foundation/solana-go/v2/rpc/sendAndConfirmTransaction"
+  "github.com/solana-foundation/solana-go/v2/rpc/jsonrpc"
+  "github.com/solana-foundation/solana-go/v2/rpc/ws"
+  "github.com/solana-foundation/solana-go/v2/text"
 )
 
 func main() {
@@ -831,14 +831,14 @@ func main() {
 
 All RPC methods from the [Solana JSON RPC API](https://solana.com/docs/rpc) are supported.
 Each method has a testable example in [`rpc/example_test.go`](rpc/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0/rpc#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0/rpc#pkg-examples).
 
 
 ## WebSocket Subscriptions
 
 All WebSocket subscriptions from the [Solana WebSocket API](https://solana.com/docs/rpc/websocket) are supported.
 Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0/rpc/ws#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0/rpc/ws#pkg-examples).
 
 
 ## Contributing

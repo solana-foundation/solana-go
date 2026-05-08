@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	bin "github.com/gagliardetto/binary"
-	solana "github.com/gagliardetto/solana-go"
-	format "github.com/gagliardetto/solana-go/text/format"
 	treeout "github.com/gagliardetto/treeout"
+	solana "github.com/solana-foundation/solana-go/v2"
+	format "github.com/solana-foundation/solana-go/v2/text/format"
 )
 
 // ExtendLookupTable extends an address lookup table with new addresses.
