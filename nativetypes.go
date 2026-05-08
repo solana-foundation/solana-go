@@ -27,7 +27,6 @@ import (
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go/base58"
 	"github.com/mostynb/zstdpool-freelist"
-	mrtronbase58 "github.com/mr-tron/base58"
 )
 
 type Padding []byte
@@ -103,7 +102,7 @@ func (ha Hash) IsZero() bool {
 }
 
 func (ha Hash) String() string {
-	return base58.Encode32((*[32]byte)(&ha))
+	return base58.Encode(ha[:])
 }
 
 type Signature [64]byte
@@ -191,7 +190,7 @@ func (s Signature) Verify(pubkey PublicKey, msg []byte) bool {
 }
 
 func (p Signature) String() string {
-	return base58.Encode64((*[64]byte)(&p))
+	return base58.Encode(p[:])
 }
 
 type Base64 []byte
@@ -219,7 +218,7 @@ func (t *Base64) UnmarshalJSON(data []byte) (err error) {
 type Base58 []byte
 
 func (t Base58) MarshalJSON() ([]byte, error) {
-	return json.Marshal(mrtronbase58.Encode(t))
+	return json.Marshal(base58.Encode(t))
 }
 
 func (t *Base58) UnmarshalJSON(data []byte) (err error) {
@@ -234,12 +233,12 @@ func (t *Base58) UnmarshalJSON(data []byte) (err error) {
 		return nil
 	}
 
-	*t, err = mrtronbase58.Decode(s)
+	*t, err = base58.Decode(s)
 	return
 }
 
 func (t Base58) String() string {
-	return mrtronbase58.Encode(t)
+	return base58.Encode(t)
 }
 
 type Data struct {
@@ -279,7 +278,7 @@ func (t *Data) UnmarshalJSON(data []byte) (err error) {
 	switch t.Encoding {
 	case EncodingBase58:
 		var err error
-		t.Content, err = mrtronbase58.Decode(contentString)
+		t.Content, err = base58.Decode(contentString)
 		if err != nil {
 			return err
 		}
@@ -315,7 +314,7 @@ var zstdEncoderPool = zstdpool.NewEncoderPool()
 func (t Data) String() string {
 	switch EncodingType(t.Encoding) {
 	case EncodingBase58:
-		return mrtronbase58.Encode(t.Content)
+		return base58.Encode(t.Content)
 	case EncodingBase64:
 		return base64.StdEncoding.EncodeToString(t.Content)
 	case EncodingBase64Zstd:

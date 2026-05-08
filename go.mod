@@ -3,15 +3,38 @@ module github.com/gagliardetto/solana-go
 go 1.24.0
 
 require (
+	github.com/AlekSi/pointer v1.2.0
+	github.com/buger/jsonparser v1.1.2
+	github.com/davecgh/go-spew v1.1.1
+	github.com/fatih/color v1.18.0
 	github.com/gagliardetto/binary v0.8.0
 	github.com/gagliardetto/gofuzz v1.2.2
 	github.com/gagliardetto/treeout v0.1.4
 	github.com/goccy/go-json v0.10.6
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/rpc v1.2.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/json-iterator/go v1.1.12
-	github.com/mr-tron/base58 v1.2.0
+	github.com/klauspost/compress v1.18.0
+	github.com/logrusorgru/aurora v2.0.3+incompatible
+	github.com/mostynb/zstdpool-freelist v0.0.0-20201229113212-927304c0c3b1
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20251114093237-2ab5a27a1729
+	github.com/onsi/gomega v1.10.1
+	github.com/pkg/errors v0.9.1
+	github.com/ryanuber/columnize v2.1.2+incompatible
+	github.com/spf13/cobra v1.9.1
+	github.com/spf13/pflag v1.0.10
+	github.com/spf13/viper v1.21.0
+	github.com/streamingfast/logging v0.0.0-20250404134358-92b15d2fbd2e
+	github.com/stretchr/testify v1.11.1
 	go.mongodb.org/mongo-driver/v2 v2.5.0
+	go.uber.org/ratelimit v0.3.1
+	go.uber.org/zap v1.27.0
+	golang.org/x/crypto v0.47.0
+	golang.org/x/oauth2 v0.34.0
+	golang.org/x/time v0.11.0
+	google.golang.org/api v0.233.0
 )
 
 require (
@@ -52,6 +75,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/term v0.39.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
@@ -59,32 +83,4 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-require (
-	github.com/AlekSi/pointer v1.2.0
-	github.com/buger/jsonparser v1.1.2
-	github.com/davecgh/go-spew v1.1.1
-	github.com/fatih/color v1.18.0
-	github.com/google/go-cmp v0.7.0
-	github.com/gorilla/rpc v1.2.1
-	github.com/gorilla/websocket v1.5.3
-	github.com/klauspost/compress v1.18.0
-	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/mostynb/zstdpool-freelist v0.0.0-20201229113212-927304c0c3b1
-	github.com/onsi/gomega v1.10.1
-	github.com/pkg/errors v0.9.1
-	github.com/ryanuber/columnize v2.1.2+incompatible
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.10
-	github.com/spf13/viper v1.21.0
-	github.com/streamingfast/logging v0.0.0-20250404134358-92b15d2fbd2e
-	github.com/stretchr/testify v1.11.1
-	go.uber.org/ratelimit v0.3.1
-	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.47.0
-	golang.org/x/oauth2 v0.34.0
-	golang.org/x/term v0.39.0 // indirect
-	golang.org/x/time v0.11.0
-	google.golang.org/api v0.233.0
 )

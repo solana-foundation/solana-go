@@ -3,9 +3,9 @@ package base58
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"testing"
 
-	mrtronbase58 "github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -98,18 +98,22 @@ func TestDecode32_Zeros(t *testing.T) {
 }
 
 func TestRoundtrip32_Random(t *testing.T) {
-	// Cross-check the specialized fixed-size path against mr-tron's
-	// well-tested general-purpose implementation.
+	// Cross-check the specialized fixed-size path against the variable-length
+	// fallback — the two share no code, so disagreement flags a bug.
 	for range 1000 {
 		var src [32]byte
 		rand.Read(src[:])
 
-		encoded := Encode32(&src)
-		assert.Equal(t, mrtronbase58.Encode(src[:]), encoded, "encode mismatch for %x", src)
+		encoded := Encode(src[:])
+		assert.Equal(t, encodeVariable(src[:]), encoded, "encode mismatch for %x", src)
 
 		var decoded [32]byte
 		require.NoError(t, Decode32(encoded, &decoded))
 		assert.Equal(t, src, decoded, "decode mismatch for %s", encoded)
+
+		generic, err := Decode(encoded)
+		require.NoError(t, err)
+		assert.Equal(t, src[:], generic, "generic decode mismatch for %s", encoded)
 	}
 }
 
@@ -118,19 +122,23 @@ func TestRoundtrip64_Random(t *testing.T) {
 		var src [64]byte
 		rand.Read(src[:])
 
-		encoded := Encode64(&src)
-		assert.Equal(t, mrtronbase58.Encode(src[:]), encoded, "encode mismatch for %x", src)
+		encoded := Encode(src[:])
+		assert.Equal(t, encodeVariable(src[:]), encoded, "encode mismatch for %x", src)
 
 		var decoded [64]byte
 		require.NoError(t, Decode64(encoded, &decoded))
 		assert.Equal(t, src, decoded, "decode mismatch for %s", encoded)
+
+		generic, err := Decode(encoded)
+		require.NoError(t, err)
+		assert.Equal(t, src[:], generic, "generic decode mismatch for %s", encoded)
 	}
 }
 
 func TestAppendEncode32_ZeroAlloc(t *testing.T) {
 	var src [32]byte
 	rand.Read(src[:])
-	expected := Encode32(&src)
+	expected := Encode(src[:])
 
 	// Pre-sized buffer: should not allocate.
 	buf := make([]byte, 0, EncodedMaxLen32)
@@ -148,7 +156,7 @@ func TestAppendEncode32_ZeroAlloc(t *testing.T) {
 func TestAppendEncode64_ZeroAlloc(t *testing.T) {
 	var src [64]byte
 	rand.Read(src[:])
-	expected := Encode64(&src)
+	expected := Encode(src[:])
 
 	buf := make([]byte, 0, EncodedMaxLen64)
 	buf = AppendEncode64(buf, &src)
@@ -162,6 +170,105 @@ func TestDecode_InvalidChars(t *testing.T) {
 	assert.Error(t, Decode32("Oinvalid", &dst)) // 'O' is not in base58
 }
 
+// Known vectors for the variable-length API. Cross-validated against
+// Bitcoin Core, bs58, and five8.
+var knownVectorsVar = []struct {
+	hex string
+	b58 string
+}{
+	{"", ""},
+	{"00", "1"},
+	{"0000", "11"},
+	{"00000000", "1111"},
+	{"61", "2g"},
+	{"626262", "a3gV"},
+	{"636363", "aPEr"},
+	{"73696d706c792061206c6f6e6720737472696e67", "2cFupjhnEsSn59qHXstmK2ffpLv2"},
+	{"00eb15231dfceb60925886b67d065299925915aeb172c06647", "1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L"},
+	// Solana instruction data sample from transaction_test.go.
+	{"020000003930000000000000", "3Bxs4ART6LMJ13T5"},
+}
+
+func TestEncode_KnownVectors(t *testing.T) {
+	for _, tv := range knownVectorsVar {
+		raw, err := hex.DecodeString(tv.hex)
+		require.NoError(t, err)
+		assert.Equal(t, tv.b58, Encode(raw), "hex=%s", tv.hex)
+	}
+}
+
+func TestDecode_KnownVectors(t *testing.T) {
+	for _, tv := range knownVectorsVar {
+		expected, err := hex.DecodeString(tv.hex)
+		require.NoError(t, err)
+		got, err := Decode(tv.b58)
+		require.NoError(t, err, "b58=%s", tv.b58)
+		if expected == nil {
+			expected = []byte{}
+		}
+		assert.Equal(t, expected, got, "b58=%s", tv.b58)
+	}
+}
+
+func TestEncode_Empty(t *testing.T) {
+	assert.Equal(t, "", Encode(nil))
+	assert.Equal(t, "", Encode([]byte{}))
+}
+
+func TestDecode_Empty(t *testing.T) {
+	got, err := Decode("")
+	require.NoError(t, err)
+	assert.Equal(t, []byte{}, got)
+}
+
+func TestRoundtrip_Variable_Random(t *testing.T) {
+	// Cover assorted lengths including ones the fixed-size paths can't handle.
+	for _, n := range []int{1, 5, 12, 31, 33, 63, 65, 100, 250, 1000} {
+		for range 100 {
+			src := make([]byte, n)
+			rand.Read(src)
+
+			encoded := Encode(src)
+			decoded, err := Decode(encoded)
+			require.NoError(t, err, "len=%d", n)
+			assert.Equal(t, src, decoded, "len=%d encoded=%s", n, encoded)
+		}
+	}
+}
+
+func TestRoundtrip_Variable_LeadingZeros(t *testing.T) {
+	// Encoded leading '1's must round-trip to the same number of leading zeros.
+	for zeros := 0; zeros < 10; zeros++ {
+		for tail := 0; tail < 10; tail++ {
+			src := make([]byte, zeros+tail)
+			if tail > 0 {
+				rand.Read(src[zeros:])
+				if src[zeros] == 0 {
+					src[zeros] = 1
+				}
+			}
+			encoded := Encode(src)
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			assert.Equal(t, src, decoded, "zeros=%d tail=%d", zeros, tail)
+		}
+	}
+}
+
+func TestDecode_InvalidChars_Variable(t *testing.T) {
+	for _, in := range []string{"0", "O", "I", "l", "abc!", "abc 123", "\x00"} {
+		_, err := Decode(in)
+		assert.Error(t, err, "expected error for %q", in)
+	}
+}
+
+func BenchmarkBase58_Decode_Variable(b *testing.B) {
+	b.SetBytes(64)
+	for b.Loop() {
+		Decode(benchStr64)
+	}
+}
+
 // Benchmarks
 var (
 	benchSrc32 [32]byte
@@ -173,8 +280,23 @@ var (
 func init() {
 	rand.Read(benchSrc32[:])
 	rand.Read(benchSrc64[:])
-	benchStr32 = Encode32(&benchSrc32)
-	benchStr64 = Encode64(&benchSrc64)
+	benchStr32 = Encode(benchSrc32[:])
+	benchStr64 = Encode(benchSrc64[:])
+}
+
+func BenchmarkBase58_EncodeVariable(b *testing.B) {
+	// Cover lengths that bypass the 32/64 fast paths and exercise the
+	// long-division encoder. Solana instruction data is typically <= 1KB.
+	for _, n := range []int{16, 100, 1000} {
+		src := make([]byte, n)
+		rand.Read(src)
+		b.Run(fmt.Sprintf("len=%d", n), func(b *testing.B) {
+			b.SetBytes(int64(n))
+			for b.Loop() {
+				Encode(src)
+			}
+		})
+	}
 }
 
 func BenchmarkBase58_Encode32(b *testing.B) {
