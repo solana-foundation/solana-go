@@ -461,6 +461,21 @@ type GetProgramAccountsOpts struct {
 	// account must meet all filter criteria to be included in results.
 	Filters []RPCFilter `json:"filters,omitempty"`
 
+	// ChangedSinceSlot, if set, asks the RPC node to return account data onlyCollapse annotationCheck failure on line R89Check failure: File is not properly formatted (gofmt)lint / golangci-lintView details
+	// when it has changed since the given slot. Useful for incremental sync of
+	// large programs (e.g. PumpFun) where a full getProgramAccounts is no longer
+	// feasible.
+	//
+	// NOTE: This is NOT part of the official Solana JSON-RPC specification
+	// (https://solana.com/docs/rpc/http). It is a non-standard extension
+	// supported by some commercial RPC providers (e.g. Helius, FluxRPC).
+	// Public RPC endpoints and stock agave-validator nodes will ignore this
+	// field or reject the request. Verify support with your provider before
+	// using.
+	//
+	// This parameter is optional.
+	ChangedSinceSlot *uint64 `json:"changedSinceSlot,omitempty"`
+
 	// Wrap the result in an RpcResponse JSON object with context.
 	WithContext *bool `json:"withContext,omitempty"`
 

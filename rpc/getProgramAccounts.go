@@ -84,6 +84,9 @@ func buildGetProgramAccountsParams(publicKey solana.PublicKey, opts *GetProgramA
 				"length": opts.DataSlice.Length,
 			}
 		}
+		if opts.ChangedSinceSlot != nil {
+			obj["changedSinceSlot"] = *opts.ChangedSinceSlot
+    }
 		if opts.WithContext != nil {
 			obj["withContext"] = *opts.WithContext
 		}
