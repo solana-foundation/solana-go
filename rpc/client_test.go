@@ -2631,6 +2631,56 @@ func TestClient_GetParsedTransaction(t *testing.T) {
 	}, out.Transaction.Message.Instructions[0].Parsed.asInstructionInfo)
 }
 
+func TestClient_GetTransaction_EncodingJSON(t *testing.T) {
+	responseBody := `{"blockTime":1624821990,"meta":{"err":null,"fee":5000,"innerInstructions":[],"logMessages":[],"postBalances":[199247210749,90459349430703,1,1,1],"postTokenBalances":[],"preBalances":[199247215749,90459349430703,1,1,1],"preTokenBalances":[],"rewards":[],"status":{"Ok":null}},"slot":83311386,"transaction":{"message":{"accountKeys":["2ZZkgKcBfp4tW8qCLj2yjxRYh9CuvEVJWb6e2KKS91Mj","53R9tmVrTQwJAgaUCWEA7SiVf7eWAbaQarZ159ixt2D9","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"3yZe7d","programIdIndex":4}],"recentBlockhash":"6o9C27iJ5rPi7wEpvQu1cFbB1WnRudtsPnbY8GvFWrgR"},"signatures":["QPzWhnwHnCwk3nj1zVCcjz1VP7EcAKouPg9Joietje3GnQTVQ5XyWxyPC3zHby8K5ahSn9SbQupauDbVRvv5DuL"]}}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	txSig := "KBVcTWwgEhVzwywtunhAXRKjXYYEdPcSCpuEkg484tiE3dFGzHDu9LKKH23uBMdfYt3JCPHeaVeDTZWecboyTrd"
+
+	out, err := client.GetTransaction(
+		context.Background(),
+		solana.MustSignatureFromBase58(txSig),
+		&GetTransactionOpts{
+			Encoding: solana.EncodingJSON,
+		},
+	)
+	require.NoError(t, err)
+
+	// Verify request sent encoding: "json"
+	reqBody := server.RequestBody(t)
+	assert.NotNil(t, reqBody["id"])
+	reqBody["id"] = any(nil)
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getTransaction",
+			"params": []any{
+				txSig,
+				map[string]any{
+					"encoding": string(solana.EncodingJSON),
+				},
+			},
+		},
+		reqBody,
+	)
+
+	// Verify response is usable: GetTransaction must return a populated transaction.
+	require.NotNil(t, out.Transaction)
+	tx, err := out.Transaction.GetTransaction()
+	require.NoError(t, err)
+	require.Len(t, tx.Signatures, 1)
+	assert.Equal(t,
+		solana.MustSignatureFromBase58("QPzWhnwHnCwk3nj1zVCcjz1VP7EcAKouPg9Joietje3GnQTVQ5XyWxyPC3zHby8K5ahSn9SbQupauDbVRvv5DuL"),
+		tx.Signatures[0],
+	)
+	require.Len(t, tx.Message.AccountKeys, 5)
+	assert.Equal(t, solana.MustPublicKeyFromBase58("2ZZkgKcBfp4tW8qCLj2yjxRYh9CuvEVJWb6e2KKS91Mj"), tx.Message.AccountKeys[0])
+	assert.Equal(t, uint16(4), tx.Message.Instructions[0].ProgramIDIndex)
+}
+
 func TestClient_GetTransactionCount(t *testing.T) {
 	responseBody := `27293302873`
 	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
