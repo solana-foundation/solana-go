@@ -61,7 +61,13 @@ func NewBlockSubscribeFilterMentionsAccountOrProgram(pubkey solana.PublicKey) *B
 
 type BlockSubscribeOpts struct {
 	Commitment rpc.CommitmentType
-	Encoding   solana.EncodingType `json:"encoding,omitempty"`
+	// Encoding controls how transactions inside each block are returned.
+	//
+	// Supported values: EncodingBase58, EncodingBase64, EncodingBase64Zstd.
+	// EncodingJSONParsed is NOT supported here because BlockResult is shaped
+	// for the non-parsed transaction layout. Use Client.ParsedBlockSubscribe
+	// instead when parsed JSON output is needed.
+	Encoding solana.EncodingType `json:"encoding,omitempty"`
 
 	// Level of transaction detail to return.
 	TransactionDetails rpc.TransactionDetailsType
@@ -100,11 +106,18 @@ func (cl *Client) BlockSubscribe(
 			obj["commitment"] = opts.Commitment
 		}
 		if opts.Encoding != "" {
+			// EncodingJSONParsed cannot decode through BlockResult: the
+			// response shape uses *rpc.GetBlockResult, which models the
+			// non-parsed transaction layout. Reject it up front with a
+			// pointer to ParsedBlockSubscribe rather than letting the
+			// request go out and fail at decode time.
+			if opts.Encoding == solana.EncodingJSONParsed {
+				return nil, fmt.Errorf("encoding %s is not supported by BlockSubscribe; use ParsedBlockSubscribe instead", opts.Encoding)
+			}
 			if !solana.IsAnyOfEncodingType(
 				opts.Encoding,
 				// Valid encodings:
 				// solana.EncodingJSON, // TODO
-				solana.EncodingJSONParsed, // TODO
 				solana.EncodingBase58,
 				solana.EncodingBase64,
 				solana.EncodingBase64Zstd,
