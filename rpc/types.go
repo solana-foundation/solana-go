@@ -591,6 +591,12 @@ type InstructionInfo struct {
 	InstructionType string         `json:"type"`
 }
 
+type TokenMetaData struct {
+	Name   string
+	Symbol string
+	URI    string
+}
+
 type TransactionOpts struct {
 	Encoding            solana.EncodingType `json:"encoding,omitempty"`
 	SkipPreflight       bool                `json:"skipPreflight,omitempty"`
