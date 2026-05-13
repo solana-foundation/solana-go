@@ -466,6 +466,9 @@ type GetProgramAccountsOpts struct {
 
 	// Sort the results (useful for deterministic pagination).
 	SortResults *bool `json:"sortResults,omitempty"`
+
+	// The minimum slot that the request can be evaluated at.
+	MinContextSlot *uint64 `json:"minContextSlot,omitempty"`
 }
 
 type GetProgramAccountsResult []*KeyedAccount
