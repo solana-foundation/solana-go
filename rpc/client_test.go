@@ -2631,6 +2631,106 @@ func TestClient_GetParsedTransaction(t *testing.T) {
 	}, out.Transaction.Message.Instructions[0].Parsed.asInstructionInfo)
 }
 
+// TestClient_GetTransaction_VersionBug tests that Message.version is correctly
+// set when parsing JSON transactions (issue #339).
+//
+// Previously, when calling GetTransaction with JSON encoding, the Message.version
+// was always set to Legacy (0) regardless of the actual transaction version.
+// This was fixed by adding UnmarshalJSON to Transaction that detects v0 transactions
+// by checking for AddressTableLookups.
+func TestClient_GetTransaction_VersionBug(t *testing.T) {
+	// This is a v0 transaction (versioned) with AddressTableLookups
+	// RPC response contains: "version": 0 (v0 transaction) and addressTableLookups
+	responseBody := `{
+		"blockTime": 1624821990,
+		"meta": {
+			"err": null,
+			"fee": 5000,
+			"innerInstructions": [],
+			"logMessages": ["Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success"],
+			"postBalances": [199247210749, 90459349430703, 1, 1, 1],
+			"preBalances": [199247215749, 90459349430703, 1, 1, 1],
+			"rewards": [],
+			"status": {"Ok": null}
+		},
+		"slot": 83311386,
+		"version": 0,
+		"transaction": {
+			"message": {
+				"accountKeys": [
+					"2ZZkgKcBfp4tW8qCLj2yjxRYh9CuvEVJWb6e2KKS91Mj",
+					"53R9tmVrTQwJAgaUCWEA7SiVf7eWAbaQarZ159ixt2D9",
+					"SysvarS1otHashes111111111111111111111111111",
+					"SysvarC1ock11111111111111111111111111111111",
+					"11111111111111111111111111111111"
+				],
+				"header": {
+					"numReadonlySignedAccounts": 0,
+					"numReadonlyUnsignedAccounts": 3,
+					"numRequiredSignatures": 1
+				},
+				"instructions": [
+					{
+						"accounts": [1, 2, 3, 0],
+						"data": "3yZe7d",
+						"programIdIndex": 4
+					}
+				],
+				"recentBlockhash": "6o9C27iJ5rPi7wEpvQu1cFbB1WnRudtsPnbY8GvFWrgR",
+				"addressTableLookups": [
+					{
+						"accountKey": "2immgwYNHBbyVQKVGCEkgWpi53bLwWNRMB5G2nbgYV17",
+						"writableIndexes": [0],
+						"readonlyIndexes": []
+					}
+				]
+			},
+			"signatures": [
+				"QPzWhnwHnCwk3nj1zVCcjz1VP7EcAKouPg9Joietje3GnQTVQ5XyWxyPC3zHby8K5ahSn9SbQupauDbVRvv5DuL"
+			]
+		}
+	}`
+
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	tx := "QPzWhnwHnCwk3nj1zVCcjz1VP7EcAKouPg9Joietje3GnQTVQ5XyWxyPC3zHby8K5ahSn9SbQupauDbVRvv5DuL"
+	maxSupportedVersion := uint64(0)
+
+	out, err := client.GetTransaction(
+		context.Background(),
+		solana.MustSignatureFromBase58(tx),
+		&GetTransactionOpts{
+			Commitment:                     CommitmentConfirmed,
+			MaxSupportedTransactionVersion: &maxSupportedVersion,
+		},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, out)
+
+	// The RPC response has "version": 0, which means v0 transaction
+	assert.Equal(t, TransactionVersion(0), out.Version, "RPC version should be 0 (v0)")
+
+	// Get the parsed transaction
+	parsedTx, err := out.Transaction.GetTransaction()
+	require.NoError(t, err)
+	require.NotNil(t, parsedTx)
+
+	// Verification that the version is correctly set for v0 transactions.
+	// This test ensures that issue #339 is fixed: when parsing JSON transactions,
+	// the Message.version field should be correctly set based on transaction features
+	// (e.g., presence of AddressTableLookups for v0 transactions).
+	isVersioned := parsedTx.Message.IsVersioned()
+	actualVersion := parsedTx.Message.GetVersion()
+
+	// The transaction has AddressTableLookups (v0 feature), so it should be versioned.
+	assert.True(t, isVersioned,
+		"Transaction has AddressTableLookups (v0 feature) but IsVersioned() returns false")
+	assert.Equal(t, solana.MessageVersionV0, actualVersion,
+		"RPC returned version=0 (v0), but Message.GetVersion() returns %d instead of MessageVersionV0", actualVersion)
+}
+
 func TestClient_GetTransactionCount(t *testing.T) {
 	responseBody := `27293302873`
 	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
