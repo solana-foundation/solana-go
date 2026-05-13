@@ -157,7 +157,7 @@ func (slice AccountMetaSlice) Len() int {
 
 func (slice AccountMetaSlice) SplitFrom(index int) (AccountMetaSlice, AccountMetaSlice) {
 	if index < 0 {
-		panic("negative index")
+		return AccountMetaSlice{}, slice
 	}
 	if index == 0 {
 		return AccountMetaSlice{}, slice
