@@ -411,6 +411,57 @@ func TestConnectionDrop_AllSubscriptionsNotified(t *testing.T) {
 	}
 }
 
+func TestSubscribe_ErrorResponseClosesSubscription(t *testing.T) {
+	m := newMockWSServer(t)
+	defer m.stop()
+
+	c := connectClient(t, m)
+	defer c.Close()
+
+	type subResult struct {
+		sub *Subscription
+		err error
+	}
+	ch := make(chan subResult, 1)
+	go func() {
+		sub, err := c.subscribe(
+			[]any{"test"},
+			nil,
+			"testSubscribe",
+			"testUnsubscribe",
+			func(msg []byte) (any, error) {
+				var res SlotResult
+				err := decodeResponseFromMessage(msg, &res)
+				return &res, err
+			},
+		)
+		ch <- subResult{sub, err}
+	}()
+
+	var reqID uint64
+	select {
+	case msg := <-m.incoming:
+		id, ok := getUint64WithOk(msg, "id")
+		require.True(t, ok, "could not parse request ID from %s", string(msg))
+		reqID = id
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for subscription request")
+	}
+
+	resp := fmt.Sprintf(`{"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found"},"id":%d}`, reqID)
+	m.send(t, resp)
+
+	r := <-ch
+	require.NoError(t, r.err)
+	require.NotNil(t, r.sub)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, err := r.sub.Recv(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Method not found")
+}
+
 func TestConcurrentUnsubscribeAndConnectionDrop_NoPanic(t *testing.T) {
 	m := newMockWSServer(t)
 	defer m.stop()
