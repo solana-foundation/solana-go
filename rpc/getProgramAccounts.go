@@ -90,6 +90,9 @@ func buildGetProgramAccountsParams(publicKey solana.PublicKey, opts *GetProgramA
 		if opts.SortResults != nil {
 			obj["sortResults"] = *opts.SortResults
 		}
+		if opts.MinContextSlot != nil {
+			obj["minContextSlot"] = *opts.MinContextSlot
+		}
 	}
 	return []any{publicKey, obj}
 }

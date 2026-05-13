@@ -69,6 +69,9 @@ func (cl *Client) GetTokenAccountsByOwner(
 					return nil, errors.New("cannot use dataSlice with EncodingJSONParsed")
 				}
 			}
+			if opts.MinContextSlot != nil {
+				optsObj["minContextSlot"] = *opts.MinContextSlot
+			}
 			if len(optsObj) > 0 {
 				params = append(params, optsObj)
 			}
