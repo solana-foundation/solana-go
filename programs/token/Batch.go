@@ -15,7 +15,6 @@
 package token
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 
@@ -96,21 +95,14 @@ func (inst *Batch) EncodeToTree(parent ag_treeout.Branches) {
 
 func (obj Batch) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	for _, ix := range obj.Instructions {
-		accountCount := uint8(len(ix.Accounts()))
-
 		data, err := ix.Data()
 		if err != nil {
 			return fmt.Errorf("unable to encode batch sub-instruction: %w", err)
 		}
-		// data includes the discriminator byte from the outer Instruction encoding,
-		// but for batch sub-instructions we need the raw inner data (discriminator + params).
-		// The ix.Data() already produces [discriminator | params], which is what we need.
-		dataLen := uint8(len(data))
-
-		if err = encoder.WriteUint8(accountCount); err != nil {
+		if err = encoder.WriteUint8(uint8(len(ix.Accounts()))); err != nil {
 			return err
 		}
-		if err = encoder.WriteUint8(dataLen); err != nil {
+		if err = encoder.WriteUint8(uint8(len(data))); err != nil {
 			return err
 		}
 		if _, err = encoder.Write(data); err != nil {
@@ -145,23 +137,10 @@ func (obj *Batch) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
 	return nil
 }
 
-// BuildBatchData constructs the complete instruction data for a batch,
-// including the batch discriminator (255) and all sub-instruction data.
+// BuildBatchData is a convenience wrapper that returns the fully-encoded batch
+// instruction bytes (discriminator + sub-instruction headers + data).
 func BuildBatchData(instructions []*Instruction) ([]byte, error) {
-	buf := new(bytes.Buffer)
-	buf.WriteByte(Instruction_Batch)
-	for _, ix := range instructions {
-		accountCount := uint8(len(ix.Accounts()))
-		data, err := ix.Data()
-		if err != nil {
-			return nil, fmt.Errorf("unable to encode batch sub-instruction: %w", err)
-		}
-		dataLen := uint8(len(data))
-		buf.WriteByte(accountCount)
-		buf.WriteByte(dataLen)
-		buf.Write(data)
-	}
-	return buf.Bytes(), nil
+	return NewBatchInstruction(instructions...).Build().Data()
 }
 
 func NewBatchInstruction(instructions ...*Instruction) *Batch {

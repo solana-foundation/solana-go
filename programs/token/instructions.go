@@ -315,9 +315,9 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 
 // pTokenInstructionMap maps non-contiguous p-token instruction IDs to their types.
 var pTokenInstructionMap = map[uint8]ag_binary.VariantType{
-	Instruction_WithdrawExcessLamports: {"WithdrawExcessLamports", (*WithdrawExcessLamports)(nil)},
-	Instruction_UnwrapLamports:         {"UnwrapLamports", (*UnwrapLamports)(nil)},
-	Instruction_Batch:                  {"Batch", (*Batch)(nil)},
+	Instruction_WithdrawExcessLamports: {Name: "WithdrawExcessLamports", Type: (*WithdrawExcessLamports)(nil)},
+	Instruction_UnwrapLamports:         {Name: "UnwrapLamports", Type: (*UnwrapLamports)(nil)},
+	Instruction_Batch:                  {Name: "Batch", Type: (*Batch)(nil)},
 }
 
 func (inst *Instruction) ProgramID() ag_solanago.PublicKey {
@@ -388,36 +388,24 @@ func decodePTokenInstruction(accounts []*ag_solanago.AccountMeta, data []byte, d
 	inst := new(Instruction)
 	inst.TypeID = ag_binary.TypeIDFromUint8(discriminator)
 
-	switch impl := vt.Type.(type) {
+	var impl ag_solanago.AccountsSettable
+	switch vt.Type.(type) {
 	case *WithdrawExcessLamports:
-		_ = impl
-		obj := new(WithdrawExcessLamports)
-		if err := ag_binary.NewBinDecoder(data[1:]).Decode(obj); err != nil {
-			return nil, fmt.Errorf("unable to decode WithdrawExcessLamports: %w", err)
-		}
-		inst.Impl = obj
+		impl = new(WithdrawExcessLamports)
 	case *UnwrapLamports:
-		_ = impl
-		obj := new(UnwrapLamports)
-		if err := ag_binary.NewBinDecoder(data[1:]).Decode(obj); err != nil {
-			return nil, fmt.Errorf("unable to decode UnwrapLamports: %w", err)
-		}
-		inst.Impl = obj
+		impl = new(UnwrapLamports)
 	case *Batch:
-		_ = impl
-		obj := new(Batch)
-		if err := ag_binary.NewBinDecoder(data[1:]).Decode(obj); err != nil {
-			return nil, fmt.Errorf("unable to decode Batch: %w", err)
-		}
-		inst.Impl = obj
+		impl = new(Batch)
 	default:
 		return nil, fmt.Errorf("unknown p-token instruction type for discriminator %d", discriminator)
 	}
 
-	if v, ok := inst.Impl.(ag_solanago.AccountsSettable); ok {
-		if err := v.SetAccounts(accounts); err != nil {
-			return nil, fmt.Errorf("unable to set accounts for instruction: %w", err)
-		}
+	if err := ag_binary.NewBinDecoder(data[1:]).Decode(impl); err != nil {
+		return nil, fmt.Errorf("unable to decode %T: %w", impl, err)
 	}
+	if err := impl.SetAccounts(accounts); err != nil {
+		return nil, fmt.Errorf("unable to set accounts for instruction: %w", err)
+	}
+	inst.Impl = impl
 	return inst, nil
 }
