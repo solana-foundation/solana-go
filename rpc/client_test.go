@@ -470,6 +470,53 @@ func TestClient_GetBlockWithOpts(t *testing.T) {
 	// - test also when requesting only signatures
 }
 
+func TestClient_GetBlockWithOpts_EncodingJSON(t *testing.T) {
+	// Full EncodingJSON response: transactions are JSON objects, not base64 arrays.
+	// System program (11111111111111111111111111111111) used as second account.
+	responseBody := `{"blockHeight":100,"blockTime":1625227950,"blockhash":"5M77sHdwzH6rckuQwF8HL1w52n7hjrh4GVTFiF6T8QyB","parentSlot":99,"previousBlockhash":"Aq9jSXe1jRzfiaBcRFLe4wm7j499vWVEeFQrq5nnXfZN","rewards":[],"transactions":[{"meta":{"err":null,"fee":5000,"innerInstructions":[],"logMessages":[],"postBalances":[441866063495,1],"postTokenBalances":[],"preBalances":[441866068495,1],"preTokenBalances":[],"rewards":[],"status":{"Ok":null}},"transaction":{"message":{"accountKeys":["EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes","11111111111111111111111111111111"],"header":{"numRequiredSignatures":1,"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":1},"recentBlockhash":"Aq9jSXe1jRzfiaBcRFLe4wm7j499vWVEeFQrq5nnXfZN","instructions":[{"accounts":[0,1],"data":"3Bxs4ThLFRfx6J7z","programIdIndex":1}]},"signatures":["D8emaP3CaepSGigD3TCrev7j67yPLMi82qfzTb9iZYPxHcCmm6sQBKTU4bzAee4445zbnbWduVAZ87WfbWbXoAU"]},"version":"legacy"}]}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+
+	client := New(server.URL)
+
+	block := 42
+	out, err := client.GetBlockWithOpts(
+		context.Background(),
+		uint64(block),
+		&GetBlockOpts{
+			Encoding: solana.EncodingJSON,
+		},
+	)
+	require.NoError(t, err)
+
+	// the ID is random, so we can't assert it; let's check that it is set, and then remove it
+	reqBody := server.RequestBody(t)
+	assert.NotNil(t, reqBody["id"])
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getBlock",
+			"params": []any{
+				float64(block),
+				map[string]any{
+					"encoding": string(solana.EncodingJSON),
+				},
+			},
+		},
+		reqBody,
+	)
+
+	require.Len(t, out.Transactions, 1)
+	tx, err := out.Transactions[0].GetTransaction()
+	require.NoError(t, err)
+	require.Len(t, tx.Signatures, 1)
+	require.Len(t, tx.Message.AccountKeys, 2)
+	assert.Equal(t, solana.MustPublicKeyFromBase58("EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes"), tx.Message.AccountKeys[0])
+}
+
 func TestClient_GetBlockWithOpts_AccountsMode(t *testing.T) {
 	responseBody := `{"blockHeight":69213636,"blockTime":1625227950,"blockhash":"5M77sHdwzH6rckuQwF8HL1w52n7hjrh4GVTFiF6T8QyB","parentSlot":83987983,"previousBlockhash":"Aq9jSXe1jRzfiaBcRFLe4wm7j499vWVEeFQrq5nnXfZN","rewards":[],"transactions":[{"meta":{"err":null,"fee":5000,"innerInstructions":[],"logMessages":[],"postBalances":[441866063495,40905918933763,1],"postTokenBalances":[],"preBalances":[441866068495,40905918933763,1],"preTokenBalances":[],"rewards":[],"status":{"Ok":null}},"transaction":{"signatures":["D8emaP3CaepSGigD3TCrev7j67yPLMi82qfzTb9iZYPxHcCmm6sQBKTU4bzAee4445zbnbWduVAZ87WfbWbXoAU"],"accountKeys":[{"pubkey":"EVd8FFVB54svYdZdG6hH4F4hTbqre5mpQ7XyF5rKUmes","signer":true,"writable":true,"source":"transaction"},{"pubkey":"72miaovmbPqccdbAA861r2uxwB5yL1sMjrgbCnc4JfVT","signer":false,"writable":true,"source":"transaction"},{"pubkey":"Vote111111111111111111111111111111111111111","signer":false,"writable":false,"source":"lookupTable"}]},"version":0}]}`
 	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
@@ -565,7 +612,7 @@ func TestClient_GetBlockWithOpts_AccountsMode_GetTransactionFails(t *testing.T) 
 
 	require.Len(t, out.Transactions, 1)
 
-	// GetTransaction should fail — no binary data
+	// GetTransaction should fail — accounts mode returns JSON without a message field.
 	_, err = out.Transactions[0].GetTransaction()
 	assert.Error(t, err)
 
