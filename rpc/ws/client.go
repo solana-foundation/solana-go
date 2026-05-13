@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -86,6 +87,11 @@ func ConnectWithOptions(ctx context.Context, rpcEndpoint string, opt *Options) (
 
 	if opt != nil && opt.HandshakeTimeout > 0 {
 		dialer.HandshakeTimeout = opt.HandshakeTimeout
+	}
+	if opt != nil && opt.Proxy != "" {
+		dialer.Proxy = func(h *http.Request) (*url.URL, error) {
+			return url.Parse(opt.Proxy)
+		}
 	}
 
 	var httpHeader http.Header = nil
