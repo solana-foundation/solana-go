@@ -1,0 +1,66 @@
+// Copyright 2021 github.com/gagliardetto
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package token
+
+import (
+	"bytes"
+	ag_gofuzz "github.com/gagliardetto/gofuzz"
+	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_require "github.com/stretchr/testify/require"
+	"strconv"
+	"testing"
+)
+
+func TestEncodeDecode_GetAccountDataSize(t *testing.T) {
+	fu := ag_gofuzz.New().NilChance(0)
+	for i := 0; i < 1; i++ {
+		t.Run("GetAccountDataSize"+strconv.Itoa(i), func(t *testing.T) {
+			{
+				params := new(GetAccountDataSize)
+				fu.Fuzz(params)
+				params.AccountMetaSlice = nil
+				buf := new(bytes.Buffer)
+				err := encodeT(*params, buf)
+				ag_require.NoError(t, err)
+				got := new(GetAccountDataSize)
+				err = decodeT(got, buf.Bytes())
+				got.AccountMetaSlice = nil
+				ag_require.NoError(t, err)
+				ag_require.Equal(t, params, got)
+			}
+		})
+	}
+}
+
+func TestGetAccountDataSize_Validate(t *testing.T) {
+	t.Run("missing mint returns error", func(t *testing.T) {
+		ix := NewGetAccountDataSizeInstructionBuilder()
+		ag_require.Error(t, ix.Validate())
+	})
+
+	t.Run("with mint passes validation", func(t *testing.T) {
+		mint := ag_solanago.NewWallet().PublicKey()
+		ag_require.NoError(t, NewGetAccountDataSizeInstruction(mint).Validate())
+	})
+}
+
+func TestGetAccountDataSize_Build(t *testing.T) {
+	mint := ag_solanago.NewWallet().PublicKey()
+	ix := NewGetAccountDataSizeInstruction(mint).Build()
+	ag_require.Equal(t, uint8(Instruction_GetAccountDataSize), ix.TypeID.Uint8())
+	accounts := ix.Accounts()
+	ag_require.Len(t, accounts, 1)
+	ag_require.Equal(t, mint, accounts[0].PublicKey)
+}
