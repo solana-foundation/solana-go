@@ -17,6 +17,7 @@ package token
 import (
 	"bytes"
 	ag_gofuzz "github.com/gagliardetto/gofuzz"
+	ag_solanago "github.com/gagliardetto/solana-go"
 	ag_require "github.com/stretchr/testify/require"
 	"strconv"
 	"testing"
@@ -41,4 +42,25 @@ func TestEncodeDecode_GetAccountDataSize(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetAccountDataSize_Validate(t *testing.T) {
+	t.Run("missing mint returns error", func(t *testing.T) {
+		ix := NewGetAccountDataSizeInstructionBuilder()
+		ag_require.Error(t, ix.Validate())
+	})
+
+	t.Run("with mint passes validation", func(t *testing.T) {
+		mint := ag_solanago.NewWallet().PublicKey()
+		ag_require.NoError(t, NewGetAccountDataSizeInstruction(mint).Validate())
+	})
+}
+
+func TestGetAccountDataSize_Build(t *testing.T) {
+	mint := ag_solanago.NewWallet().PublicKey()
+	ix := NewGetAccountDataSizeInstruction(mint).Build()
+	ag_require.Equal(t, uint8(Instruction_GetAccountDataSize), ix.TypeID.Uint8())
+	accounts := ix.Accounts()
+	ag_require.Len(t, accounts, 1)
+	ag_require.Equal(t, mint, accounts[0].PublicKey)
 }

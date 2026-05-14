@@ -16,7 +16,9 @@ package token
 
 import (
 	"bytes"
+	"fmt"
 	ag_gofuzz "github.com/gagliardetto/gofuzz"
+	ag_solanago "github.com/gagliardetto/solana-go"
 	ag_require "github.com/stretchr/testify/require"
 	"strconv"
 	"testing"
@@ -39,6 +41,38 @@ func TestEncodeDecode_AmountToUiAmount(t *testing.T) {
 				ag_require.NoError(t, err)
 				ag_require.Equal(t, params, got)
 			}
+		})
+	}
+}
+
+func TestAmountToUiAmount_Validate(t *testing.T) {
+	mint := ag_solanago.NewWallet().PublicKey()
+
+	t.Run("missing amount returns error", func(t *testing.T) {
+		ix := NewAmountToUiAmountInstructionBuilder().SetMintAccount(mint)
+		ag_require.Error(t, ix.Validate())
+	})
+
+	t.Run("missing mint returns error", func(t *testing.T) {
+		ix := NewAmountToUiAmountInstructionBuilder().SetAmount(1000)
+		ag_require.Error(t, ix.Validate())
+	})
+
+	t.Run("all fields set passes validation", func(t *testing.T) {
+		ag_require.NoError(t, NewAmountToUiAmountInstruction(1000, mint).Validate())
+	})
+}
+
+func TestAmountToUiAmount_EncodeDecode_EdgeCases(t *testing.T) {
+	for _, amount := range []uint64{0, 1, 1_000_000_000, ^uint64(0)} {
+		amount := amount
+		t.Run(fmt.Sprintf("amount=%d", amount), func(t *testing.T) {
+			params := &AmountToUiAmount{Amount: &amount}
+			buf := new(bytes.Buffer)
+			ag_require.NoError(t, encodeT(*params, buf))
+			got := new(AmountToUiAmount)
+			ag_require.NoError(t, decodeT(got, buf.Bytes()))
+			ag_require.Equal(t, amount, *got.Amount)
 		})
 	}
 }
