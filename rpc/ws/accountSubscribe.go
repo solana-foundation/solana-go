@@ -28,6 +28,23 @@ type AccountResult struct {
 	Value *rpc.Account `json:"value"`
 }
 
+// AccountSubscribeOpts mirrors the optional configuration object the
+// accountSubscribe RPC method accepts. See
+// https://solana.com/docs/rpc/websocket/accountsubscribe.
+type AccountSubscribeOpts struct {
+	// Commitment selects the bank state the validator should query.
+	Commitment rpc.CommitmentType
+
+	// Encoding controls how the account data field is encoded. When
+	// empty the request defaults to "base64".
+	Encoding solana.EncodingType
+
+	// DataSlice asks the validator to return only the requested slice
+	// of the account's data field. Only valid for binary encodings
+	// (base58, base64, base64+zstd) per the RPC spec.
+	DataSlice *rpc.DataSlice
+}
+
 // AccountSubscribe subscribes to an account to receive notifications
 // when the lamports or data for a given account public key changes.
 func (cl *Client) AccountSubscribe(
@@ -41,23 +58,42 @@ func (cl *Client) AccountSubscribe(
 	)
 }
 
-// AccountSubscribe subscribes to an account to receive notifications
-// when the lamports or data for a given account public key changes.
+// AccountSubscribeWithOpts subscribes to an account with explicit
+// commitment and encoding overrides. Kept for backward compatibility;
+// new callers should prefer AccountSubscribeWithConfig which exposes
+// the full optional configuration object (including DataSlice).
 func (cl *Client) AccountSubscribeWithOpts(
 	account solana.PublicKey,
 	commitment rpc.CommitmentType,
 	encoding solana.EncodingType,
 ) (*AccountSubscription, error) {
+	return cl.AccountSubscribeWithConfig(account, &AccountSubscribeOpts{
+		Commitment: commitment,
+		Encoding:   encoding,
+	})
+}
 
+// AccountSubscribeWithConfig subscribes to an account and forwards the
+// full AccountSubscribeOpts configuration object to the validator,
+// including DataSlice.
+func (cl *Client) AccountSubscribeWithConfig(
+	account solana.PublicKey,
+	opts *AccountSubscribeOpts,
+) (*AccountSubscription, error) {
 	params := []any{account.String()}
 	conf := map[string]any{
 		"encoding": "base64",
 	}
-	if commitment != "" {
-		conf["commitment"] = commitment
-	}
-	if encoding != "" {
-		conf["encoding"] = encoding
+	if opts != nil {
+		if opts.Commitment != "" {
+			conf["commitment"] = opts.Commitment
+		}
+		if opts.Encoding != "" {
+			conf["encoding"] = opts.Encoding
+		}
+		if opts.DataSlice != nil {
+			conf["dataSlice"] = opts.DataSlice
+		}
 	}
 
 	genSub, err := cl.subscribe(
