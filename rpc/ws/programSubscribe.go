@@ -28,6 +28,27 @@ type ProgramResult struct {
 	Value rpc.KeyedAccount `json:"value"`
 }
 
+// ProgramSubscribeOpts mirrors the optional configuration object the
+// programSubscribe RPC method accepts. See
+// https://solana.com/docs/rpc/websocket/programsubscribe.
+type ProgramSubscribeOpts struct {
+	// Commitment selects the bank state the validator should query.
+	Commitment rpc.CommitmentType
+
+	// Encoding controls how the account data field is encoded. When
+	// empty the request defaults to "base64".
+	Encoding solana.EncodingType
+
+	// Filters narrows the stream of account-change notifications to
+	// the subset that match every supplied filter (memcmp/dataSize).
+	Filters []rpc.RPCFilter
+
+	// DataSlice asks the validator to return only the requested slice
+	// of each notified account's data field. Only valid for binary
+	// encodings (base58, base64, base64+zstd) per the RPC spec.
+	DataSlice *rpc.DataSlice
+}
+
 // ProgramSubscribe subscribes to a program to receive notifications
 // when the lamports or data for a given account owned by the program changes.
 func (cl *Client) ProgramSubscribe(
@@ -42,27 +63,47 @@ func (cl *Client) ProgramSubscribe(
 	)
 }
 
-// ProgramSubscribe subscribes to a program to receive notifications
-// when the lamports or data for a given account owned by the program changes.
+// ProgramSubscribeWithOpts subscribes to a program with explicit
+// commitment, encoding, and filters. Kept for backward compatibility;
+// new callers should prefer ProgramSubscribeWithConfig which exposes
+// the full optional configuration object (including DataSlice).
 func (cl *Client) ProgramSubscribeWithOpts(
 	programID solana.PublicKey,
 	commitment rpc.CommitmentType,
 	encoding solana.EncodingType,
 	filters []rpc.RPCFilter,
 ) (*ProgramSubscription, error) {
+	return cl.ProgramSubscribeWithConfig(programID, &ProgramSubscribeOpts{
+		Commitment: commitment,
+		Encoding:   encoding,
+		Filters:    filters,
+	})
+}
 
+// ProgramSubscribeWithConfig subscribes to a program and forwards the
+// full ProgramSubscribeOpts configuration object to the validator,
+// including DataSlice.
+func (cl *Client) ProgramSubscribeWithConfig(
+	programID solana.PublicKey,
+	opts *ProgramSubscribeOpts,
+) (*ProgramSubscription, error) {
 	params := []any{programID.String()}
 	conf := map[string]any{
 		"encoding": "base64",
 	}
-	if commitment != "" {
-		conf["commitment"] = commitment
-	}
-	if encoding != "" {
-		conf["encoding"] = encoding
-	}
-	if len(filters) > 0 {
-		conf["filters"] = filters
+	if opts != nil {
+		if opts.Commitment != "" {
+			conf["commitment"] = opts.Commitment
+		}
+		if opts.Encoding != "" {
+			conf["encoding"] = opts.Encoding
+		}
+		if len(opts.Filters) > 0 {
+			conf["filters"] = opts.Filters
+		}
+		if opts.DataSlice != nil {
+			conf["dataSlice"] = opts.DataSlice
+		}
 	}
 
 	genSub, err := cl.subscribe(
