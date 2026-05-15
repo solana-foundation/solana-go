@@ -35,8 +35,9 @@ var (
 )
 
 type Client struct {
-	rpcURL    string
-	rpcClient JSONRPCClient
+	rpcURL            string
+	rpcClient         JSONRPCClient
+	defaultCommitment CommitmentType
 }
 
 type JSONRPCClient interface {
@@ -65,6 +66,51 @@ func NewWithHeaders(rpcEndpoint string, headers map[string]string) *Client {
 	}
 	rpcClient := jsonrpc.NewClientWithOpts(rpcEndpoint, opts)
 	return NewWithCustomRPCClient(rpcClient)
+}
+
+// NewWithCommitment creates a new Solana JSON RPC client and pins a default
+// CommitmentType on the returned Client. Methods that take an explicit
+// CommitmentType still receive whatever the caller passes; the stored
+// commitment is exposed via Client.DefaultCommitment so callers can fall
+// back to it without threading the value through every call site
+// themselves. Mirrors the rust-sdk RpcClient::new_with_commitment ergonomics.
+func NewWithCommitment(rpcEndpoint string, commitment CommitmentType) *Client {
+	cl := New(rpcEndpoint)
+	cl.defaultCommitment = commitment
+	return cl
+}
+
+// NewWithTimeout creates a new Solana JSON RPC client with a custom HTTP
+// timeout. The default 5-minute timeout used by New is replaced with the
+// supplied value on the underlying *http.Client; the same value is also
+// applied to the dialer and idle connection timeout so long-haul reads,
+// connect, and pool eviction stay aligned.
+func NewWithTimeout(rpcEndpoint string, timeout time.Duration) *Client {
+	opts := &jsonrpc.RPCClientOpts{
+		HTTPClient: newHTTPWithTimeout(timeout),
+	}
+	rpcClient := jsonrpc.NewClientWithOpts(rpcEndpoint, opts)
+	return NewWithCustomRPCClient(rpcClient)
+}
+
+// NewWithTimeoutAndCommitment combines NewWithTimeout and NewWithCommitment.
+// Mirrors the rust-sdk RpcClient::new_with_timeout_and_commitment
+// constructor.
+func NewWithTimeoutAndCommitment(
+	rpcEndpoint string,
+	timeout time.Duration,
+	commitment CommitmentType,
+) *Client {
+	cl := NewWithTimeout(rpcEndpoint, timeout)
+	cl.defaultCommitment = commitment
+	return cl
+}
+
+// DefaultCommitment returns the CommitmentType pinned on this Client at
+// construction time via NewWithCommitment / NewWithTimeoutAndCommitment.
+// Returns the empty CommitmentType when no default was configured.
+func (cl *Client) DefaultCommitment() CommitmentType {
+	return cl.defaultCommitment
 }
 
 // Close closes the client.
@@ -113,10 +159,29 @@ func newHTTPTransport() *http.Transport {
 // newHTTP returns a new Client from the provided config.
 // Client is safe for concurrent use by multiple goroutines.
 func newHTTP() *http.Client {
-	tr := newHTTPTransport()
+	return newHTTPWithTimeout(defaultTimeout)
+}
 
+// newHTTPWithTimeout returns a new *http.Client whose request timeout, dial
+// timeout, and idle connection timeout are all bound to the supplied value.
+// Used by NewWithTimeout / NewWithTimeoutAndCommitment so callers can lift
+// the hardcoded 5-minute ceiling without dropping into newHTTPTransport.
+func newHTTPWithTimeout(timeout time.Duration) *http.Client {
+	tr := &http.Transport{
+		IdleConnTimeout:     timeout,
+		MaxConnsPerHost:     defaultMaxIdleConnsPerHost,
+		MaxIdleConnsPerHost: defaultMaxIdleConnsPerHost,
+		Proxy:               http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   timeout,
+			KeepAlive: defaultKeepAlive,
+			DualStack: true,
+		}).DialContext,
+		ForceAttemptHTTP2:   true,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
 	return &http.Client{
-		Timeout:   defaultTimeout,
+		Timeout:   timeout,
 		Transport: gzhttp.Transport(tr),
 	}
 }
