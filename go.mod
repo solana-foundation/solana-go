@@ -3,6 +3,7 @@ module github.com/gagliardetto/solana-go
 go 1.24.0
 
 require (
+	filippo.io/edwards25519 v1.2.0
 	github.com/AlekSi/pointer v1.2.0
 	github.com/buger/jsonparser v1.1.2
 	github.com/davecgh/go-spew v1.1.1
@@ -28,6 +29,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/streamingfast/logging v0.0.0-20250404134358-92b15d2fbd2e
 	github.com/stretchr/testify v1.11.1
+	github.com/tyler-smith/go-bip39 v1.1.0
 	go.mongodb.org/mongo-driver/v2 v2.5.0
 	go.uber.org/ratelimit v0.3.1
 	go.uber.org/zap v1.27.0
