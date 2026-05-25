@@ -21,9 +21,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSignatureValueUnmarshalStatus covers the default notification shape:
+// TestSignatureResultUnmarshalStatus covers the default notification shape:
 // `{ "value": { "err": null } }` for a successful transaction.
-func TestSignatureValueUnmarshalStatus(t *testing.T) {
+func TestSignatureResultUnmarshalStatus(t *testing.T) {
 	var res SignatureResult
 	require.NoError(t, stdjson.Unmarshal([]byte(`{
 		"context": {"slot": 42},
@@ -31,50 +31,52 @@ func TestSignatureValueUnmarshalStatus(t *testing.T) {
 	}`), &res))
 	require.Equal(t, uint64(42), res.Context.Slot)
 	require.Nil(t, res.Value.Err)
-	require.False(t, res.Value.ReceivedSignature)
+	require.False(t, res.ReceivedSignature)
 }
 
-// TestSignatureValueUnmarshalStatusWithErr covers the failed-tx branch
+// TestSignatureResultUnmarshalStatusWithErr covers the failed-tx branch
 // where `err` is a non-null object.
-func TestSignatureValueUnmarshalStatusWithErr(t *testing.T) {
+func TestSignatureResultUnmarshalStatusWithErr(t *testing.T) {
 	var res SignatureResult
 	require.NoError(t, stdjson.Unmarshal([]byte(`{
 		"context": {"slot": 42},
 		"value":   {"err": {"InstructionError": [0, "InvalidAccountData"]}}
 	}`), &res))
 	require.NotNil(t, res.Value.Err)
-	require.False(t, res.Value.ReceivedSignature)
+	require.False(t, res.ReceivedSignature)
 }
 
-// TestSignatureValueUnmarshalReceived covers the second notification
+// TestSignatureResultUnmarshalReceived covers the second notification
 // shape introduced by EnableReceivedNotification: `"value":
 // "receivedSignature"`. Without the custom unmarshaler the default
 // decoder would fail because the field is typed as a struct.
-func TestSignatureValueUnmarshalReceived(t *testing.T) {
+func TestSignatureResultUnmarshalReceived(t *testing.T) {
 	var res SignatureResult
 	require.NoError(t, stdjson.Unmarshal([]byte(`{
 		"context": {"slot": 7},
 		"value":   "receivedSignature"
 	}`), &res))
-	require.True(t, res.Value.ReceivedSignature)
+	require.Equal(t, uint64(7), res.Context.Slot)
+	require.True(t, res.ReceivedSignature)
 	require.Nil(t, res.Value.Err)
 }
 
-// TestSignatureValueUnmarshalUnknownMarker rejects unexpected string
+// TestSignatureResultUnmarshalUnknownMarker rejects unexpected string
 // markers so a future RPC change surfaces as a decode error rather
 // than a silent miscategorisation.
-func TestSignatureValueUnmarshalUnknownMarker(t *testing.T) {
-	var v SignatureValue
-	err := v.UnmarshalJSON([]byte(`"someUnknownMarker"`))
+func TestSignatureResultUnmarshalUnknownMarker(t *testing.T) {
+	var res SignatureResult
+	err := res.UnmarshalJSON([]byte(`{"value":"someUnknownMarker"}`))
 	require.Error(t, err)
 }
 
-// TestSignatureValueUnmarshalNull treats null as a no-op (rather than
-// an error) so the field can be omitted by an upstream RPC without
-// breaking notification dispatch.
-func TestSignatureValueUnmarshalNull(t *testing.T) {
-	var v SignatureValue
-	require.NoError(t, v.UnmarshalJSON([]byte(`null`)))
-	require.False(t, v.ReceivedSignature)
-	require.Nil(t, v.Err)
+// TestSignatureResultUnmarshalNullValue treats a null value as a no-op
+// (rather than an error) so the field can be omitted by an upstream RPC
+// without breaking notification dispatch.
+func TestSignatureResultUnmarshalNullValue(t *testing.T) {
+	var res SignatureResult
+	require.NoError(t, res.UnmarshalJSON([]byte(`{"context":{"slot":1},"value":null}`)))
+	require.Equal(t, uint64(1), res.Context.Slot)
+	require.False(t, res.ReceivedSignature)
+	require.Nil(t, res.Value.Err)
 }

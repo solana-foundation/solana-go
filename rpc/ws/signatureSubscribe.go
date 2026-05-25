@@ -30,39 +30,53 @@ import (
 // set on the subscription request.
 const signatureReceivedMarker = "receivedSignature"
 
+// SignatureResult is the parsed payload of a signatureNotification.
+//
+// Value preserves the historical struct{Err any} shape so existing callers
+// continue to compile against the same exported surface. ReceivedSignature
+// is a backwards-compatible additive field set to true when the validator
+// emits the "received" marker introduced by EnableReceivedNotification.
 type SignatureResult struct {
 	Context struct {
 		Slot uint64
 	} `json:"context"`
-	Value SignatureValue `json:"value"`
-}
+	Value struct {
+		Err any `json:"err"`
+	} `json:"value"`
 
-// SignatureValue carries the two shapes a signatureNotification can take.
-//
-// When EnableReceivedNotification is false (the RPC default) only the
-// status shape is emitted and `Err` is the field consumers need
-// (nil == success).
-//
-// When EnableReceivedNotification is true the validator may additionally
-// emit a "receivedSignature" string before the final status; that one
-// sets `ReceivedSignature` to true and `Err` is left at its zero value.
-type SignatureValue struct {
-	// Err is the transaction execution error reported in a status
-	// notification. nil means the transaction succeeded.
-	Err any `json:"err,omitempty"`
-
-	// ReceivedSignature is true when the notification is the "received"
-	// marker the validator emits once it observes the transaction in
-	// its mempool. Only sent when EnableReceivedNotification is set on
-	// SignatureSubscribeOpts.
+	// ReceivedSignature is true when the notification was the "received"
+	// marker the validator emits as soon as it observes the transaction
+	// in its mempool. Only ever set when EnableReceivedNotification was
+	// passed via SignatureSubscribeOpts. When true, the Value struct is
+	// left at its zero value.
 	ReceivedSignature bool `json:"-"`
 }
 
-// UnmarshalJSON dispatches on the wire shape of the notification value:
-// a JSON string "receivedSignature" → ReceivedSignature=true; a JSON
-// object → status, fill Err.
-func (v *SignatureValue) UnmarshalJSON(data []byte) error {
-	trimmed := bytes.TrimSpace(data)
+// UnmarshalJSON dispatches on the shape of the notification's `value`
+// field. The wire format may be:
+//
+//   - a JSON object {"err": ...} (the status notification, the only shape
+//     emitted unless EnableReceivedNotification is set)
+//   - the JSON string "receivedSignature" (only with
+//     EnableReceivedNotification set)
+//
+// The former populates SignatureResult.Value as before; the latter sets
+// ReceivedSignature=true and leaves Value at its zero value.
+func (r *SignatureResult) UnmarshalJSON(data []byte) error {
+	// Alias avoids recursion into this UnmarshalJSON.
+	type alias struct {
+		Context struct {
+			Slot uint64
+		} `json:"context"`
+		Value stdjson.RawMessage `json:"value"`
+	}
+	var a alias
+	if err := stdjson.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	r.Context = a.Context
+
+	trimmed := bytes.TrimSpace(a.Value)
 	if len(trimmed) == 0 || string(trimmed) == "null" {
 		return nil
 	}
@@ -75,18 +89,16 @@ func (v *SignatureValue) UnmarshalJSON(data []byte) error {
 		if s != signatureReceivedMarker {
 			return fmt.Errorf("signatureNotification value: unexpected marker %q", s)
 		}
-		v.ReceivedSignature = true
+		r.ReceivedSignature = true
 		return nil
 	case '{':
-		// Alias avoids recursion into this UnmarshalJSON.
-		type alias struct {
+		var status struct {
 			Err any `json:"err"`
 		}
-		var a alias
-		if err := stdjson.Unmarshal(trimmed, &a); err != nil {
+		if err := stdjson.Unmarshal(trimmed, &status); err != nil {
 			return fmt.Errorf("signatureNotification value: %w", err)
 		}
-		v.Err = a.Err
+		r.Value.Err = status.Err
 		return nil
 	default:
 		return fmt.Errorf("signatureNotification value: unexpected JSON %s", string(trimmed))
