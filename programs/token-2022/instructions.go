@@ -303,6 +303,22 @@ func InstructionIDToName(id uint8) string {
 
 type Instruction struct {
 	ag_binary.BaseVariant
+
+	// programIDOverride, when non-nil, replaces the package-level ProgramID
+	// for this instruction only. Lets callers issue SPL Token and SPL
+	// Token-2022 instructions in the same process without flipping the
+	// package-level ProgramID via SetProgramID — that mutation is not
+	// safe across goroutines.
+	programIDOverride *ag_solanago.PublicKey
+}
+
+// SetProgramID overrides the program ID used by this instruction only,
+// leaving the package-level ProgramID untouched. Use this to keep SPL
+// Token-2022 instructions independent from any other concurrent caller
+// that may have flipped the package ProgramID.
+func (inst *Instruction) SetProgramID(id ag_solanago.PublicKey) *Instruction {
+	inst.programIDOverride = &id
+	return inst
 }
 
 func (inst *Instruction) EncodeToTree(parent ag_treeout.Branches) {
@@ -461,6 +477,9 @@ var InstructionImplDef = ag_binary.NewVariantDefinition(
 )
 
 func (inst *Instruction) ProgramID() ag_solanago.PublicKey {
+	if inst.programIDOverride != nil {
+		return *inst.programIDOverride
+	}
 	return ProgramID
 }
 
