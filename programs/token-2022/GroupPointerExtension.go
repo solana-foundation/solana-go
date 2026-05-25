@@ -51,7 +51,7 @@ func (slice GroupPointerExtension) GetAccounts() (accounts []*ag_solanago.Accoun
 
 func (inst GroupPointerExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_GroupPointerExtension),
 	}}
 }

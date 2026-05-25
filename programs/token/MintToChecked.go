@@ -132,7 +132,7 @@ func (inst *MintToChecked) GetAuthorityAccount() *ag_solanago.AccountMeta {
 
 func (inst MintToChecked) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_MintToChecked),
 	}}
 }

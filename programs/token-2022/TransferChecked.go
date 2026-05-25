@@ -151,7 +151,7 @@ func (inst *TransferChecked) GetOwnerAccount() *ag_solanago.AccountMeta {
 
 func (inst TransferChecked) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_TransferChecked),
 	}}
 }

@@ -43,7 +43,7 @@ func (inst *InitializePermanentDelegate) GetMintAccount() *ag_solanago.AccountMe
 
 func (inst InitializePermanentDelegate) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_InitializePermanentDelegate),
 	}}
 }

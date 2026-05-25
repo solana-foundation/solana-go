@@ -46,7 +46,7 @@ func (slice CpiGuardExtension) GetAccounts() (accounts []*ag_solanago.AccountMet
 
 func (inst CpiGuardExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_CpiGuardExtension),
 	}}
 }

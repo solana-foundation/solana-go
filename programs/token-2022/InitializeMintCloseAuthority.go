@@ -49,7 +49,7 @@ func (inst *InitializeMintCloseAuthority) GetMintAccount() *ag_solanago.AccountM
 
 func (inst InitializeMintCloseAuthority) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_InitializeMintCloseAuthority),
 	}}
 }

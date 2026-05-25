@@ -107,7 +107,7 @@ func (inst *InitializeMint) GetSysVarRentPubkeyAccount() *ag_solanago.AccountMet
 
 func (inst InitializeMint) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_InitializeMint),
 	}}
 }

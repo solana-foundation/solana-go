@@ -42,7 +42,7 @@ func (inst *PermissionedBurnExtension) GetMintAccount() *ag_solanago.AccountMeta
 
 func (inst PermissionedBurnExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_PermissionedBurnExtension),
 	}}
 }

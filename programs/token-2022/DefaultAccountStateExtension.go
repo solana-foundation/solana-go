@@ -50,7 +50,7 @@ func (slice DefaultAccountStateExtension) GetAccounts() (accounts []*ag_solanago
 
 func (inst DefaultAccountStateExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_DefaultAccountStateExtension),
 	}}
 }

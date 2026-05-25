@@ -53,7 +53,7 @@ func (slice ConfidentialTransferExtension) GetAccounts() (accounts []*ag_solanag
 
 func (inst ConfidentialTransferExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_ConfidentialTransferExtension),
 	}}
 }

@@ -57,7 +57,7 @@ func (slice ScaledUiAmountExtension) GetAccounts() (accounts []*ag_solanago.Acco
 
 func (inst ScaledUiAmountExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_ScaledUiAmountExtension),
 	}}
 }

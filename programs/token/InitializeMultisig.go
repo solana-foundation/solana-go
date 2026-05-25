@@ -119,7 +119,7 @@ func (inst *InitializeMultisig) AddSigners(signers ...ag_solanago.PublicKey) *In
 
 func (inst InitializeMultisig) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_InitializeMultisig),
 	}}
 }

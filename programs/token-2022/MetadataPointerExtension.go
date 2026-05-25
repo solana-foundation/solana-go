@@ -53,7 +53,7 @@ func (slice MetadataPointerExtension) GetAccounts() (accounts []*ag_solanago.Acc
 
 func (inst MetadataPointerExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_MetadataPointerExtension),
 	}}
 }

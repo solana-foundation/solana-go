@@ -53,7 +53,7 @@ func (slice TransferHookExtension) GetAccounts() (accounts []*ag_solanago.Accoun
 
 func (inst TransferHookExtension) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
-		Impl:   inst,
+		Impl:   &inst,
 		TypeID: ag_binary.TypeIDFromUint8(Instruction_TransferHookExtension),
 	}}
 }
