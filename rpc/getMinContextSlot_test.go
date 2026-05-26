@@ -136,3 +136,187 @@ func TestClient_GetTokenAccountsByDelegate_MinContextSlot(t *testing.T) {
 		reqBody,
 	)
 }
+
+// TestClient_GetBalanceWithOpts_MinContextSlot pins minContextSlot
+// forwarding on the new GetBalanceWithOpts variant. Closes the parity
+// gap with getAccountInfo / getMultipleAccounts for the single-balance
+// query path.
+func TestClient_GetBalanceWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":12345}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+
+	minSlot := uint64(987654321)
+	_, err := client.GetBalanceWithOpts(
+		context.Background(),
+		pubKey,
+		&GetBalanceOpts{
+			Commitment:     CommitmentFinalized,
+			MinContextSlot: &minSlot,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getBalance",
+			"params": []any{
+				pubkeyString,
+				map[string]any{
+					"commitment":     "finalized",
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetBalance_BackCompat_NoOpts pins that the original
+// `GetBalance(ctx, pubkey, commitment)` signature still produces the
+// same wire shape it always did when commitment is empty — the new
+// WithOpts variant is purely additive.
+func TestClient_GetBalance_BackCompat_NoOpts(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":12345}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+
+	_, err := client.GetBalance(context.Background(), pubKey, "")
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getBalance",
+			"params": []any{
+				pubkeyString,
+			},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetLatestBlockhashWithOpts_MinContextSlot pins
+// minContextSlot forwarding on getLatestBlockhash.
+func TestClient_GetLatestBlockhashWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":{"blockhash":"EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N","lastValidBlockHeight":42}}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	minSlot := uint64(777)
+	_, err := client.GetLatestBlockhashWithOpts(
+		context.Background(),
+		&GetLatestBlockhashOpts{
+			Commitment:     CommitmentConfirmed,
+			MinContextSlot: &minSlot,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getLatestBlockhash",
+			"params": []any{
+				map[string]any{
+					"commitment":     "confirmed",
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetSlotWithOpts_MinContextSlot pins minContextSlot
+// forwarding on getSlot.
+func TestClient_GetSlotWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `123`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	minSlot := uint64(555)
+	_, err := client.GetSlotWithOpts(
+		context.Background(),
+		&GetSlotOpts{MinContextSlot: &minSlot},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getSlot",
+			"params": []any{
+				map[string]any{
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetTokenAccountBalanceWithOpts_MinContextSlot pins
+// minContextSlot forwarding on getTokenAccountBalance.
+func TestClient_GetTokenAccountBalanceWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":{"amount":"100","decimals":6,"uiAmount":0.0001,"uiAmountString":"0.0001"}}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+
+	minSlot := uint64(99)
+	_, err := client.GetTokenAccountBalanceWithOpts(
+		context.Background(),
+		pubKey,
+		&GetTokenAccountBalanceOpts{MinContextSlot: &minSlot},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getTokenAccountBalance",
+			"params": []any{
+				pubkeyString,
+				map[string]any{
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}

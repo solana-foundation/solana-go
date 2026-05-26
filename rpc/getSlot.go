@@ -25,9 +25,43 @@ func (cl *Client) GetSlot(
 	ctx context.Context,
 	commitment CommitmentType, // optional
 ) (out uint64, err error) {
+	return cl.GetSlotWithOpts(ctx, &GetSlotOpts{Commitment: commitment})
+}
+
+// GetSlotOpts is the optional configuration object for `getSlot`,
+// mirroring the JSON-RPC spec for this method.
+//
+// See https://solana.com/docs/rpc/http/getslot.
+type GetSlotOpts struct {
+	// Commitment level to query the slot at.
+	Commitment CommitmentType
+
+	// MinContextSlot is the minimum slot at which the RPC node should
+	// have processed the request. The validator returns a
+	// `MinContextSlotNotReached` error to the caller if the local slot
+	// has not yet caught up, instead of silently serving stale state.
+	MinContextSlot *uint64
+}
+
+// GetSlotWithOpts returns the slot that has reached the given or
+// default commitment level, with the full set of optional configuration
+// fields the `getSlot` JSON-RPC method accepts.
+func (cl *Client) GetSlotWithOpts(
+	ctx context.Context,
+	opts *GetSlotOpts,
+) (out uint64, err error) {
 	params := []any{}
-	if commitment != "" {
-		params = append(params, M{"commitment": commitment})
+	if opts != nil {
+		obj := M{}
+		if opts.Commitment != "" {
+			obj["commitment"] = opts.Commitment
+		}
+		if opts.MinContextSlot != nil {
+			obj["minContextSlot"] = *opts.MinContextSlot
+		}
+		if len(obj) > 0 {
+			params = append(params, obj)
+		}
 	}
 
 	err = cl.rpcClient.CallForInto(ctx, &out, "getSlot", params)
