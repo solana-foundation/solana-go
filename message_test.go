@@ -1,6 +1,8 @@
 package solana
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"unsafe"
 
@@ -679,7 +681,9 @@ func TestCheckPreconditions_MissingTables(t *testing.T) {
 
 	_, err := msg.AccountMetaList()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "without address tables")
+	// Typed sentinel from #280 — assert via errors.Is so callers can
+	// reliably detect this condition without scraping the message text.
+	require.ErrorIs(t, err, ErrAddressTablesNotSet)
 }
 
 // Tests base64 roundtrip.
@@ -1309,4 +1313,120 @@ func hasDuplicates(keys PublicKeySlice) bool {
 		seen[k] = struct{}{}
 	}
 	return false
+}
+
+// TestAccountMetaList_VersionedWithUnsetTables_ReturnsTypedError pins the
+// error contract from #280: a versioned message that carries
+// address-table lookups but no resolved tables must return
+// ErrAddressTablesNotSet (not a bespoke fmt.Errorf string) so callers
+// can detect this with errors.Is and surface the recovery guidance
+// from the sentinel's message verbatim.
+func TestAccountMetaList_VersionedWithUnsetTables_ReturnsTypedError(t *testing.T) {
+	tableKey := MustPublicKeyFromBase58("8YQHv2K84A7a7UA6tKKwrD4DsnKHAa24qLYMEH17Atwc")
+	payer := MustPublicKeyFromBase58("11111111111111111111111111111112")
+
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 0,
+		},
+		AccountKeys: PublicKeySlice{payer},
+		AddressTableLookups: MessageAddressTableLookupSlice{
+			{
+				AccountKey:      tableKey,
+				WritableIndexes: []uint8{0},
+				ReadonlyIndexes: []uint8{1},
+			},
+		},
+	}
+	if _, err := msg.SetVersion(MessageVersionV0); err != nil {
+		t.Fatalf("SetVersion: %v", err)
+	}
+
+	_, err := msg.AccountMetaList()
+	if err == nil {
+		t.Fatal("expected error when address tables are unset, got nil")
+	}
+	if !errors.Is(err, ErrAddressTablesNotSet) {
+		t.Fatalf("expected errors.Is(err, ErrAddressTablesNotSet) to be true, got %T: %v", err, err)
+	}
+
+	// Recovery guidance must point at the two API entry points users
+	// actually need: GetAddressTableLookups (to discover what to fetch)
+	// and SetAddressTables (to feed the resolved keys back in).
+	msgText := err.Error()
+	for _, needle := range []string{
+		"GetAddressTableLookups",
+		"SetAddressTables",
+	} {
+		if !strings.Contains(msgText, needle) {
+			t.Errorf("error guidance missing %q; full message: %s", needle, msgText)
+		}
+	}
+}
+
+// TestAccountMetaList_LegacyMessage_NoErrorBare is the negative
+// companion of the previous test: a legacy (pre-V0) message has no
+// AddressTableLookups by construction, so the precondition check must
+// not fire even when the addressTables map is nil.
+func TestAccountMetaList_LegacyMessage_NoErrorBare(t *testing.T) {
+	payer := MustPublicKeyFromBase58("11111111111111111111111111111112")
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 0,
+		},
+		AccountKeys: PublicKeySlice{payer},
+	}
+
+	if _, err := msg.AccountMetaList(); err != nil {
+		t.Fatalf("legacy message must not require address tables, got: %v", err)
+	}
+}
+
+// TestAccountMetaList_VersionedAfterSetAddressTables_Succeeds locks
+// the happy path the new error message tells callers to take.
+func TestAccountMetaList_VersionedAfterSetAddressTables_Succeeds(t *testing.T) {
+	tableKey := MustPublicKeyFromBase58("8YQHv2K84A7a7UA6tKKwrD4DsnKHAa24qLYMEH17Atwc")
+	payer := MustPublicKeyFromBase58("11111111111111111111111111111112")
+	writable := MustPublicKeyFromBase58("11111111111111111111111111111113")
+	readonly := MustPublicKeyFromBase58("11111111111111111111111111111114")
+
+	msg := Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       1,
+			NumReadonlySignedAccounts:   0,
+			NumReadonlyUnsignedAccounts: 0,
+		},
+		AccountKeys: PublicKeySlice{payer},
+		AddressTableLookups: MessageAddressTableLookupSlice{
+			{
+				AccountKey:      tableKey,
+				WritableIndexes: []uint8{0},
+				ReadonlyIndexes: []uint8{1},
+			},
+		},
+	}
+	if _, err := msg.SetVersion(MessageVersionV0); err != nil {
+		t.Fatalf("SetVersion: %v", err)
+	}
+
+	// `SetAddressTables` only needs the table id mapped to the full
+	// public-key list; the lookup descriptors then index into that list.
+	if err := msg.SetAddressTables(map[PublicKey]PublicKeySlice{
+		tableKey: {writable, readonly},
+	}); err != nil {
+		t.Fatalf("SetAddressTables: %v", err)
+	}
+
+	metas, err := msg.AccountMetaList()
+	if err != nil {
+		t.Fatalf("AccountMetaList after SetAddressTables: %v", err)
+	}
+	// Static payer + 1 writable + 1 readonly from the resolved table.
+	if got, want := len(metas), 3; got != want {
+		t.Fatalf("expected %d metas after lookup resolution, got %d", want, got)
+	}
 }

@@ -19,6 +19,7 @@ package solana
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 
 	bin "github.com/gagliardetto/binary"
@@ -26,6 +27,19 @@ import (
 	gojson "github.com/goccy/go-json"
 
 	"github.com/gagliardetto/solana-go/text"
+)
+
+// ErrAddressTablesNotSet is returned by `(*Message).AccountMetaList`,
+// `(*Message).ResolveLookups`, and friends when the message is a
+// versioned (V0+) transaction with one or more address-table lookups
+// but the actual table contents have not been provided yet via
+// `(*Message).SetAddressTables`. Callers can use `errors.Is` to detect
+// this specific condition (see #280) without scraping the error text.
+var ErrAddressTablesNotSet = errors.New(
+	"address tables not set for versioned message with lookups; " +
+		"fetch each table id returned by Message.GetAddressTableLookups().GetTableIDs() " +
+		"(e.g. via rpc.Client.GetAddressLookupTableAddresses / GetMultipleAccounts) " +
+		"and pass the resolved {tableID -> []PublicKey} map to Message.SetAddressTables",
 )
 
 type MessageAddressTableLookupSlice []MessageAddressTableLookup
@@ -718,12 +732,16 @@ func (mx *Message) UnmarshalLegacy(decoder *bin.Decoder) (err error) {
 }
 
 func (m *Message) checkPreconditions() error {
-	// if this is versioned,
-	// and there are > 0 lookups,
-	// but the address table is empty,
-	// then we can't build the account meta list:
+	// Versioned (V0+) messages can reference accounts indirectly via
+	// address-table lookups. The lookup descriptors only carry the table
+	// account id + the writable/readonly indexes — the actual public keys
+	// have to be fetched from the chain and handed to the message via
+	// SetAddressTables before we can flatten them into AccountMetaList.
+	// Surface a typed error here so callers can detect this with
+	// errors.Is(err, ErrAddressTablesNotSet) and follow the recovery
+	// guidance the error wraps (see #280).
 	if m.IsVersioned() && m.AddressTableLookups.NumLookups() > 0 && len(m.addressTables) == 0 {
-		return fmt.Errorf("cannot build account meta list without address tables")
+		return ErrAddressTablesNotSet
 	}
 
 	return nil
