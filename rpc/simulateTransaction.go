@@ -168,8 +168,17 @@ func (cl *Client) SimulateRawTransactionWithOpts(
 			obj["minContextSlot"] = *opts.MinContextSlot
 		}
 		if opts.Accounts != nil {
+			// Solana's simulateTransaction rejects an empty `encoding`
+			// string with `Invalid params: missing field encoding`, so
+			// default to base64 the same way the top-level transaction
+			// encoding does. Matches TransactionOpts.ToMap and the
+			// per-method defaults in getAccountInfo / getMultipleAccounts.
+			accountsEncoding := opts.Accounts.Encoding
+			if accountsEncoding == "" {
+				accountsEncoding = solana.EncodingBase64
+			}
 			obj["accounts"] = M{
-				"encoding":  opts.Accounts.Encoding,
+				"encoding":  accountsEncoding,
 				"addresses": opts.Accounts.Addresses,
 			}
 		}
