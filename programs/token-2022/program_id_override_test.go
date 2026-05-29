@@ -24,7 +24,7 @@ import (
 
 // TestInstruction_SetProgramID_DefaultMatchesPackage ensures an
 // instruction built without an override falls back to the package
-// ProgramID, so existing callers see no behaviour change.
+// ProgramID, so existing callers see no behavior change.
 func TestInstruction_SetProgramID_DefaultMatchesPackage(t *testing.T) {
 	inst := NewTransferInstructionBuilder().
 		SetAmount(1).
