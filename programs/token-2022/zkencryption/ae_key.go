@@ -5,8 +5,8 @@ import (
 	"crypto/sha512"
 	"fmt"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/bip39"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/bip39"
 )
 
 // AeKeyLen is the byte length of an authenticated-encryption key (AES-128-GCM-SIV).
