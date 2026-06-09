@@ -15,7 +15,7 @@
 package loaderv3
 
 import (
-	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_solanago "github.com/solana-foundation/solana-go/v2"
 )
 
 // GetProgramDataAddress derives the PDA that stores a program's data for a

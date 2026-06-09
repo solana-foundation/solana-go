@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"filippo.io/edwards25519"
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/bip39"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/bip39"
 )
 
 // ElGamalSecretKeyLen is the canonical length of an ElGamal secret scalar

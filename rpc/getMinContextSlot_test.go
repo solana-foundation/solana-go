@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/solana-foundation/solana-go/v2"
 	stdjson "github.com/goccy/go-json"
+	"github.com/solana-foundation/solana-go/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

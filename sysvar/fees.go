@@ -16,7 +16,7 @@ package sysvar
 
 import (
 	bin "github.com/gagliardetto/binary"
-	solana "github.com/gagliardetto/solana-go"
+	solana "github.com/solana-foundation/solana-go/v2"
 )
 
 // FeesSize is the serialized size, in bytes, of the Fees sysvar (one

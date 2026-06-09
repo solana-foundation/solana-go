@@ -14,7 +14,7 @@
 
 package sysvar
 
-import solana "github.com/gagliardetto/solana-go"
+import solana "github.com/solana-foundation/solana-go/v2"
 
 // Sysvar account addresses, paired with the data types in this package. These
 // re-export the canonical constants from the root package for convenience, so

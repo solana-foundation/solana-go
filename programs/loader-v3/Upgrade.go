@@ -19,9 +19,9 @@ import (
 	"fmt"
 
 	ag_binary "github.com/gagliardetto/binary"
-	ag_solanago "github.com/gagliardetto/solana-go"
-	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
+	ag_solanago "github.com/solana-foundation/solana-go/v2"
+	ag_format "github.com/solana-foundation/solana-go/v2/text/format"
 )
 
 // Upgrade replaces an existing program's code with the contents of a buffer.
