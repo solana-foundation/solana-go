@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"filippo.io/edwards25519"
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 	"github.com/tyler-smith/go-bip39"
 )
 

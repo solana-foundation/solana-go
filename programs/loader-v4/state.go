@@ -18,7 +18,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	ag_solanago "github.com/gagliardetto/solana-go"
+	ag_solanago "github.com/solana-foundation/solana-go/v2"
 )
 
 // LoaderV4Status mirrors `#[repr(u64)]` upstream. Serialized as u64 LE.

@@ -4,7 +4,7 @@ import (
 	"crypto/sha3"
 	"fmt"
 
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 	"github.com/tyler-smith/go-bip39"
 )
 
