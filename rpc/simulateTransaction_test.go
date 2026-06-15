@@ -85,8 +85,12 @@ func TestClient_SimulateRawTransactionWithOpts_AccountsEncodingExplicit(t *testi
 	require.NoError(t, err)
 
 	reqBody := server.RequestBody(t)
-	params := reqBody["params"].([]any)
-	cfg := params[1].(map[string]any)
-	accounts := cfg["accounts"].(map[string]any)
+	params, ok := reqBody["params"].([]any)
+	require.True(t, ok, "params must be a JSON array, got %T", reqBody["params"])
+	require.Len(t, params, 2)
+	cfg, ok := params[1].(map[string]any)
+	require.True(t, ok, "config object expected, got %T", params[1])
+	accounts, ok := cfg["accounts"].(map[string]any)
+	require.True(t, ok, "accounts config expected, got %T", cfg["accounts"])
 	assert.Equal(t, string(solana.EncodingJSONParsed), accounts["encoding"], "explicit Encoding must be forwarded unchanged")
 }
