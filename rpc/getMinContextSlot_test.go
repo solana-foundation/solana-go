@@ -320,3 +320,86 @@ func TestClient_GetTokenAccountBalanceWithOpts_MinContextSlot(t *testing.T) {
 		reqBody,
 	)
 }
+
+// TestClient_GetLatestBlockhash_BackCompat_NoOpts pins that the legacy
+// GetLatestBlockhash wrapper emits no params object when called with an
+// empty commitment, matching the pre-WithOpts wire shape.
+func TestClient_GetLatestBlockhash_BackCompat_NoOpts(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":{"blockhash":"EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N","lastValidBlockHeight":42}}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	_, err := client.GetLatestBlockhash(context.Background(), "")
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getLatestBlockhash",
+			"params":  []any{},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetSlot_BackCompat_NoOpts pins that the legacy GetSlot
+// wrapper emits no params object when called with an empty commitment,
+// matching the pre-WithOpts wire shape.
+func TestClient_GetSlot_BackCompat_NoOpts(t *testing.T) {
+	responseBody := `123`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	_, err := client.GetSlot(context.Background(), "")
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getSlot",
+			"params":  []any{},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetTokenAccountBalance_BackCompat_NoOpts pins that the legacy
+// GetTokenAccountBalance wrapper sends only the account pubkey when called
+// with an empty commitment, matching the pre-WithOpts wire shape.
+func TestClient_GetTokenAccountBalance_BackCompat_NoOpts(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":{"amount":"100","decimals":6,"uiAmount":0.0001,"uiAmountString":"0.0001"}}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+
+	_, err := client.GetTokenAccountBalance(context.Background(), pubKey, "")
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getTokenAccountBalance",
+			"params": []any{
+				pubkeyString,
+			},
+		},
+		reqBody,
+	)
+}
