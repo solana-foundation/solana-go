@@ -480,3 +480,49 @@ func TestSubscription_BufferSizes(t *testing.T) {
 	assert.Equal(t, 200, cap(sub.stream), "stream buffer should be 200")
 	assert.Equal(t, 1, cap(sub.err), "err buffer should be 1")
 }
+
+// TestSubscribe_ErrorResponseSurfacesToRecv pins that a JSON-RPC error reply to
+// a subscribe request (an id but no result, e.g. "Method not found") is handed
+// to the caller via Recv instead of silently registering a dead subscription
+// that leaves Recv blocked forever.
+func TestSubscribe_ErrorResponseSurfacesToRecv(t *testing.T) {
+	m := newMockWSServer(t)
+	defer m.stop()
+
+	c := connectClient(t, m)
+	defer c.Close()
+
+	sub, err := c.subscribe(
+		[]any{"test"},
+		nil,
+		"testSubscribe",
+		"testUnsubscribe",
+		func(msg []byte) (any, error) {
+			var res SlotResult
+			err := decodeResponseFromMessage(msg, &res)
+			return &res, err
+		},
+	)
+	require.NoError(t, err)
+
+	// Reply to the subscribe request with an error object instead of a subID.
+	select {
+	case msg := <-m.incoming:
+		reqID, ok := getUint64WithOk(msg, "id")
+		require.True(t, ok, "could not parse request ID from: %s", string(msg))
+		m.send(t, fmt.Sprintf(
+			`{"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found"},"id":%d}`,
+			reqID,
+		))
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for subscription request")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	_, err = sub.Recv(ctx)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, context.DeadlineExceeded, "Recv hung instead of surfacing the rpc error")
+	assert.Contains(t, err.Error(), "Method not found")
+}

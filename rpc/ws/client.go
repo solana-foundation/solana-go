@@ -186,12 +186,37 @@ func getUint64WithOk(data []byte, path ...string) (uint64, bool) {
 	return 0, false
 }
 
+// getRPCErrorWithOk extracts a JSON-RPC error object from a response message.
+// A reply such as
+//
+//	{"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found"},"id":7534392980301594513}
+//
+// carries an `id` but no `result`, so it must be detected before the result is
+// read. The boolean reports whether an error object was present.
+func getRPCErrorWithOk(message []byte) (error, bool) {
+	errObj, dataType, _, err := jsonparser.Get(message, "error")
+	if err != nil || dataType != jsonparser.Object {
+		return nil, false
+	}
+	code, _ := jsonparser.GetInt(errObj, "code")
+	msg, _ := jsonparser.GetString(errObj, "message")
+	return fmt.Errorf("rpc error (code %d): %s", code, msg), true
+}
+
 func (c *Client) handleMessage(message []byte) {
 	// when receiving message with id. the result will be a subscription number.
 	// that number will be associated to all future message destine to this request
 
 	requestID, ok := getUint64WithOk(message, "id")
 	if ok {
+		// A reply carrying an id but an error object is a failed
+		// subscribe/unsubscribe request. Surface the error to the caller
+		// instead of registering a subscription whose result never arrives,
+		// which would otherwise leave Recv blocked forever.
+		if rpcErr, hasErr := getRPCErrorWithOk(message); hasErr {
+			c.closeSubscription(requestID, rpcErr)
+			return
+		}
 		subID, _ := getUint64WithOk(message, "result")
 		c.handleNewSubscriptionMessage(requestID, subID)
 		return
@@ -312,10 +337,15 @@ func (c *Client) closeSubscription(reqID uint64, err error) {
 	}
 	sub.mu.Unlock()
 
-	if e := c.unsubscribe(sub.subID, sub.unsubscribeMethod); e != nil {
-		zlog.Warn("unable to send rpc unsubscribe call",
-			zap.Error(e),
-		)
+	// subID stays 0 when the subscription request itself failed (e.g. the
+	// server returned an error response); there is nothing to unsubscribe in
+	// that case, so don't send a bogus unsubscribe for subID 0.
+	if sub.subID != 0 {
+		if e := c.unsubscribe(sub.subID, sub.unsubscribeMethod); e != nil {
+			zlog.Warn("unable to send rpc unsubscribe call",
+				zap.Error(e),
+			)
+		}
 	}
 
 	delete(c.subscriptionByRequestID, sub.req.ID)
