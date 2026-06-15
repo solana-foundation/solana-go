@@ -38,7 +38,8 @@ import (
 var ErrAddressTablesNotSet = errors.New(
 	"address tables not set for versioned message with lookups; " +
 		"fetch each table id returned by Message.GetAddressTableLookups().GetTableIDs() " +
-		"(e.g. via rpc.Client.GetAddressLookupTableAddresses / GetMultipleAccounts) " +
+		"(e.g. via rpc.Client.GetMultipleAccounts, decoding each account with " +
+		"addresslookuptable.DecodeAddressLookupTableState) " +
 		"and pass the resolved {tableID -> []PublicKey} map to Message.SetAddressTables",
 )
 
