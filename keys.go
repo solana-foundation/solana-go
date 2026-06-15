@@ -150,8 +150,12 @@ func (k PrivateKey) PublicKeyOrErr() (PublicKey, error) {
 	return publicKey, nil
 }
 
+// Deprecated: use PublicKeyOrErr for safe key derivation.
 func (k PrivateKey) PublicKey() PublicKey {
-	pub, _ := k.PublicKeyOrErr()
+	pub, err := k.PublicKeyOrErr()
+	if err != nil {
+		panic(err)
+	}
 	return pub
 }
 
