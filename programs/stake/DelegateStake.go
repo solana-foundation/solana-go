@@ -24,7 +24,7 @@ import (
 )
 
 type DelegateStake struct {
-	// [0] = [WRITE SIGNER] StakeAccount
+	// [0] = [WRITE] StakeAccount
 	// ··········· Stake account getting initialized
 	//
 	// [1] = [] Vote Account
@@ -39,7 +39,7 @@ type DelegateStake struct {
 	// [4] = [] Stake Config Account
 	// ··········· The Stake Config Account
 	//
-	// [5] = [WRITE SIGNER] Stake Authoriy
+	// [5] = [SIGNER] Stake Authoriy
 	// ··········· The Stake Authority
 	//
 	solana.AccountMetaSlice `bin:"-" borsh_skip:"true"`
@@ -55,7 +55,7 @@ func (inst *DelegateStake) Validate() error {
 	return nil
 }
 func (inst *DelegateStake) SetStakeAccount(stakeAccount solana.PublicKey) *DelegateStake {
-	inst.AccountMetaSlice[0] = solana.Meta(stakeAccount).WRITE().SIGNER()
+	inst.AccountMetaSlice[0] = solana.Meta(stakeAccount).WRITE()
 	return inst
 }
 func (inst *DelegateStake) SetVoteAccount(voteAcc solana.PublicKey) *DelegateStake {
@@ -75,7 +75,7 @@ func (inst *DelegateStake) SetConfigAccount(stakeConfigAcc solana.PublicKey) *De
 	return inst
 }
 func (inst *DelegateStake) SetStakeAuthority(stakeAuthority solana.PublicKey) *DelegateStake {
-	inst.AccountMetaSlice[5] = solana.Meta(stakeAuthority).WRITE().SIGNER()
+	inst.AccountMetaSlice[5] = solana.Meta(stakeAuthority).SIGNER()
 	return inst
 }
 func (inst *DelegateStake) GetStakeAccount() *solana.AccountMeta { return inst.AccountMetaSlice[0] }
