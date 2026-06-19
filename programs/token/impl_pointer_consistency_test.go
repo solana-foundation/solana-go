@@ -15,6 +15,7 @@
 package token
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/gagliardetto/solana-go"
@@ -62,4 +63,69 @@ func TestBuilderImplIsPointer_MatchesDecode(t *testing.T) {
 	_, ok = decoded.Impl.(*Transfer)
 	require.True(t, ok, "DecodeInstruction was already a *Transfer; "+
 		"Build() now matches that contract")
+}
+
+// TestAllBuildersSetPointerImpl pins the fix across every builder, not just
+// the two spot-checked above. The #222 fix had to add `&` in 17 token Build()
+// methods; a single missed one would silently reintroduce the value-vs-pointer
+// mismatch. Looping over all builders and asserting Impl is a pointer of the
+// matching concrete type catches that for almost no extra code.
+func TestAllBuildersSetPointerImpl(t *testing.T) {
+	cases := []struct {
+		name string
+		want any
+		inst *Instruction
+	}{
+		{"Approve", (*Approve)(nil), NewApproveInstructionBuilder().Build()},
+		{"ApproveChecked", (*ApproveChecked)(nil), NewApproveCheckedInstructionBuilder().Build()},
+		{"Burn", (*Burn)(nil), NewBurnInstructionBuilder().Build()},
+		{"BurnChecked", (*BurnChecked)(nil), NewBurnCheckedInstructionBuilder().Build()},
+		{"CloseAccount", (*CloseAccount)(nil), NewCloseAccountInstructionBuilder().Build()},
+		{"FreezeAccount", (*FreezeAccount)(nil), NewFreezeAccountInstructionBuilder().Build()},
+		{"InitializeAccount", (*InitializeAccount)(nil), NewInitializeAccountInstructionBuilder().Build()},
+		{"InitializeMint", (*InitializeMint)(nil), NewInitializeMintInstructionBuilder().Build()},
+		{"InitializeMultisig", (*InitializeMultisig)(nil), NewInitializeMultisigInstructionBuilder().Build()},
+		{"MintTo", (*MintTo)(nil), NewMintToInstructionBuilder().Build()},
+		{"MintToChecked", (*MintToChecked)(nil), NewMintToCheckedInstructionBuilder().Build()},
+		{"Revoke", (*Revoke)(nil), NewRevokeInstructionBuilder().Build()},
+		{"SetAuthority", (*SetAuthority)(nil), NewSetAuthorityInstructionBuilder().Build()},
+		{"SyncNative", (*SyncNative)(nil), NewSyncNativeInstructionBuilder().Build()},
+		{"ThawAccount", (*ThawAccount)(nil), NewThawAccountInstructionBuilder().Build()},
+		{"Transfer", (*Transfer)(nil), NewTransferInstructionBuilder().Build()},
+		{"TransferChecked", (*TransferChecked)(nil), NewTransferCheckedInstructionBuilder().Build()},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, reflect.Ptr, reflect.TypeOf(tc.inst.Impl).Kind(),
+				"%s Build() must set Impl to a pointer", tc.name)
+			require.IsType(t, tc.want, tc.inst.Impl,
+				"%s Build() must set Impl to the same *%s type DecodeInstruction returns",
+				tc.name, tc.name)
+		})
+	}
+}
+
+// TestDecodeRoundTripCarriesPayload makes the round-trip assert data fidelity,
+// not just the pointer type: a Transfer built with a known amount must decode
+// back to that same amount, proving the bytes actually carried the payload.
+func TestDecodeRoundTripCarriesPayload(t *testing.T) {
+	src := solana.MustPublicKeyFromBase58("11111111111111111111111111111112")
+	dst := solana.MustPublicKeyFromBase58("11111111111111111111111111111113")
+	owner := solana.MustPublicKeyFromBase58("11111111111111111111111111111114")
+
+	data, err := NewTransferInstructionBuilder().
+		SetAmount(42).
+		SetSourceAccount(src).
+		SetDestinationAccount(dst).
+		SetOwnerAccount(owner).
+		Build().
+		Data()
+	require.NoError(t, err)
+
+	decoded, err := DecodeInstruction(nil, data)
+	require.NoError(t, err)
+	transfer, ok := decoded.Impl.(*Transfer)
+	require.True(t, ok)
+	require.NotNil(t, transfer.Amount)
+	require.Equal(t, uint64(42), *transfer.Amount)
 }
