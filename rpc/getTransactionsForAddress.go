@@ -69,6 +69,44 @@ type GetTransactionsForAddressOpts struct {
 	Filters *TransactionsForAddressFilters `json:"filters,omitempty"`
 }
 
+// TransactionStatus filters returned transactions by execution status.
+type TransactionStatus string
+
+const (
+	// TransactionStatusSucceeded matches transactions that executed successfully.
+	TransactionStatusSucceeded TransactionStatus = "succeeded"
+	// TransactionStatusFailed matches transactions that failed on chain.
+	TransactionStatusFailed TransactionStatus = "failed"
+	// TransactionStatusAny matches transactions regardless of status (the default).
+	TransactionStatusAny TransactionStatus = "any"
+)
+
+// TokenAccountsFilter narrows results by the queried address's token-account
+// activity within each transaction.
+type TokenAccountsFilter string
+
+const (
+	// TokenAccountsNone matches transactions with no token-account activity.
+	TokenAccountsNone TokenAccountsFilter = "none"
+	// TokenAccountsBalanceChanged matches transactions where a token balance changed.
+	TokenAccountsBalanceChanged TokenAccountsFilter = "balanceChanged"
+	// TokenAccountsAll matches transactions with any token-account activity.
+	TokenAccountsAll TokenAccountsFilter = "all"
+)
+
+// TokenTransferDirection constrains a token-transfer filter to a direction
+// relative to the queried address.
+type TokenTransferDirection string
+
+const (
+	// TokenTransferIn matches transfers into the queried address.
+	TokenTransferIn TokenTransferDirection = "in"
+	// TokenTransferOut matches transfers out of the queried address.
+	TokenTransferOut TokenTransferDirection = "out"
+	// TokenTransferAny matches transfers in either direction (the default).
+	TokenTransferAny TokenTransferDirection = "any"
+)
+
 // TransactionsForAddressFilters narrows the result set of
 // getTransactionsForAddress on the server side.
 type TransactionsForAddressFilters struct {
@@ -82,10 +120,10 @@ type TransactionsForAddressFilters struct {
 	Signature *RangeFilterString `json:"signature,omitempty"`
 
 	// Execution status: "succeeded", "failed", or "any".
-	Status string `json:"status,omitempty"`
+	Status TransactionStatus `json:"status,omitempty"`
 
 	// Token-account activity: "none", "balanceChanged", or "all".
-	TokenAccounts string `json:"tokenAccounts,omitempty"`
+	TokenAccounts TokenAccountsFilter `json:"tokenAccounts,omitempty"`
 
 	// Token-transfer constraints.
 	TokenTransfer *TokenTransferFilter `json:"tokenTransfer,omitempty"`
@@ -123,7 +161,7 @@ type TokenTransferFilter struct {
 	// Counterparty address.
 	With string `json:"with,omitempty"`
 	// Transfer direction relative to the queried address: "in", "out", or "any".
-	Direction string `json:"direction,omitempty"`
+	Direction TokenTransferDirection `json:"direction,omitempty"`
 	// Token mint address.
 	Mint string `json:"mint,omitempty"`
 	// Amount range comparisons.
@@ -181,8 +219,8 @@ type TransactionForAddress struct {
 // given address, newest first.
 //
 // NOTE: getTransactionsForAddress is not part of the core Solana JSON-RPC API;
-// it is offered by some RPC providers (e.g. Helius). Calls will fail against
-// endpoints that do not implement it.
+// it is a vendor extension offered by several RPC providers (e.g. Helius,
+// Triton, FluxRPC). Calls will fail against endpoints that do not implement it.
 func (cl *Client) GetTransactionsForAddress(
 	ctx context.Context,
 	account solana.PublicKey,
@@ -199,8 +237,8 @@ func (cl *Client) GetTransactionsForAddress(
 // server-side filters.
 //
 // NOTE: getTransactionsForAddress is not part of the core Solana JSON-RPC API;
-// it is offered by some RPC providers (e.g. Helius). Calls will fail against
-// endpoints that do not implement it.
+// it is a vendor extension offered by several RPC providers (e.g. Helius,
+// Triton, FluxRPC). Calls will fail against endpoints that do not implement it.
 func (cl *Client) GetTransactionsForAddressWithOpts(
 	ctx context.Context,
 	account solana.PublicKey,
@@ -232,6 +270,7 @@ func (cl *Client) GetTransactionsForAddressWithOpts(
 				solana.EncodingJSONParsed,
 				solana.EncodingBase58,
 				solana.EncodingBase64,
+				solana.EncodingBase64Zstd,
 			) {
 				return nil, fmt.Errorf("provided encoding is not supported: %s", opts.Encoding)
 			}

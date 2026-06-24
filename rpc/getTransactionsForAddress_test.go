@@ -46,7 +46,7 @@ func TestClient_GetTransactionsForAddress(t *testing.T) {
 		Commitment:         CommitmentFinalized,
 		MinContextSlot:     &minContextSlot,
 		Filters: &TransactionsForAddressFilters{
-			Status: "succeeded",
+			Status: TransactionStatusSucceeded,
 			Slot:   &RangeFilterUint64{Gte: &slotFloor},
 		},
 	}
@@ -165,6 +165,34 @@ func TestClient_GetTransactionsForAddress_FullDetail(t *testing.T) {
 	assert.Equal(t, uint64(2), out.Data[0].TransactionIndex)
 	require.NotNil(t, out.Data[0].Meta)
 	assert.Equal(t, uint64(5000), out.Data[0].Meta.Fee)
+}
+
+func TestClient_GetTransactionsForAddress_Base64ZstdEncoding(t *testing.T) {
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(`{"data":[],"paginationToken":null}`)))
+	defer closer()
+	client := New(server.URL)
+
+	pubKey := solana.MustPublicKeyFromBase58("7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932")
+
+	// base64+zstd is accepted everywhere else in this package (getBlock,
+	// getTransaction, blockSubscribe); it must be accepted here too rather
+	// than rejected client-side.
+	_, err := client.GetTransactionsForAddressWithOpts(
+		context.Background(),
+		pubKey,
+		&GetTransactionsForAddressOpts{
+			TransactionDetails: TransactionDetailsFull,
+			Encoding:           solana.EncodingBase64Zstd,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	params, ok := reqBody["params"].([]any)
+	require.True(t, ok)
+	cfg, ok := params[1].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, string(solana.EncodingBase64Zstd), cfg["encoding"])
 }
 
 func TestClient_GetTransactionsForAddress_InvalidEncoding(t *testing.T) {
