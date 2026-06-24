@@ -127,11 +127,15 @@ func TestResolveMessageLookupsFromRPC_Happy(t *testing.T) {
 		},
 	}
 	dataBase64 := encodeTableAccountData(t, tableState)
+	// Solana reports `space` as the decoded byte count, not the base64 length.
+	rawData, err := base64.StdEncoding.DecodeString(dataBase64)
+	require.NoError(t, err)
+	space := len(rawData)
 
 	_, client := newRPCMock(t, func(method string, body []byte) string {
 		require.Equal(t, "getMultipleAccounts", method)
 		require.Contains(t, string(body), tableID.String())
-		return fmt.Sprintf(`{"context":{"slot":1},"value":[{"data":["%s","base64"],"executable":false,"lamports":1,"owner":"AddressLookupTab1e1111111111111111111111111","rentEpoch":0,"space":%d}]}`, dataBase64, len(dataBase64))
+		return fmt.Sprintf(`{"context":{"slot":1},"value":[{"data":["%s","base64"],"executable":false,"lamports":1,"owner":"AddressLookupTab1e1111111111111111111111111","rentEpoch":0,"space":%d}]}`, dataBase64, space)
 	})
 
 	msg := versionedMessageWithLookups(t, tableID, []uint8{0, 1}, []uint8{2})

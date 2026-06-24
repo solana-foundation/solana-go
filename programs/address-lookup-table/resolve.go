@@ -75,10 +75,12 @@ func ResolveMessageLookupsFromRPCWithOpts(
 	if len(lookups) == 0 {
 		return nil
 	}
-	tableIDs := lookups.GetTableIDs()
-	if len(tableIDs) == 0 {
+	// Already-resolved messages are a no-op: SetAddressTables would reject a
+	// second resolve, so short-circuit before spending an RPC round-trip.
+	if msg.IsResolved() {
 		return nil
 	}
+	tableIDs := lookups.GetTableIDs()
 
 	var (
 		resp *rpc.GetMultipleAccountsResult
