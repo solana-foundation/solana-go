@@ -15,7 +15,7 @@ We encourage everyone to contribute — submit issues, PRs, and discuss. Every k
 1. Create a branch from `main` for your changes
 2. Make your changes and write tests
 3. Ensure all tests pass locally
-4. Commit using [Conventional Commits](#commit-messages) format
+4. Commit using [Conventional Commits](#commit-messages) format, with a [verified signature](#commit-signing)
 5. Open a pull request against `main`
 
 ## Linting
@@ -95,6 +95,24 @@ test: add coverage for address lookup table resolution
 ```
 
 Commit messages are enforced in CI via [commitlint](https://commitlint.js.org/).
+
+## Commit Signing
+
+All commits **must have verified signatures**. This is an organization-wide requirement applied to every `solana-foundation` repository as a security enhancement, effective **June 1, 2026**.
+
+Branch protection rejects unsigned or unverified commits, so a pull request whose commits are not all verified cannot be merged — configure signing before you push.
+
+You can sign with SSH (simplest if you already push over SSH), GPG, or S/MIME. SSH setup:
+
+```bash
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+```
+
+Then register the **same** key as a *Signing Key* on GitHub (Settings → SSH and GPG keys → New SSH key → Key type: **Signing Key**). Verify locally with `git log --show-signature`, and confirm the commit shows a **Verified** badge on GitHub.
+
+See GitHub's [commit signature verification](https://docs.github.com/en/authentication/managing-commit-signature-verification) docs for GPG / S/MIME and platform-specific setup.
 
 ## Semver and API Compatibility
 
