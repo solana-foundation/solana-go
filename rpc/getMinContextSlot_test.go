@@ -444,3 +444,154 @@ func TestClient_GetTokenAccountBalance_BackCompat_NoOpts(t *testing.T) {
 		reqBody,
 	)
 }
+
+// TestClient_GetInflationReward_MinContextSlot pins that the minContextSlot
+// opt is forwarded into the params object for getInflationReward.
+func TestClient_GetInflationReward_MinContextSlot(t *testing.T) {
+	responseBody := `[null]`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	addrString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	addr := solana.MustPublicKeyFromBase58(addrString)
+
+	minSlot := uint64(987654321)
+	_, err := client.GetInflationReward(
+		context.Background(),
+		[]solana.PublicKey{addr},
+		&GetInflationRewardOpts{
+			MinContextSlot: &minSlot,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getInflationReward",
+			"params": []any{
+				[]any{addrString},
+				map[string]any{
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetSupplyWithOpts_MinContextSlot pins that the minContextSlot
+// opt is forwarded into the params object for getSupply.
+func TestClient_GetSupplyWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":{"total":1,"circulating":1,"nonCirculating":0,"nonCirculatingAccounts":[]}}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	minSlot := uint64(42)
+	_, err := client.GetSupplyWithOpts(
+		context.Background(),
+		&GetSupplyOpts{
+			MinContextSlot: &minSlot,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getSupply",
+			"params": []any{
+				map[string]any{
+					"commitment":                        "confirmed",
+					"excludeNonCirculatingAccountsList": false,
+					"minContextSlot":                    float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetStakeMinimumDelegationWithOpts_MinContextSlot pins that the
+// minContextSlot opt is forwarded into the params object for
+// getStakeMinimumDelegation.
+func TestClient_GetStakeMinimumDelegationWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":1000000000}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	minSlot := uint64(7)
+	_, err := client.GetStakeMinimumDelegationWithOpts(
+		context.Background(),
+		&GetStakeMinimumDelegationOpts{
+			MinContextSlot: &minSlot,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getStakeMinimumDelegation",
+			"params": []any{
+				map[string]any{
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
+// TestClient_GetFeeForMessageWithOpts_MinContextSlot pins that the
+// minContextSlot opt is forwarded into the params object for getFeeForMessage.
+func TestClient_GetFeeForMessageWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":5000}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	encodedMessage := "AQABA..."
+	minSlot := uint64(99)
+	_, err := client.GetFeeForMessageWithOpts(
+		context.Background(),
+		encodedMessage,
+		&GetFeeForMessageOpts{
+			MinContextSlot: &minSlot,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getFeeForMessage",
+			"params": []any{
+				encodedMessage,
+				map[string]any{
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}

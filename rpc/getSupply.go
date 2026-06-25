@@ -38,6 +38,9 @@ func (cl *Client) GetSupplyWithOpts(
 			obj["commitment"] = opts.Commitment
 		}
 		obj["excludeNonCirculatingAccountsList"] = opts.ExcludeNonCirculatingAccountsList
+		if opts.MinContextSlot != nil {
+			obj["minContextSlot"] = *opts.MinContextSlot
+		}
 	}
 
 	err = cl.rpcClient.CallForInto(ctx, &out, "getSupply", []any{obj})
@@ -48,6 +51,9 @@ type GetSupplyOpts struct {
 	Commitment CommitmentType `json:"commitment,omitempty"`
 
 	ExcludeNonCirculatingAccountsList bool `json:"excludeNonCirculatingAccountsList,omitempty"` // exclude non circulating accounts list from response
+
+	// The minimum slot that the request can be evaluated at.
+	MinContextSlot *uint64 `json:"minContextSlot,omitempty"`
 }
 
 type GetSupplyResult struct {

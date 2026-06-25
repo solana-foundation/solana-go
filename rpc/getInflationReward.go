@@ -26,6 +26,9 @@ type GetInflationRewardOpts struct {
 	// An epoch for which the reward occurs.
 	// If omitted, the previous epoch will be used.
 	Epoch *uint64
+
+	// The minimum slot that the request can be evaluated at.
+	MinContextSlot *uint64
 }
 
 // GetInflationReward returns the inflation / staking reward for a list of addresses for an epoch.
@@ -46,6 +49,9 @@ func (cl *Client) GetInflationReward(
 		}
 		if opts.Epoch != nil {
 			obj["epoch"] = opts.Epoch
+		}
+		if opts.MinContextSlot != nil {
+			obj["minContextSlot"] = *opts.MinContextSlot
 		}
 		if len(obj) > 0 {
 			params = append(params, obj)

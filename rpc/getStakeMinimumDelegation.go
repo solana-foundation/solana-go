@@ -23,9 +23,36 @@ func (cl *Client) GetStakeMinimumDelegation(
 	ctx context.Context,
 	commitment CommitmentType, // optional
 ) (out *GetStakeMinimumDelegationResult, err error) {
+	return cl.GetStakeMinimumDelegationWithOpts(ctx, &GetStakeMinimumDelegationOpts{Commitment: commitment})
+}
+
+// GetStakeMinimumDelegationOpts groups the optional configuration accepted by
+// the getStakeMinimumDelegation RPC.
+type GetStakeMinimumDelegationOpts struct {
+	Commitment CommitmentType
+
+	// The minimum slot that the request can be evaluated at.
+	MinContextSlot *uint64
+}
+
+// GetStakeMinimumDelegationWithOpts is the variant of GetStakeMinimumDelegation
+// that accepts the full optional configuration set, including MinContextSlot.
+func (cl *Client) GetStakeMinimumDelegationWithOpts(
+	ctx context.Context,
+	opts *GetStakeMinimumDelegationOpts,
+) (out *GetStakeMinimumDelegationResult, err error) {
 	params := []interface{}{}
-	if commitment != "" {
-		params = append(params, M{"commitment": string(commitment)})
+	if opts != nil {
+		obj := M{}
+		if opts.Commitment != "" {
+			obj["commitment"] = string(opts.Commitment)
+		}
+		if opts.MinContextSlot != nil {
+			obj["minContextSlot"] = *opts.MinContextSlot
+		}
+		if len(obj) > 0 {
+			params = append(params, obj)
+		}
 	}
 	err = cl.rpcClient.CallForInto(ctx, &out, "getStakeMinimumDelegation", params)
 	return
