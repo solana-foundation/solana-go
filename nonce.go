@@ -389,9 +389,14 @@ func VerifyNonceAccount(owner PublicKey, data []byte, recentBlockhash Hash) (*No
 	return v.VerifyRecentBlockhash(recentBlockhash)
 }
 
-// LamportsPerSignatureOf decodes a nonce account and returns the per-signature
-// fee it records, or (0, false) when uninitialized or undecodable. Mirrors
-// nonce_account::lamports_per_signature_of.
+// LamportsPerSignatureOf decodes a nonce account's data and returns the
+// per-signature fee it records, or (0, false) when uninitialized or undecodable.
+//
+// Mirrors nonce_account::lamports_per_signature_of, which likewise does NOT
+// verify the account owner; this function only takes the data bytes and cannot.
+// Pass data you have already confirmed belongs to a System-owned nonce account
+// (e.g. via GetSystemAccountKind or VerifyNonceAccount), or treat the result as
+// advisory.
 func LamportsPerSignatureOf(data []byte) (uint64, bool) {
 	v, err := decodeNonceVersionsStrict(data)
 	if err != nil {

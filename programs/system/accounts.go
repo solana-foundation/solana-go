@@ -29,9 +29,9 @@ type NonceAccount struct {
 	FeeCalculator    FeeCalculator
 }
 
-// FeeCalculator aliases the canonical solana.FeeCalculator so this package and
-// the root package share a single definition (and wire format).
-type FeeCalculator = solana.FeeCalculator
+type FeeCalculator struct {
+	LamportsPerSignature uint64
+}
 
 func (obj NonceAccount) MarshalWithEncoder(encoder *bin.Encoder) (err error) {
 	err = encoder.WriteUint32(obj.Version, binary.LittleEndian)
@@ -81,4 +81,13 @@ func (obj *NonceAccount) UnmarshalWithDecoder(decoder *bin.Decoder) (err error) 
 		obj.Nonce = solana.PublicKeyFromBytes(buf)
 	}
 	return obj.FeeCalculator.UnmarshalWithDecoder(decoder)
+}
+
+func (obj FeeCalculator) MarshalWithEncoder(encoder *bin.Encoder) (err error) {
+	return encoder.WriteUint64(obj.LamportsPerSignature, binary.LittleEndian)
+}
+
+func (obj *FeeCalculator) UnmarshalWithDecoder(decoder *bin.Decoder) (err error) {
+	obj.LamportsPerSignature, err = decoder.ReadUint64(binary.LittleEndian)
+	return err
 }
