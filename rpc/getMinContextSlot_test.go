@@ -94,6 +94,47 @@ func TestClient_GetTokenAccountsByOwner_MinContextSlot(t *testing.T) {
 	)
 }
 
+// TestClient_GetMultipleAccountsWithOpts_MinContextSlot pins that the
+// minContextSlot opt is forwarded into the params object. The fix shipped
+// with #245; this test guards against future regressions and closes #170.
+func TestClient_GetMultipleAccountsWithOpts_MinContextSlot(t *testing.T) {
+	responseBody := `{"context":{"slot":1},"value":[null]}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+
+	minSlot := uint64(555555)
+	_, err := client.GetMultipleAccountsWithOpts(
+		context.Background(),
+		[]solana.PublicKey{pubKey},
+		&GetMultipleAccountsOpts{
+			MinContextSlot: &minSlot,
+		},
+	)
+	require.NoError(t, err)
+
+	reqBody := server.RequestBody(t)
+	reqBody["id"] = any(nil)
+
+	assert.Equal(t,
+		map[string]any{
+			"id":      any(nil),
+			"jsonrpc": "2.0",
+			"method":  "getMultipleAccounts",
+			"params": []any{
+				[]any{pubkeyString},
+				map[string]any{
+					"minContextSlot": float64(minSlot),
+				},
+			},
+		},
+		reqBody,
+	)
+}
+
 // TestClient_GetTokenAccountsByDelegate_MinContextSlot pins the same for the
 // delegate variant.
 func TestClient_GetTokenAccountsByDelegate_MinContextSlot(t *testing.T) {
