@@ -113,6 +113,10 @@ func (sh *StakeHistory) UnmarshalWithDecoder(decoder *bin.Decoder) error {
 			Entry: StakeHistoryEntry{Effective: vals[1], Activating: vals[2], Deactivating: vals[3]},
 		})
 	}
+	// Normalize to the descending-by-epoch invariant that Get/Add rely on, so
+	// lookups stay correct even for an out-of-order (forked or hostile) buffer.
+	// A well-formed account is already sorted, so this is a no-op.
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Epoch > out[j].Epoch })
 	*sh = out
 	return nil
 }

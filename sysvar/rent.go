@@ -16,6 +16,8 @@ package sysvar
 
 import (
 	"encoding/binary"
+	"math"
+	"math/bits"
 
 	bin "github.com/gagliardetto/binary"
 )
@@ -40,11 +42,6 @@ const (
 	// MaxPermittedDataLength is the maximum permitted account data length
 	// (10 MiB) when computing a rent-exempt minimum.
 	MaxPermittedDataLength uint64 = 10 * 1024 * 1024
-
-	// simd0194MaxLamportsPerByte / currentMaxLamportsPerByte bound LamportsPerByte
-	// (per exemption threshold) so TryMinimumBalance cannot overflow.
-	simd0194MaxLamportsPerByte uint64 = 1_759_197_129_867
-	currentMaxLamportsPerByte  uint64 = 879_598_564_933
 )
 
 // Rent is the data of the Rent sysvar (account solana.SysVarRentPubkey): the cluster's
@@ -77,38 +74,61 @@ func DefaultRent() Rent {
 // dataLen bytes to be rent-exempt:
 // floor((ACCOUNT_STORAGE_OVERHEAD + dataLen) * LamportsPerByte * ExemptionThreshold).
 //
-// Like Rent::minimum_balance_unchecked, the two default thresholds (1.0 and 2.0)
-// use exact integer math; other thresholds fall back to floating point. It does
-// not guard against overflow — use TryMinimumBalance for that.
+// The two default thresholds (1.0 and 2.0) use exact integer math; other
+// thresholds fall back to floating point. If the computation would overflow
+// uint64 (e.g. a fixture or hostile account with a huge LamportsPerByte), it
+// saturates to math.MaxUint64 so an underfunded account is never reported
+// rent-exempt. Use TryMinimumBalance to detect the overflow explicitly.
 func (r Rent) MinimumBalance(dataLen uint64) uint64 {
-	base := (AccountStorageOverhead + dataLen) * r.LamportsPerByte
-	switch r.ExemptionThreshold {
-	case 1.0:
-		return base
-	case 2.0:
-		return 2 * base
-	default:
-		return uint64(float64(base) * r.ExemptionThreshold)
+	v, overflow := r.computeMinimumBalance(dataLen)
+	if overflow {
+		return math.MaxUint64
 	}
+	return v
 }
 
-// TryMinimumBalance is MinimumBalance with the overflow guards from
-// Rent::try_minimum_balance: it returns ok=false when dataLen exceeds
-// MaxPermittedDataLength, or when LamportsPerByte is large enough (for the 1.0
-// or 2.0 threshold) that the computation could overflow.
+// TryMinimumBalance is MinimumBalance but reports ok=false when dataLen exceeds
+// MaxPermittedDataLength or the computation would overflow uint64. Mirrors the
+// guards in Rent::try_minimum_balance.
 func (r Rent) TryMinimumBalance(dataLen uint64) (uint64, bool) {
 	if dataLen > MaxPermittedDataLength {
 		return 0, false
 	}
-	if (r.ExemptionThreshold == 2.0 && r.LamportsPerByte > currentMaxLamportsPerByte) ||
-		(r.ExemptionThreshold == 1.0 && r.LamportsPerByte > simd0194MaxLamportsPerByte) {
-		return 0, false
+	v, overflow := r.computeMinimumBalance(dataLen)
+	return v, !overflow
+}
+
+// computeMinimumBalance returns the rent-exempt minimum and whether computing it
+// overflowed uint64.
+func (r Rent) computeMinimumBalance(dataLen uint64) (uint64, bool) {
+	bytes := AccountStorageOverhead + dataLen
+	if bytes < dataLen { // overflow in the byte count
+		return 0, true
 	}
-	return r.MinimumBalance(dataLen), true
+	hi, base := bits.Mul64(bytes, r.LamportsPerByte)
+	if hi != 0 { // overflow in base rent
+		return 0, true
+	}
+	switch r.ExemptionThreshold {
+	case 1.0:
+		return base, false
+	case 2.0:
+		if base > math.MaxUint64/2 {
+			return 0, true
+		}
+		return base * 2, false
+	default:
+		v := float64(base) * r.ExemptionThreshold
+		if math.IsNaN(v) || v < 0 || v >= float64(math.MaxUint64) {
+			return 0, true
+		}
+		return uint64(v), false
+	}
 }
 
 // IsExempt reports whether balance is enough for an account of dataLen bytes to
-// be rent-exempt.
+// be rent-exempt. Because MinimumBalance saturates on overflow, IsExempt never
+// reports an underfunded account as exempt.
 func (r Rent) IsExempt(balance, dataLen uint64) bool {
 	return balance >= r.MinimumBalance(dataLen)
 }

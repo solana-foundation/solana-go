@@ -128,10 +128,22 @@ func (sh *SlotHistory) Check(slot uint64) SlotHistoryCheck {
 	}
 }
 
-// Add records slot as present, clearing any slots skipped since NextSlot.
-// Mirrors SlotHistory::add.
+// Add records slot as present. For a slot at or beyond NextSlot it advances the
+// window, clearing any skipped slots (mirroring the runtime's SlotHistory::add,
+// which assumes monotonically increasing slots).
+//
+// Unlike the runtime, adding an OLDER slot does not rewind NextSlot: the slot is
+// simply marked present if it is still within the window, and ignored if it has
+// already aged out. This keeps Check correct for newer slots that were already
+// recorded.
 func (sh *SlotHistory) Add(slot uint64) {
-	if slot > sh.NextSlot && slot-sh.NextSlot >= SlotHistoryMaxEntries {
+	if slot < sh.NextSlot {
+		if slot >= sh.Oldest() {
+			sh.setBit(slot%SlotHistoryMaxEntries, true)
+		}
+		return
+	}
+	if slot-sh.NextSlot >= SlotHistoryMaxEntries {
 		// Wrapped all the way around: clear everything.
 		for i := range sh.Bits {
 			sh.Bits[i] = 0

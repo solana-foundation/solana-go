@@ -126,6 +126,10 @@ func (sh *SlotHashes) UnmarshalWithDecoder(decoder *bin.Decoder) error {
 		copy(h[:], buf)
 		out = append(out, SlotHash{Slot: slot, Hash: h})
 	}
+	// Normalize to the descending-by-slot invariant that Get/Position/Add rely
+	// on, so lookups stay correct even for an out-of-order (forked or hostile)
+	// buffer. A well-formed account is already sorted, so this is a no-op.
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Slot > out[j].Slot })
 	*sh = out
 	return nil
 }

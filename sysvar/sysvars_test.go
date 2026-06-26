@@ -31,6 +31,7 @@ package sysvar
 
 import (
 	"encoding/hex"
+	"math"
 	"testing"
 
 	bin "github.com/gagliardetto/binary"
@@ -473,6 +474,70 @@ func FuzzDecodeSysvars(f *testing.F) {
 		_, _ = DecodeFees(data)
 		_, _ = DecodeRecentBlockhashes(data)
 	})
+}
+
+// ============================ regression tests ============================
+
+// TestRentMinimumBalanceOverflow guards against the unchecked multiply wrapping
+// and making an underfunded account look rent-exempt.
+func TestRentMinimumBalanceOverflow(t *testing.T) {
+	r := Rent{LamportsPerByte: math.MaxUint64, ExemptionThreshold: 1.0}
+	assert.Equal(t, uint64(math.MaxUint64), r.MinimumBalance(0)) // saturates, never wraps low
+	assert.False(t, r.IsExempt(1_000_000_000, 0))                // underfunded => not exempt
+	_, ok := r.TryMinimumBalance(0)
+	assert.False(t, ok)
+
+	// The 2.0-threshold doubling overflow also saturates rather than wrapping.
+	r2 := Rent{LamportsPerByte: math.MaxUint64 / 200, ExemptionThreshold: 2.0}
+	assert.Equal(t, uint64(math.MaxUint64), r2.MinimumBalance(0))
+	assert.False(t, r2.IsExempt(math.MaxUint64-1, 0))
+}
+
+// TestSlotHistoryAddOlderSlot guards against an older Add rewinding NextSlot and
+// hiding newer recorded slots.
+func TestSlotHistoryAddOlderSlot(t *testing.T) {
+	sh := NewSlotHistory()
+	sh.Add(100)
+	sh.Add(101)
+	sh.Add(102)
+	require.Equal(t, uint64(103), sh.NextSlot)
+
+	sh.Add(50) // older, still within the window
+	assert.Equal(t, uint64(103), sh.NextSlot, "NextSlot must not rewind")
+	assert.Equal(t, SlotHistoryFound, sh.Check(102))
+	assert.Equal(t, SlotHistoryFound, sh.Check(101))
+	assert.Equal(t, SlotHistoryFound, sh.Check(50)) // the older slot is now recorded
+}
+
+// TestDecodeSlotHashesNormalizesOrder guards against an out-of-order buffer
+// breaking the binary-search lookups.
+func TestDecodeSlotHashesNormalizesOrder(t *testing.T) {
+	ascending := SlotHashes{{Slot: 1, Hash: filledHash(1)}, {Slot: 2, Hash: filledHash(2)}, {Slot: 3, Hash: filledHash(3)}}
+	raw, err := ascending.MarshalBinary()
+	require.NoError(t, err)
+	got, err := DecodeSlotHashes(raw)
+	require.NoError(t, err)
+	assert.Equal(t, []uint64{3, 2, 1}, []uint64{got[0].Slot, got[1].Slot, got[2].Slot})
+	h, ok := got.Get(2)
+	require.True(t, ok)
+	assert.Equal(t, filledHash(2), h)
+}
+
+// TestDecodeStakeHistoryNormalizesOrder is the StakeHistory analog.
+func TestDecodeStakeHistoryNormalizesOrder(t *testing.T) {
+	ascending := StakeHistory{
+		{Epoch: 1, Entry: StakeHistoryEntry{Effective: 10}},
+		{Epoch: 2, Entry: StakeHistoryEntry{Effective: 20}},
+		{Epoch: 3, Entry: StakeHistoryEntry{Effective: 30}},
+	}
+	raw, err := ascending.MarshalBinary()
+	require.NoError(t, err)
+	got, err := DecodeStakeHistory(raw)
+	require.NoError(t, err)
+	assert.Equal(t, []uint64{3, 2, 1}, []uint64{got[0].Epoch, got[1].Epoch, got[2].Epoch})
+	e, ok := got.Get(2)
+	require.True(t, ok)
+	assert.Equal(t, StakeHistoryEntry{Effective: 20}, e)
 }
 
 func TestSysvarSizeConstants(t *testing.T) {
