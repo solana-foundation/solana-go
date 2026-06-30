@@ -92,7 +92,7 @@ func (inst *Deactivate) EncodeToTree(parent treeout.Branches) {
 					instructionBranch.Child("Accounts").ParentFunc(func(accountsBranch treeout.Branches) {
 						accountsBranch.Child(format.Meta("            StakeAccount", inst.AccountMetaSlice.Get(0)))
 						accountsBranch.Child(format.Meta("             ClockSysvar", inst.AccountMetaSlice.Get(1)))
-						accountsBranch.Child(format.Meta("           StakeAuthoriy", inst.AccountMetaSlice.Get(2)))
+						accountsBranch.Child(format.Meta("          StakeAuthority", inst.AccountMetaSlice.Get(2)))
 					})
 				})
 		})

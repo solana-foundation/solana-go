@@ -39,7 +39,7 @@ type DelegateStake struct {
 	// [4] = [] Stake Config Account
 	// ··········· The Stake Config Account
 	//
-	// [5] = [SIGNER] Stake Authoriy
+	// [5] = [SIGNER] Stake Authority
 	// ··········· The Stake Authority
 	//
 	solana.AccountMetaSlice `bin:"-" borsh_skip:"true"`
@@ -112,7 +112,7 @@ func (inst *DelegateStake) EncodeToTree(parent treeout.Branches) {
 						accountsBranch.Child(format.Meta("           ClockSysvar", inst.AccountMetaSlice.Get(2)))
 						accountsBranch.Child(format.Meta("           StakeHistorySysvar", inst.AccountMetaSlice.Get(3)))
 						accountsBranch.Child(format.Meta("           StakeConfigAccount", inst.AccountMetaSlice.Get(4)))
-						accountsBranch.Child(format.Meta("           StakeAuthoriy", inst.AccountMetaSlice.Get(5)))
+						accountsBranch.Child(format.Meta("           StakeAuthority", inst.AccountMetaSlice.Get(5)))
 					})
 				})
 		})

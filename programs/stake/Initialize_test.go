@@ -37,3 +37,21 @@ func TestRoundTrip_Initialize(t *testing.T) {
 	require.Equal(t, uint64(42), *init.Lockup.Epoch)
 	require.Equal(t, custodian, *init.Lockup.Custodian)
 }
+
+// The on-chain Stake program's Initialize account spec is:
+//
+//  0. [WRITE] uninitialized stake account
+//  1. [] rent sysvar
+//
+// i.e. the stake account is writable but not a signer. Initialize takes the
+// staker/withdrawer authorities as instruction data, not as signing accounts,
+// so nothing in this instruction signs.
+func TestAccountFlags_Initialize(t *testing.T) {
+	inst := NewInitializeInstructionBuilder().
+		SetStakeAccount(pubkeyOf(1)).
+		SetRentSysvarAccount(solana.SysVarRentPubkey)
+
+	stakeAccount := inst.GetStakeAccount()
+	require.True(t, stakeAccount.IsWritable, "stake account must be writable")
+	require.False(t, stakeAccount.IsSigner, "stake account must not be a signer")
+}
