@@ -35,7 +35,7 @@ type Withdraw struct {
 	// [1] = [WRITE] ToAccount
 	// ··········· Account to receive the funds
 	//
-	// [2] = [WRITE SIGNER] AuthorizedWithdrawerPubkey
+	// [2] = [SIGNER] AuthorizedWithdrawerPubkey
 	// ··········· Account authorized to do the witdraw
 	//
 	solana.AccountMetaSlice `bin:"-" borsh_skip:"true"`
@@ -94,7 +94,7 @@ func (inst *Withdraw) SetRecipientAccount(recipientAccount solana.PublicKey) *Wi
 
 // Withdraw authority account
 func (inst *Withdraw) SetWithdrawAuthorityAccount(withdrawAccount solana.PublicKey) *Withdraw {
-	inst.AccountMetaSlice[2] = solana.Meta(withdrawAccount).WRITE().SIGNER()
+	inst.AccountMetaSlice[2] = solana.Meta(withdrawAccount).SIGNER()
 	return inst
 }
 

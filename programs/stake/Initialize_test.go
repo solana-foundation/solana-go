@@ -37,3 +37,19 @@ func TestRoundTrip_Initialize(t *testing.T) {
 	require.Equal(t, uint64(42), *init.Lockup.Epoch)
 	require.Equal(t, custodian, *init.Lockup.Custodian)
 }
+
+// TestInitialize_AccountFlags pins the canonical Solana account spec for the
+// stake Initialize instruction: the stake account is writable but NOT a signer
+// (its keypair signs the preceding SystemProgram::CreateAccount, not this
+// instruction), and the rent sysvar is read-only.
+func TestInitialize_AccountFlags(t *testing.T) {
+	inst := NewInitializeInstruction(pubkeyOf(1), pubkeyOf(2), pubkeyOf(10))
+
+	stakeAccount := inst.GetStakeAccount()
+	require.True(t, stakeAccount.IsWritable, "stake account must be writable")
+	require.False(t, stakeAccount.IsSigner, "stake account must not be a signer")
+
+	rent := inst.GetRentSysvarAccount()
+	require.False(t, rent.IsWritable, "rent sysvar must be read-only")
+	require.False(t, rent.IsSigner, "rent sysvar must not be a signer")
+}

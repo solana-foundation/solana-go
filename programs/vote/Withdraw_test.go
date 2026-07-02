@@ -20,3 +20,23 @@ func TestRoundTrip_Withdraw(t *testing.T) {
 	w := decoded.Impl.(*Withdraw)
 	require.Equal(t, uint64(1_000_000_000), *w.Lamports)
 }
+
+// TestWithdraw_AccountFlags pins the canonical Solana account spec for the vote
+// Withdraw instruction: the vote account and recipient are writable non-signers,
+// and the authorized withdrawer is a read-only signer (it authorizes the
+// withdraw but is not itself mutated, so it must not carry the writable flag).
+func TestWithdraw_AccountFlags(t *testing.T) {
+	inst := NewWithdrawInstruction(1, pubkeyOf(1), pubkeyOf(2), pubkeyOf(3))
+
+	vote := inst.GetVoteAccount()
+	require.True(t, vote.IsWritable, "vote account must be writable")
+	require.False(t, vote.IsSigner, "vote account must not be a signer")
+
+	recipient := inst.GetRecipientAccount()
+	require.True(t, recipient.IsWritable, "recipient must be writable")
+	require.False(t, recipient.IsSigner, "recipient must not be a signer")
+
+	withdrawer := inst.GetWithdrawAuthorityAccount()
+	require.False(t, withdrawer.IsWritable, "withdraw authority must be read-only")
+	require.True(t, withdrawer.IsSigner, "withdraw authority must be a signer")
+}
