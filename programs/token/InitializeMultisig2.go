@@ -32,7 +32,7 @@ type InitializeMultisig2 struct {
 	// [0] = [WRITE] account
 	// ··········· The multisignature account to initialize.
 	//
-	// [1] = [SIGNER] signers
+	// [1] = [] signers
 	// ··········· The signer accounts, must equal to N where 1 <= N <= 11.
 	Accounts ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 	Signers  ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
@@ -82,7 +82,7 @@ func (inst *InitializeMultisig2) GetAccount() *ag_solanago.AccountMeta {
 // The signer accounts, must equal to N where 1 <= N <= 11.
 func (inst *InitializeMultisig2) AddSigners(signers ...ag_solanago.PublicKey) *InitializeMultisig2 {
 	for _, signer := range signers {
-		inst.Signers = append(inst.Signers, ag_solanago.Meta(signer).SIGNER())
+		inst.Signers = append(inst.Signers, ag_solanago.Meta(signer))
 	}
 	return inst
 }
