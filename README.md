@@ -1,6 +1,6 @@
 # Solana SDK library for Go
 
-[![GoDoc](https://pkg.go.dev/badge/github.com/solana-foundation/solana-go/v2?status.svg)](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0?tab=doc)
+[![GoDoc](https://pkg.go.dev/badge/github.com/solana-foundation/solana-go/v2?status.svg)](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.0.0-rc?tab=doc)
 [![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/solana-foundation/solana-go?include_prereleases&label=release-tag)](https://github.com/solana-foundation/solana-go/v2/releases)
 [![Build Status](https://github.com/solana-foundation/solana-go/v2/workflows/tests/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain)
 [![Lint Status](https://github.com/solana-foundation/solana-go/v2/workflows/lint/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain+workflow%3Alint)
@@ -26,6 +26,7 @@ More contracts to come.
   - [Note](#note)
   - [Requirements](#requirements)
   - [Installation](#installation)
+  - [Migrating from v1](#migrating-from-v1)
   - [Pretty-Print transactions/instructions](#pretty-print-transactionsinstructions)
   - [SendAndConfirmTransaction](#sendandconfirmtransaction)
   - [Address Lookup Tables](#address-lookup-tables)
@@ -73,7 +74,9 @@ More contracts to come.
 
 ## Current development status
 
-There is currently **no stable release**. The SDK is actively developed and latest is `v1.16.0` which is an `alpha` release.
+The **v1 line** (stable, backward-compatible improvements only) ships from the `main` branch — latest release is [v1.22.0](https://github.com/solana-foundation/solana-go/releases/tag/v1.22.0).
+
+The **v2 line** (v1 features + breaking API cleanups) ships from the `v2` branch — latest release is `v2.0.0-rc` (release candidate; not production-ready). See [Migrating from v1](#migrating-from-v1) below.
 
 The RPC and WS client implementation is based on the [Solana RPC API documentation](https://solana.com/docs/rpc).
 
@@ -85,13 +88,60 @@ The RPC and WS client implementation is based on the [Solana RPC API documentati
 ## Requirements
 
 - Go 1.24 or later
+- v1 stable: `github.com/solana-foundation/solana-go`
+- v2 release candidate: `github.com/solana-foundation/solana-go/v2`
 
 ## Installation
 
+For the **v1 stable line**:
+
 ```bash
 $ cd my-project
-$ go get github.com/solana-foundation/solana-go/v2@v1.16.0
+$ go get github.com/solana-foundation/solana-go@latest
 ```
+
+For the **v2 release candidate** (includes breaking changes — see [Migrating from v1](#migrating-from-v1)):
+
+```bash
+$ cd my-project
+$ go get github.com/solana-foundation/solana-go/v2@v2.0.0-rc
+```
+
+## Migrating from v1
+
+v2 keeps everything in v1.22 and adds three breaking changes. For most callers, migration is a mechanical find-and-replace plus a rebuild.
+
+### 1. Module path
+
+The module path changed:
+
+```diff
+- import "github.com/gagliardetto/solana-go"
+- import "github.com/gagliardetto/solana-go/rpc"
++ import "github.com/solana-foundation/solana-go/v2"
++ import "github.com/solana-foundation/solana-go/v2/rpc"
+```
+
+One-liner migration:
+
+```bash
+find . -type f -name '*.go' -exec sed -i.bak \
+  's|github.com/gagliardetto/solana-go|github.com/solana-foundation/solana-go/v2|g' {} +
+go get github.com/solana-foundation/solana-go/v2@v2.0.0-rc
+go mod tidy
+```
+
+### 2. Loader program packages ([#410](https://github.com/solana-foundation/solana-go/pull/410))
+
+`programs/loader-v2`, `programs/loader-v3`, and `programs/loader-v4` were realigned to match the on-chain Loader program specs (account flags, instruction layouts). If you use these builders, `go build ./...` will surface the exact call sites that need updating.
+
+### 3. WebSocket subscription API ([#407](https://github.com/solana-foundation/solana-go/pull/407))
+
+`rpc/ws` was aligned with the Solana WebSocket JSON-RPC spec. Subscription method signatures changed; the compiler will flag any callers that need updating.
+
+### What's NOT breaking
+
+`rpc/jsonrpc` was intentionally kept identical to v1 for backward compatibility — if you use it directly, only the module path changes.
 
 ## Pretty-Print transactions/instructions
 
@@ -831,14 +881,14 @@ func main() {
 
 All RPC methods from the [Solana JSON RPC API](https://solana.com/docs/rpc) are supported.
 Each method has a testable example in [`rpc/example_test.go`](rpc/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0/rpc#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.0.0-rc/rpc#pkg-examples).
 
 
 ## WebSocket Subscriptions
 
 All WebSocket subscriptions from the [Solana WebSocket API](https://solana.com/docs/rpc/websocket) are supported.
 Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v1.16.0/rpc/ws#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.0.0-rc/rpc/ws#pkg-examples).
 
 
 ## Contributing
