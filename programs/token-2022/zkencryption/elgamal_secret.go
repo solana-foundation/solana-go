@@ -6,7 +6,7 @@ import (
 
 	"filippo.io/edwards25519"
 	"github.com/gagliardetto/solana-go"
-	"github.com/tyler-smith/go-bip39"
+	"github.com/gagliardetto/solana-go/bip39"
 )
 
 // ElGamalSecretKeyLen is the canonical length of an ElGamal secret scalar

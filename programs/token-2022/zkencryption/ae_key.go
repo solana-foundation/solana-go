@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/tyler-smith/go-bip39"
+	"github.com/gagliardetto/solana-go/bip39"
 )
 
 // AeKeyLen is the byte length of an authenticated-encryption key (AES-128-GCM-SIV).
