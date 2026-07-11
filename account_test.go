@@ -18,6 +18,7 @@
 package solana
 
 import (
+	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -216,4 +217,158 @@ func TestSplitFrom(t *testing.T) {
 		func() {
 			slice.SplitFrom(-1)
 		})
+}
+
+// rustAccountFixture builds the expected bincode encoding by hand:
+// lamports u64 LE, data u64 LE length + bytes, owner 32 raw bytes,
+// executable u8, rent_epoch u64 LE. This pins the wire format against the
+// Rust serde encoding of solana_account::Account independent of the codec
+// implementation.
+func rustAccountFixture(a Account) []byte {
+	out := make([]byte, 0, 8+8+len(a.Data)+32+1+8)
+	out = binary.LittleEndian.AppendUint64(out, a.Lamports)
+	out = binary.LittleEndian.AppendUint64(out, uint64(len(a.Data)))
+	out = append(out, a.Data...)
+	out = append(out, a.Owner[:]...)
+	if a.Executable {
+		out = append(out, 1)
+	} else {
+		out = append(out, 0)
+	}
+	out = binary.LittleEndian.AppendUint64(out, a.RentEpoch)
+	return out
+}
+
+func TestAccountBincodeRoundTrip(t *testing.T) {
+	owner := MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+	cases := []struct {
+		name string
+		acct Account
+	}{
+		{
+			name: "typical",
+			acct: Account{
+				Lamports:   1_461_600,
+				Data:       []byte{1, 2, 3, 4, 5},
+				Owner:      owner,
+				Executable: false,
+				RentEpoch:  361,
+			},
+		},
+		{
+			name: "empty data",
+			acct: Account{
+				Lamports:  1,
+				Owner:     SystemProgramID,
+				RentEpoch: ^uint64(0),
+			},
+		},
+		{
+			name: "executable",
+			acct: Account{
+				Lamports:   928_408_320,
+				Data:       make([]byte, 36),
+				Owner:      MustPublicKeyFromBase58("BPFLoaderUpgradeab1e11111111111111111111111"),
+				Executable: true,
+			},
+		},
+		{
+			name: "zero value",
+			acct: Account{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			enc, err := tc.acct.MarshalBinary()
+			require.NoError(t, err)
+			assert.Equal(t, rustAccountFixture(tc.acct), enc, "encoding must match Rust bincode layout")
+
+			dec, err := DecodeAccount(enc)
+			require.NoError(t, err)
+			// The decoder may yield empty-but-non-nil data where the input
+			// had nil; assert emptiness, then normalize for the deep equal.
+			if len(tc.acct.Data) == 0 {
+				require.Empty(t, dec.Data)
+				dec.Data = tc.acct.Data
+			}
+			assert.Equal(t, tc.acct, *dec)
+		})
+	}
+}
+
+func TestDecodeAccountErrors(t *testing.T) {
+	// Truncated header.
+	_, err := DecodeAccount([]byte{1, 2, 3})
+	require.Error(t, err)
+
+	// Declared data length exceeds the buffer: must error, not over-allocate.
+	bad := make([]byte, 16)
+	binary.LittleEndian.PutUint64(bad[8:16], 1<<40)
+	_, err = DecodeAccount(bad)
+	require.Error(t, err)
+
+	// Truncated after data (missing owner/flags/rent epoch).
+	acct := Account{Lamports: 5, Data: []byte{9, 9}, RentEpoch: 7}
+	enc, err := acct.MarshalBinary()
+	require.NoError(t, err)
+	_, err = DecodeAccount(enc[:len(enc)-9])
+	require.Error(t, err)
+
+	// Executable byte other than 0/1 must be rejected, matching Rust
+	// bincode's strict bool decoding.
+	enc[len(enc)-9] = 2
+	_, err = DecodeAccount(enc)
+	require.Error(t, err)
+}
+
+func TestDecodeAccountDoesNotAliasInput(t *testing.T) {
+	// Owner must be non-zero: clear(enc) zeroes the buffer, so an all-zero
+	// owner (e.g. SystemProgramID) would make the owner assertion pass even
+	// against an aliased buffer.
+	owner := MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+	acct := Account{
+		Lamports:  42,
+		Data:      []byte{1, 2, 3},
+		Owner:     owner,
+		RentEpoch: 9,
+	}
+	enc, err := acct.MarshalBinary()
+	require.NoError(t, err)
+
+	dec, err := DecodeAccount(enc)
+	require.NoError(t, err)
+
+	// Mutating the input buffer after decoding must not change the account.
+	clear(enc)
+	assert.Equal(t, []byte{1, 2, 3}, dec.Data)
+	assert.Equal(t, owner, dec.Owner)
+}
+
+func FuzzDecodeAccount(f *testing.F) {
+	seedAcct := Account{
+		Lamports:  1_461_600,
+		Data:      []byte{1, 2, 3, 4, 5},
+		Owner:     SystemProgramID,
+		RentEpoch: 361,
+	}
+	seed, err := seedAcct.MarshalBinary()
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Add(seed)
+	f.Add([]byte{})
+	f.Add(make([]byte, 57))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		dec, err := DecodeAccount(data)
+		if err != nil {
+			return
+		}
+		// Anything that decodes must re-encode to the exact bytes consumed.
+		// Trailing input bytes are tolerated (bincode parity), so compare
+		// against the matching prefix.
+		enc, err := dec.MarshalBinary()
+		require.NoError(t, err)
+		require.LessOrEqual(t, len(enc), len(data))
+		require.Equal(t, enc, data[:len(enc)])
+	})
 }

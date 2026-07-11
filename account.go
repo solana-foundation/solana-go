@@ -19,7 +19,10 @@ package solana
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
+
+	bin "github.com/gagliardetto/binary"
 )
 
 // Wallet is a wrapper around a PrivateKey
@@ -185,4 +188,117 @@ func calcSplitAtLengths(total int, index int) (int, int) {
 		return total, 0
 	}
 	return index, total - index
+}
+
+// Account is the on-chain state of an account: lamports, raw data, owner,
+// executable flag, and rent epoch.
+//
+// This is a port of the upstream anza-xyz/solana-sdk `account` crate's
+// `Account` struct. It is the plain binary-state counterpart of rpc.Account
+// (which is shaped for JSON-RPC responses): use this type when working with
+// bincode-encoded account state, test fixtures, or off-chain tooling that
+// mirrors validator-side types.
+//
+// The bincode codec below matches the Rust serde encoding of
+// solana_account::Account exactly (fields in declaration order,
+// little-endian integers, Vec<u8> as u64 length + bytes).
+type Account struct {
+	// Lamports in the account.
+	Lamports uint64 `json:"lamports"`
+
+	// Data held in this account.
+	Data []byte `json:"data"`
+
+	// Owner is the program that owns this account. If executable, the
+	// program that loads this account.
+	Owner PublicKey `json:"owner"`
+
+	// Executable indicates whether this account's data contains a loaded
+	// program (and is now read-only).
+	Executable bool `json:"executable"`
+
+	// RentEpoch is the epoch at which this account will next owe rent.
+	RentEpoch uint64 `json:"rentEpoch"`
+}
+
+func (a Account) MarshalWithEncoder(encoder *bin.Encoder) error {
+	if err := encoder.WriteUint64(a.Lamports, binary.LittleEndian); err != nil {
+		return err
+	}
+	if err := encoder.WriteUint64(uint64(len(a.Data)), binary.LittleEndian); err != nil {
+		return err
+	}
+	if err := encoder.WriteBytes(a.Data, false); err != nil {
+		return err
+	}
+	if err := encoder.WriteBytes(a.Owner[:], false); err != nil {
+		return err
+	}
+	if err := encoder.WriteBool(a.Executable); err != nil {
+		return err
+	}
+	return encoder.WriteUint64(a.RentEpoch, binary.LittleEndian)
+}
+
+func (a *Account) UnmarshalWithDecoder(decoder *bin.Decoder) error {
+	var err error
+	if a.Lamports, err = decoder.ReadUint64(binary.LittleEndian); err != nil {
+		return err
+	}
+	dataLen, err := decoder.ReadUint64(binary.LittleEndian)
+	if err != nil {
+		return err
+	}
+	if dataLen > uint64(decoder.Remaining()) {
+		return fmt.Errorf("account data length %d exceeds remaining buffer %d", dataLen, decoder.Remaining())
+	}
+	data, err := decoder.ReadNBytes(int(dataLen))
+	if err != nil {
+		return err
+	}
+	// ReadNBytes returns a view into the decoder's buffer; clone so the
+	// account neither observes later mutations of the caller's input nor
+	// can corrupt it through append.
+	a.Data = bytes.Clone(data)
+	owner, err := decoder.ReadNBytes(32)
+	if err != nil {
+		return err
+	}
+	copy(a.Owner[:], owner)
+	// Read the bool byte strictly: Rust bincode rejects values other than
+	// 0 and 1, while decoder.ReadBool accepts any non-zero byte as true.
+	execByte, err := decoder.ReadByte()
+	if err != nil {
+		return err
+	}
+	if execByte > 1 {
+		return fmt.Errorf("invalid bool byte %d for executable flag", execByte)
+	}
+	a.Executable = execByte == 1
+	a.RentEpoch, err = decoder.ReadUint64(binary.LittleEndian)
+	return err
+}
+
+// MarshalBinary bincode-encodes the account, matching the Rust serde
+// encoding of solana_account::Account.
+func (a Account) MarshalBinary() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := a.MarshalWithEncoder(bin.NewBinEncoder(buf)); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalBinary decodes a bincode-encoded account.
+func (a *Account) UnmarshalBinary(data []byte) error {
+	return a.UnmarshalWithDecoder(bin.NewBinDecoder(data))
+}
+
+// DecodeAccount decodes a bincode-encoded solana_account::Account.
+func DecodeAccount(data []byte) (*Account, error) {
+	var a Account
+	if err := a.UnmarshalBinary(data); err != nil {
+		return nil, fmt.Errorf("failed to decode account: %w", err)
+	}
+	return &a, nil
 }
