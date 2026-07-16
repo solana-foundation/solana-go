@@ -102,6 +102,9 @@ func Yellow(str string) string {
 }
 
 func YellowBG(str string) string {
+	if DisableColors {
+		return str
+	}
 	return Black(BgString(str, 255, 255, 0))
 }
 
