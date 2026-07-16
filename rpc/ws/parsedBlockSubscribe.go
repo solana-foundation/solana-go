@@ -52,12 +52,15 @@ func (cl *Client) ParsedBlockSubscribe(
 			params = append(params, rpc.M{"mentionsAccountOrProgram": v.Pubkey})
 		}
 	}
+	// The jsonParsed encoding is what distinguishes this subscription from
+	// BlockSubscribe, so it must be sent regardless of the caller's options.
+	obj := rpc.M{
+		"encoding": solana.EncodingJSONParsed,
+	}
 	if opts != nil {
-		obj := make(rpc.M)
 		if opts.Commitment != "" {
 			obj["commitment"] = opts.Commitment
 		}
-		obj["encoding"] = solana.EncodingJSONParsed
 		if opts.TransactionDetails != "" {
 			obj["transactionDetails"] = opts.TransactionDetails
 		}
@@ -67,10 +70,8 @@ func (cl *Client) ParsedBlockSubscribe(
 		if opts.MaxSupportedTransactionVersion != nil {
 			obj["maxSupportedTransactionVersion"] = *opts.MaxSupportedTransactionVersion
 		}
-		if len(obj) > 0 {
-			params = append(params, obj)
-		}
 	}
+	params = append(params, obj)
 	genSub, err := cl.subscribe(
 		params,
 		nil,

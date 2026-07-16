@@ -51,3 +51,24 @@ func TestBlockSubscribeRejectsUnsupportedEncoding(t *testing.T) {
 		t.Fatalf("error should describe an unsupported encoding, got: %v", err)
 	}
 }
+
+// TestParsedBlockSubscribeSendsJSONParsedWithNilOpts pins that the jsonParsed
+// encoding is sent even when no options are supplied. Without it the server
+// falls back to its base64 default, which the parsed result type cannot decode.
+func TestParsedBlockSubscribeSendsJSONParsedWithNilOpts(t *testing.T) {
+	m := newMockWSServer(t)
+	defer m.stop()
+	c := connectClient(t, m)
+	defer c.Close()
+
+	ch := make(chan error, 1)
+	go func() {
+		_, err := c.ParsedBlockSubscribe(NewBlockSubscribeFilterAll(), nil)
+		ch <- err
+	}()
+
+	params := readSubscribeParams(t, m, 1)
+	require.NoError(t, <-ch)
+
+	require.Equal(t, string(solana.EncodingJSONParsed), params["encoding"])
+}
