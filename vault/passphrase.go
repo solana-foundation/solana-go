@@ -60,6 +60,9 @@ func (b *PassphraseBoxer) Open(in string) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
+	if len(buf) < saltLength+nonceLength {
+		return []byte{}, fmt.Errorf("invalid ciphertext: expected at least %d bytes, got %d", saltLength+nonceLength, len(buf))
+	}
 
 	salt := make([]byte, saltLength)
 	copy(salt, buf[:saltLength])
