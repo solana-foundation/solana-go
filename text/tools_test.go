@@ -7,7 +7,7 @@ import (
 )
 
 // TestColorHelpersRespectDisableColors pins that every exported color helper
-// honours the DisableColors escape hatch documented on Transaction.String.
+// honors the DisableColors escape hatch documented on Transaction.String.
 func TestColorHelpersRespectDisableColors(t *testing.T) {
 	old := DisableColors
 	DisableColors = true
