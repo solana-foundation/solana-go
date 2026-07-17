@@ -635,13 +635,14 @@ func CreateWithSeed(base PublicKey, seed string, owner PublicKey) (PublicKey, er
 		return PublicKey{}, ErrMaxSeedLengthExceeded
 	}
 
-	// let owner = owner.as_ref();
-	// if owner.len() >= PDA_MARKER.len() {
-	//     let slice = &owner[owner.len() - PDA_MARKER.len()..];
-	//     if slice == PDA_MARKER {
-	//         return Err(PubkeyError::IllegalOwner);
-	//     }
-	// }
+	// Reject an owner whose trailing bytes equal the PDA marker, mirroring
+	// solana-labs' Pubkey::create_with_seed. Without this an owner ending in
+	// PDA_MARKER lets create_with_seed produce an address that collides with a
+	// program-derived address for that owner.
+	if marker := []byte(PDA_MARKER); len(owner) >= len(marker) &&
+		bytes.Equal(owner[len(owner)-len(marker):], marker) {
+		return PublicKey{}, ErrIllegalOwner
+	}
 
 	b := make([]byte, 0, 64+len(seed))
 	b = append(b, base[:]...)
@@ -654,6 +655,10 @@ func CreateWithSeed(base PublicKey, seed string, owner PublicKey) (PublicKey, er
 const PDA_MARKER = "ProgramDerivedAddress"
 
 var ErrMaxSeedLengthExceeded = errors.New("max seed length exceeded")
+
+// ErrIllegalOwner is returned by CreateWithSeed when the owner ends with the
+// program-derived-address marker, which is disallowed.
+var ErrIllegalOwner = errors.New("provided owner is not allowed")
 
 // Create a program address.
 // Ported from https://github.com/solana-labs/solana/blob/216983c50e0a618facc39aa07472ba6d23f1b33a/sdk/program/src/pubkey.rs#L204
