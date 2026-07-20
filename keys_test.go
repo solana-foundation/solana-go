@@ -491,6 +491,13 @@ func TestCreateWithSeed(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, got.Equals(MustPublicKeyFromBase58("9h1HyLCW5dZnBVap8C5egQ9Z6pHyjsh5MNy83iPqqRuq")))
 	}
+	{
+		var owner PublicKey
+		copy(owner[len(owner)-len(PDA_MARKER):], PDA_MARKER)
+
+		_, err := CreateWithSeed(PublicKey{}, "seed", owner)
+		require.ErrorIs(t, err, ErrIllegalOwner)
+	}
 }
 
 func TestCreateProgramAddressFromRust(t *testing.T) {
