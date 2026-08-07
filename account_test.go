@@ -18,9 +18,11 @@
 package solana
 
 import (
+	"bytes"
 	"encoding/binary"
 	"testing"
 
+	bin "github.com/gagliardetto/binary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -285,12 +287,6 @@ func TestAccountBincodeRoundTrip(t *testing.T) {
 
 			dec, err := DecodeAccount(enc)
 			require.NoError(t, err)
-			// The decoder may yield empty-but-non-nil data where the input
-			// had nil; assert emptiness, then normalize for the deep equal.
-			if len(tc.acct.Data) == 0 {
-				require.Empty(t, dec.Data)
-				dec.Data = tc.acct.Data
-			}
 			assert.Equal(t, tc.acct, *dec)
 		})
 	}
@@ -301,7 +297,9 @@ func TestDecodeAccountErrors(t *testing.T) {
 	_, err := DecodeAccount([]byte{1, 2, 3})
 	require.Error(t, err)
 
-	// Declared data length exceeds the buffer: must error, not over-allocate.
+	// Declared data length exceeds the buffer: must error. The explicit
+	// bounds check also keeps int(dataLen) from truncating on 32-bit
+	// platforms, where ReadNBytes alone could not catch it.
 	bad := make([]byte, 16)
 	binary.LittleEndian.PutUint64(bad[8:16], 1<<40)
 	_, err = DecodeAccount(bad)
@@ -319,6 +317,56 @@ func TestDecodeAccountErrors(t *testing.T) {
 	enc[len(enc)-9] = 2
 	_, err = DecodeAccount(enc)
 	require.Error(t, err)
+}
+
+func TestDecodeAccountToleratesTrailingBytes(t *testing.T) {
+	// Rust's bincode::deserialize free function is declared with
+	// allow_trailing_bytes(), and Agave decodes account state through it,
+	// so extra bytes after the account (e.g. padding in a fixed-size
+	// record) must not fail the decode.
+	acct := Account{
+		Lamports:  42,
+		Data:      []byte{1, 2, 3},
+		Owner:     MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+		RentEpoch: 9,
+	}
+	enc, err := acct.MarshalBinary()
+	require.NoError(t, err)
+
+	dec, err := DecodeAccount(append(enc, make([]byte, 7)...))
+	require.NoError(t, err)
+	assert.Equal(t, acct, *dec)
+}
+
+func TestAccountStreamRoundTrip(t *testing.T) {
+	// Accounts encoded back to back must decode sequentially from a single
+	// buffer via the streaming codec, mirroring Rust deserialize_from on a
+	// reader carrying multiple values.
+	accts := []Account{
+		{
+			Lamports:  1,
+			Data:      []byte{0xAA, 0xBB},
+			Owner:     MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+			RentEpoch: 2,
+		},
+		{
+			Lamports:   3,
+			Owner:      MustPublicKeyFromBase58("BPFLoaderUpgradeab1e11111111111111111111111"),
+			Executable: true,
+		},
+	}
+	buf := new(bytes.Buffer)
+	enc := bin.NewBinEncoder(buf)
+	for _, a := range accts {
+		require.NoError(t, a.MarshalWithEncoder(enc))
+	}
+	dec := bin.NewBinDecoder(buf.Bytes())
+	for _, want := range accts {
+		var got Account
+		require.NoError(t, got.UnmarshalWithDecoder(dec))
+		assert.Equal(t, want, got)
+	}
+	require.Zero(t, dec.Remaining())
 }
 
 func TestDecodeAccountDoesNotAliasInput(t *testing.T) {
@@ -364,8 +412,9 @@ func FuzzDecodeAccount(f *testing.F) {
 			return
 		}
 		// Anything that decodes must re-encode to the exact bytes consumed.
-		// Trailing input bytes are tolerated (bincode parity), so compare
-		// against the matching prefix.
+		// Trailing input bytes are tolerated, matching Rust's
+		// bincode::deserialize free function (declared with
+		// allow_trailing_bytes), so compare against the matching prefix.
 		enc, err := dec.MarshalBinary()
 		require.NoError(t, err)
 		require.LessOrEqual(t, len(enc), len(data))

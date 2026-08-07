@@ -202,6 +202,17 @@ func calcSplitAtLengths(total int, index int) (int, int) {
 // The bincode codec below matches the Rust serde encoding of
 // solana_account::Account exactly (fields in declaration order,
 // little-endian integers, Vec<u8> as u64 length + bytes).
+//
+// The json tags are a plain debug/convenience form only; the resulting JSON
+// is not compatible with the JSON-RPC shape of rpc.Account (in particular,
+// Data encodes as base64 rather than the RPC data envelope).
+//
+// NOTE: MarshalWithEncoder/UnmarshalWithDecoder are custom-codec hooks that
+// every gagliardetto/binary encoder dispatches to, so a borsh or compact-u16
+// container with an Account field still emits the bincode layout for it.
+// Likewise, embedding Account anonymously in another struct promotes these
+// methods to the outer type, which would then (de)serialize only the Account
+// fields; give such wrapper structs their own codec methods.
 type Account struct {
 	// Lamports in the account.
 	Lamports uint64 `json:"lamports"`
@@ -249,22 +260,30 @@ func (a *Account) UnmarshalWithDecoder(decoder *bin.Decoder) error {
 	if err != nil {
 		return err
 	}
+	// Check against Remaining() before converting to int: on 32-bit
+	// platforms int(dataLen) would truncate, which ReadNBytes could not
+	// detect. It also yields a clear error for malformed input.
 	if dataLen > uint64(decoder.Remaining()) {
 		return fmt.Errorf("account data length %d exceeds remaining buffer %d", dataLen, decoder.Remaining())
 	}
-	data, err := decoder.ReadNBytes(int(dataLen))
-	if err != nil {
-		return err
+	if dataLen == 0 {
+		// Canonical nil for empty data keeps decode(encode(x)) exact.
+		a.Data = nil
+	} else {
+		data, err := decoder.ReadNBytes(int(dataLen))
+		if err != nil {
+			return err
+		}
+		// ReadNBytes returns a view into the decoder's buffer; clone so the
+		// account neither observes later mutations of the caller's input nor
+		// can corrupt it through append.
+		a.Data = bytes.Clone(data)
 	}
-	// ReadNBytes returns a view into the decoder's buffer; clone so the
-	// account neither observes later mutations of the caller's input nor
-	// can corrupt it through append.
-	a.Data = bytes.Clone(data)
 	owner, err := decoder.ReadNBytes(32)
 	if err != nil {
 		return err
 	}
-	copy(a.Owner[:], owner)
+	a.Owner = PublicKeyFromBytes(owner)
 	// Read the bool byte strictly: Rust bincode rejects values other than
 	// 0 and 1, while decoder.ReadBool accepts any non-zero byte as true.
 	execByte, err := decoder.ReadByte()
@@ -282,19 +301,26 @@ func (a *Account) UnmarshalWithDecoder(decoder *bin.Decoder) error {
 // MarshalBinary bincode-encodes the account, matching the Rust serde
 // encoding of solana_account::Account.
 func (a Account) MarshalBinary() ([]byte, error) {
-	buf := new(bytes.Buffer)
+	// The output size is known exactly, so a pre-sized buffer makes the
+	// encode a single allocation instead of geometric growth.
+	buf := bytes.NewBuffer(make([]byte, 0, 8+8+len(a.Data)+32+1+8))
 	if err := a.MarshalWithEncoder(bin.NewBinEncoder(buf)); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
 }
 
-// UnmarshalBinary decodes a bincode-encoded account.
+// UnmarshalBinary decodes a bincode-encoded account. Trailing bytes after
+// the account are tolerated: Rust's bincode::deserialize free function is
+// declared with allow_trailing_bytes(), and Agave decodes account state
+// through it (e.g. Account::deserialize_data), so leniency IS the parity
+// behavior.
 func (a *Account) UnmarshalBinary(data []byte) error {
 	return a.UnmarshalWithDecoder(bin.NewBinDecoder(data))
 }
 
-// DecodeAccount decodes a bincode-encoded solana_account::Account.
+// DecodeAccount decodes a bincode-encoded solana_account::Account. Trailing
+// bytes are tolerated; see UnmarshalBinary.
 func DecodeAccount(data []byte) (*Account, error) {
 	var a Account
 	if err := a.UnmarshalBinary(data); err != nil {
