@@ -424,6 +424,10 @@ type GroupPointerState struct {
 // --- TokenGroup ---
 
 // TokenGroupState is the extension state for ExtensionTokenGroup.
+//
+// Deprecated: the Size and MaxSize fields have the wrong width (the on-chain
+// layout uses u64, not u32), so this struct cannot represent real account
+// data. Use TokenGroup instead.
 type TokenGroupState struct {
 	// The authority that can update the group.
 	UpdateAuthority OptionalPubkey
@@ -433,6 +437,18 @@ type TokenGroupState struct {
 	Size uint32
 	// The maximum number of group members.
 	MaxSize uint32
+}
+
+// TokenGroup is the extension state for ExtensionTokenGroup (mint extension).
+type TokenGroup struct {
+	// The authority that can update the group.
+	UpdateAuthority OptionalPubkey
+	// The associated mint.
+	Mint solana.PublicKey
+	// The current number of group members.
+	Size uint64
+	// The maximum number of group members.
+	MaxSize uint64
 }
 
 // --- GroupMemberPointer ---
@@ -448,6 +464,10 @@ type GroupMemberPointerState struct {
 // --- TokenGroupMember ---
 
 // TokenGroupMemberState is the extension state for ExtensionTokenGroupMember.
+//
+// Deprecated: the MemberNumber field has the wrong width (the on-chain layout
+// uses u64, not u32), so this struct cannot represent real account data. Use
+// TokenGroupMember instead.
 type TokenGroupMemberState struct {
 	// The associated mint.
 	Mint solana.PublicKey
@@ -457,16 +477,28 @@ type TokenGroupMemberState struct {
 	MemberNumber uint32
 }
 
+// TokenGroupMember is the extension state for ExtensionTokenGroupMember (mint extension).
+type TokenGroupMember struct {
+	// The associated mint.
+	Mint solana.PublicKey
+	// The parent group.
+	Group solana.PublicKey
+	// The member number.
+	MemberNumber uint64
+}
+
 // --- ConfidentialMintBurn ---
 
 // ConfidentialMintBurnState is the extension state for ExtensionConfidentialMintBurn.
 type ConfidentialMintBurnState struct {
-	// Authority to modify the confidential mint burn configuration.
+	// The confidential supply of the mint (encrypted by encryption pubkey).
 	ConfidentialSupply [64]byte
-	// The decryptable supply.
+	// The decryptable supply of the mint (encrypted by decryptable pubkey).
 	DecryptableSupply [36]byte
 	// The ElGamal pubkey used for supply encryption.
 	SupplyElGamalPubkey [32]byte
+	// The amount of burned tokens pending application to the supply.
+	PendingBurn [64]byte
 }
 
 // --- ScaledUiAmount ---
@@ -510,29 +542,61 @@ type PermissionedBurnState struct {
 type ExtensionTLV struct {
 	Type   ExtensionType
 	Length uint16
-	Data   []byte
+	// Data is a view into the account data buffer passed to ParseExtensions,
+	// not a copy: mutating it mutates the source buffer. Its capacity is
+	// capped at its length, so appending to it allocates a fresh slice.
+	Data []byte
 }
 
 // ParseExtensions parses extension TLV entries from raw account data.
 // The data should start after the base account/mint data and the account type byte.
+//
+// Following the token-2022 program semantics, iteration stops at the first
+// entry whose type is ExtensionUninitialized (a zeroed tail is the normal
+// end-of-data marker), and a single trailing byte is tolerated. A nonzero
+// extension type with a truncated length field, or a value that overruns the
+// buffer, is an error; already-parsed entries are returned alongside it.
 func ParseExtensions(data []byte) ([]ExtensionTLV, error) {
 	var extensions []ExtensionTLV
 	offset := 0
-	for offset+4 <= len(data) {
+	for {
+		if len(data)-offset < 2 {
+			// Fewer than 2 bytes left for a type: legal trailing slack.
+			return extensions, nil
+		}
 		extType := ExtensionType(binary.LittleEndian.Uint16(data[offset:]))
+		if extType == ExtensionUninitialized {
+			return extensions, nil
+		}
+		if len(data)-offset < 4 {
+			return extensions, fmt.Errorf("%w: extension length field truncated at offset %d", ErrInvalidAccountData, offset)
+		}
 		extLen := binary.LittleEndian.Uint16(data[offset+2:])
 		offset += 4
-		if offset+int(extLen) > len(data) {
-			return extensions, fmt.Errorf("extension data truncated: need %d bytes, have %d", extLen, len(data)-offset)
+		end := offset + int(extLen)
+		if end > len(data) {
+			return extensions, fmt.Errorf("%w: extension data truncated: need %d bytes, have %d", ErrInvalidAccountData, extLen, len(data)-offset)
 		}
 		extensions = append(extensions, ExtensionTLV{
 			Type:   extType,
 			Length: extLen,
-			Data:   data[offset : offset+int(extLen)],
+			// The three-index slice caps capacity so appends by the caller
+			// cannot overwrite the following TLV entries in place.
+			Data: data[offset:end:end],
 		})
-		offset += int(extLen)
+		offset = end
 	}
-	return extensions, nil
+}
+
+// GetExtensionData returns the raw data of the first TLV entry with the given
+// type, and whether it was found.
+func GetExtensionData(tlvs []ExtensionTLV, t ExtensionType) ([]byte, bool) {
+	for _, tlv := range tlvs {
+		if tlv.Type == t {
+			return tlv.Data, true
+		}
+	}
+	return nil, false
 }
 
 // ParseMintWithExtensions parses a Mint and its extensions from raw account data.
