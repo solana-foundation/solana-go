@@ -28,7 +28,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/gagliardetto/solana-go/base58"
+	"github.com/fluxrpc/base58"
 	"github.com/oasisprotocol/curve25519-voi/curve"
 	voied25519 "github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -56,6 +56,18 @@ func MustPrivateKeyFromBase58(in string) PrivateKey {
 }
 
 func PrivateKeyFromBase58(privkey string) (PrivateKey, error) {
+	var decoded [PrivateKeyLength]byte
+	if err := base58.Decode64(privkey, &decoded); err == nil {
+		res := PrivateKey(decoded[:])
+		if _, err := ValidatePrivateKey(res); err != nil {
+			return nil, err
+		}
+		return res, nil
+	}
+
+	// Preserve the more useful size diagnostic for valid base58 values that
+	// do not decode to a 64-byte private key. This is an error-only fallback;
+	// valid private keys stay on Decode64's allocation-free fast path.
 	res, err := base58.Decode(privkey)
 	if err != nil {
 		return nil, err
@@ -108,6 +120,10 @@ func PrivateKeyFromSolanaKeygenFileBytes(content []byte) (PrivateKey, error) {
 }
 
 func (k PrivateKey) String() string {
+	if len(k) == PrivateKeyLength {
+		return base58.Encode64((*[64]byte)(k))
+	}
+	// Keep String useful for an invalid, manually constructed PrivateKey.
 	return base58.Encode(k)
 }
 
@@ -324,7 +340,7 @@ func (p *PublicKey) Set(s string) (err error) {
 }
 
 func (p PublicKey) String() string {
-	return base58.Encode(p[:])
+	return base58.Encode32((*[32]byte)(&p))
 }
 
 // Short returns a shortened pubkey string,

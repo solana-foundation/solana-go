@@ -24,8 +24,8 @@ import (
 
 	voied25519 "github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
 
+	"github.com/fluxrpc/base58"
 	bin "github.com/gagliardetto/binary"
-	"github.com/gagliardetto/solana-go/base58"
 	"github.com/mostynb/zstdpool-freelist"
 )
 
@@ -102,7 +102,7 @@ func (ha Hash) IsZero() bool {
 }
 
 func (ha Hash) String() string {
-	return base58.Encode(ha[:])
+	return base58.Encode32((*[32]byte)(&ha))
 }
 
 type Signature [64]byte
@@ -190,7 +190,7 @@ func (s Signature) Verify(pubkey PublicKey, msg []byte) bool {
 }
 
 func (p Signature) String() string {
-	return base58.Encode(p[:])
+	return base58.Encode64((*[64]byte)(&p))
 }
 
 type Base64 []byte
