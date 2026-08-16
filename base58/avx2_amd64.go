@@ -50,6 +50,8 @@ func init() {
 }
 
 // rep tiles b into a 32-byte vector constant.
+//
+//nolint:unused // referenced from avx2_amd64.s
 func rep(b ...byte) (out [32]byte) {
 	for i := range out {
 		out[i] = b[i%len(b)]
@@ -57,6 +59,7 @@ func rep(b ...byte) (out [32]byte) {
 	return
 }
 
+//nolint:unused // referenced from avx2_amd64.s
 var (
 	avxBswap  = rep(3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12)
 	avxIota   = rep(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)

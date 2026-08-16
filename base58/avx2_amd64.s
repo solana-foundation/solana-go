@@ -70,7 +70,8 @@ TEXT ·encode32AVX2(SB), NOSPLIT, $128-24
 	VPCMPEQB Y15, Y0, Y1
 	VPMOVMSKB Y1, AX
 	NOTL AX
-	TZCNTL AX, R8                     // leading zero bytes
+	BTSQ $32, AX
+	BSFQ AX, R8                       // leading zero bytes (32 if none)
 	VPSHUFB ·avxBswap(SB), Y0, Y0
 	VMOVDQU Y0, 0(SP)
 
@@ -173,7 +174,7 @@ digits32:
 	ORQ CX, AX
 	NOTQ AX
 	BTSQ $45, AX
-	TZCNTQ AX, CX
+	BSFQ AX, CX
 	SUBQ R8, CX
 
 	R2B(Y3, Y8, Y9)
@@ -222,7 +223,9 @@ TEXT ·encode64AVX2(SB), NOSPLIT, $304-24
 	SHLQ $32, CX
 	ORQ CX, AX
 	NOTQ AX
-	TZCNTQ AX, R8                     // leading zero bytes
+	MOVL $64, CX
+	BSFQ AX, R8
+	CMOVQEQ CX, R8                    // leading zero bytes (64 if none)
 	VMOVDQU ·avxBswap(SB), Y3
 	VPSHUFB Y3, Y0, Y0
 	VPSHUFB Y3, Y1, Y1
@@ -434,11 +437,11 @@ digits64:
 	VPMOVMSKB Y8, AX
 	NOTL AX
 	BTSL $26, AX
-	TZCNTL AX, CX
+	BSFL AX, CX
 	ADDQ $64, CX
 	JMP skip64
 found64:
-	TZCNTQ AX, CX
+	BSFQ AX, CX
 skip64:
 	SUBQ R8, CX
 

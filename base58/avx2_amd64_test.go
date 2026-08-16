@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"math/rand"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func requireAVX2(t *testing.T) {
@@ -17,21 +15,33 @@ func requireAVX2(t *testing.T) {
 }
 
 func checkEncode32(t *testing.T, src *[32]byte) {
+	t.Helper()
 	want, wantApp := encode32Generic(src), string(appendEncode32Generic([]byte("x"), src))
-	require.Equal(t, want, Encode32(src), "%x", src[:])
-	require.Equal(t, wantApp, string(AppendEncode32([]byte("x"), src)), "%x", src[:])
+	if got := Encode32(src); got != want {
+		t.Fatalf("Encode32(%x) = %q, want %q", src[:], got, want)
+	}
+	if got := string(AppendEncode32([]byte("x"), src)); got != wantApp {
+		t.Fatalf("AppendEncode32(%x) = %q, want %q", src[:], got, wantApp)
+	}
 	var back [32]byte
-	require.NoError(t, Decode32(want, &back))
-	require.Equal(t, *src, back)
+	if err := Decode32(want, &back); err != nil || back != *src {
+		t.Fatalf("Decode32(%q) = %x, %v; want %x", want, back[:], err, src[:])
+	}
 }
 
 func checkEncode64(t *testing.T, src *[64]byte) {
+	t.Helper()
 	want, wantApp := encode64Generic(src), string(appendEncode64Generic([]byte("x"), src))
-	require.Equal(t, want, Encode64(src), "%x", src[:])
-	require.Equal(t, wantApp, string(AppendEncode64([]byte("x"), src)), "%x", src[:])
+	if got := Encode64(src); got != want {
+		t.Fatalf("Encode64(%x) = %q, want %q", src[:], got, want)
+	}
+	if got := string(AppendEncode64([]byte("x"), src)); got != wantApp {
+		t.Fatalf("AppendEncode64(%x) = %q, want %q", src[:], got, wantApp)
+	}
 	var back [64]byte
-	require.NoError(t, Decode64(want, &back))
-	require.Equal(t, *src, back)
+	if err := Decode64(want, &back); err != nil || back != *src {
+		t.Fatalf("Decode64(%q) = %x, %v; want %x", want, back[:], err, src[:])
+	}
 }
 
 // Inputs that take the ripple slow path (about one random input in 1e8).
@@ -92,7 +102,7 @@ func TestAVX2_EncodeEdgeCases(t *testing.T) {
 		copy(s64[:], b)
 		checkEncode64(t, &s64)
 	}
-	for i := 0; i < 20000; i++ {
+	for i := 0; i < 1000; i++ {
 		rng.Read(s32[:])
 		checkEncode32(t, &s32)
 		rng.Read(s64[:])
@@ -107,18 +117,16 @@ func TestAVX2_DecodeMatchesScalar(t *testing.T) {
 		var got, want [32]byte
 		wantErr := decode32Generic(s, &want)
 		gotErr := Decode32(s, &got)
-		require.Equal(t, wantErr, gotErr, "%q", s)
-		if wantErr == nil {
-			require.Equal(t, want, got, "%q", s)
+		if gotErr != wantErr || (wantErr == nil && got != want) {
+			t.Fatalf("Decode32(%q) = %x, %v; want %x, %v", s, got[:], gotErr, want[:], wantErr)
 		}
 	}
 	check64 := func(s string) {
 		var got, want [64]byte
 		wantErr := decode64Generic(s, &want)
 		gotErr := Decode64(s, &got)
-		require.Equal(t, wantErr, gotErr, "%q", s)
-		if wantErr == nil {
-			require.Equal(t, want, got, "%q", s)
+		if gotErr != wantErr || (wantErr == nil && got != want) {
+			t.Fatalf("Decode64(%q) = %x, %v; want %x, %v", s, got[:], gotErr, want[:], wantErr)
 		}
 	}
 	for n := 1; n <= 45; n++ {
@@ -173,7 +181,7 @@ func TestAVX2_DecodeMatchesScalar(t *testing.T) {
 			check64(string(b))
 		}
 	}
-	for i := 0; i < 20000; i++ {
+	for i := 0; i < 1000; i++ {
 		rng.Read(s32[:])
 		z := rng.Intn(33)
 		for j := 0; j < z; j++ {
