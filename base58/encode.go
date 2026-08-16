@@ -75,9 +75,18 @@ func encodeVariable(bin []byte) string {
 
 // Encode32 encodes a 32-byte array to a base58 string.
 //
-// Allocates exactly one []byte of the encoded length. For zero-allocation
-// hot paths, prefer AppendEncode32 which writes into a caller-owned buffer.
+// Allocates once. For zero-allocation hot paths, prefer AppendEncode32 which
+// writes into a caller-owned buffer.
 func Encode32(src *[32]byte) string {
+	if useAVX2 {
+		buf := make([]byte, 48)
+		n := encode32AVX2(src, (*[48]byte)(buf))
+		return unsafe.String(unsafe.SliceData(buf), n)
+	}
+	return encode32Generic(src)
+}
+
+func encode32Generic(src *[32]byte) string {
 	var raw [raw58Sz32]byte
 	skip := encodeRaw32(src, &raw)
 	outLen := raw58Sz32 - skip
@@ -90,9 +99,17 @@ func Encode32(src *[32]byte) string {
 
 // Encode64 encodes a 64-byte array to a base58 string.
 //
-// Allocates exactly one []byte of the encoded length. For zero-allocation
-// hot paths, prefer AppendEncode64.
+// Allocates once. For zero-allocation hot paths, prefer AppendEncode64.
 func Encode64(src *[64]byte) string {
+	if useAVX2 {
+		buf := make([]byte, 96)
+		n := encode64AVX2(src, (*[96]byte)(buf))
+		return unsafe.String(unsafe.SliceData(buf), n)
+	}
+	return encode64Generic(src)
+}
+
+func encode64Generic(src *[64]byte) string {
 	var raw [raw58Sz64]byte
 	skip := encodeRaw64(src, &raw)
 	outLen := raw58Sz64 - skip
@@ -106,6 +123,15 @@ func Encode64(src *[64]byte) string {
 // AppendEncode32 appends the base58 encoding of src to dst and returns the
 // extended buffer. It allocates only if dst has insufficient capacity.
 func AppendEncode32(dst []byte, src *[32]byte) []byte {
+	if useAVX2 {
+		var buf [48]byte
+		n := encode32AVX2(src, &buf)
+		return append(dst, buf[:n]...)
+	}
+	return appendEncode32Generic(dst, src)
+}
+
+func appendEncode32Generic(dst []byte, src *[32]byte) []byte {
 	var raw [raw58Sz32]byte
 	skip := encodeRaw32(src, &raw)
 	outLen := raw58Sz32 - skip
@@ -128,6 +154,15 @@ func AppendEncode32(dst []byte, src *[32]byte) []byte {
 // AppendEncode64 appends the base58 encoding of src to dst and returns the
 // extended buffer. It allocates only if dst has insufficient capacity.
 func AppendEncode64(dst []byte, src *[64]byte) []byte {
+	if useAVX2 {
+		var buf [96]byte
+		n := encode64AVX2(src, &buf)
+		return append(dst, buf[:n]...)
+	}
+	return appendEncode64Generic(dst, src)
+}
+
+func appendEncode64Generic(dst []byte, src *[64]byte) []byte {
 	var raw [raw58Sz64]byte
 	skip := encodeRaw64(src, &raw)
 	outLen := raw58Sz64 - skip

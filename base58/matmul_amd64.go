@@ -2,9 +2,7 @@
 
 package base58
 
-// Only the 32-byte matrix multiply has an assembly path; the 64-byte
-// path uses extended-precision arithmetic via math/bits which the Go
-// compiler lowers to optimal MULQ/ADCQ sequences.
+// Scalar fallback used when AVX2 is unavailable (see avx2_amd64.s).
 
 //go:noescape
 func encodeMatMul32(src *[32]byte, intermediate *[intermediateSz32]uint64)

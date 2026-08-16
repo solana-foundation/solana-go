@@ -3,6 +3,7 @@ package base58
 import (
 	"encoding/binary"
 	"errors"
+	"unsafe"
 )
 
 var (
@@ -96,7 +97,20 @@ func Decode32(encoded string, dst *[32]byte) error {
 	if encLen == 0 || encLen > raw58Sz32 {
 		return ErrInvalidLength
 	}
+	if useAVX2 && encLen >= 32 && encLen <= EncodedMaxLen32 {
+		switch decode32AVX2(unsafe.StringData(encoded), encLen, dst) {
+		case 1:
+			return ErrInvalidChar
+		case 2:
+			return ErrValueTooLarge
+		}
+		return validateLeadingZeros(encoded, dst[:])
+	}
+	return decode32Generic(encoded, dst)
+}
 
+func decode32Generic(encoded string, dst *[32]byte) error {
+	encLen := len(encoded)
 	var raw [raw58Sz32]byte
 	offset := raw58Sz32 - encLen
 	for i := range encLen {
@@ -146,7 +160,20 @@ func Decode64(encoded string, dst *[64]byte) error {
 	if encLen == 0 || encLen > raw58Sz64 {
 		return ErrInvalidLength
 	}
+	if useAVX2 && encLen >= 64 && encLen <= EncodedMaxLen64 {
+		switch decode64AVX2(unsafe.StringData(encoded), encLen, dst) {
+		case 1:
+			return ErrInvalidChar
+		case 2:
+			return ErrValueTooLarge
+		}
+		return validateLeadingZeros(encoded, dst[:])
+	}
+	return decode64Generic(encoded, dst)
+}
 
+func decode64Generic(encoded string, dst *[64]byte) error {
+	encLen := len(encoded)
 	var raw [raw58Sz64]byte
 	offset := raw58Sz64 - encLen
 	for i := range encLen {
