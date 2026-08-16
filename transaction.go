@@ -24,8 +24,8 @@ import (
 	"slices"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/fluxrpc/base58"
 	bin "github.com/gagliardetto/binary"
+	"github.com/gagliardetto/solana-go/base58"
 	"github.com/gagliardetto/solana-go/text"
 	"github.com/gagliardetto/treeout"
 	"go.uber.org/zap"

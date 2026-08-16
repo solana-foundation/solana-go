@@ -21,8 +21,8 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"github.com/fluxrpc/base58"
 	bin "github.com/gagliardetto/binary"
+	"github.com/gagliardetto/solana-go/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"

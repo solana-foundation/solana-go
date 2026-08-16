@@ -1,6 +1,6 @@
 module github.com/gagliardetto/solana-go
 
-go 1.26.1
+go 1.24.0
 
 require (
 	filippo.io/edwards25519 v1.2.0
@@ -8,7 +8,7 @@ require (
 	github.com/buger/jsonparser v1.1.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.18.0
-	github.com/fluxrpc/base58 v1.0.1
+	github.com/fluxrpc/base58 v1.0.2
 	github.com/gagliardetto/binary v0.8.0
 	github.com/gagliardetto/gofuzz v1.2.2
 	github.com/gagliardetto/treeout v0.1.4
