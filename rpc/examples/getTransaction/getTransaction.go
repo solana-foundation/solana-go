@@ -46,7 +46,9 @@ func main() {
 	txSig := sigs[0].Signature
 	fmt.Println("fetching tx:", txSig)
 
-	maxVersion := uint64(0)
+	// Ask for the newest transaction format we can decode (v1 / SIMD-0385
+	// includes v0 and legacy).
+	maxVersion := rpc.MaxSupportedTransactionVersion1
 	{
 		out, err := client.GetTransaction(
 			ctx,
@@ -58,6 +60,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		// -1 (legacy), 0 (v0) or 1 (v1).
+		fmt.Println("transaction version:", out.Version)
 		spew.Dump(out)
 		spew.Dump(out.Transaction.GetTransaction())
 	}

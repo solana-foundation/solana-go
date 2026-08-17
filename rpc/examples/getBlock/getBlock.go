@@ -32,9 +32,10 @@ func main() {
 		panic(err)
 	}
 
-	// Mainnet blocks contain v0 (versioned) transactions; GetBlock
-	// requires MaxSupportedTransactionVersion or it errors out.
-	maxVersion := uint64(0)
+	// Mainnet blocks contain versioned (v0, and v1 once SIMD-0385 is
+	// active) transactions; GetBlock requires MaxSupportedTransactionVersion
+	// or it errors out.
+	maxVersion := rpc.MaxSupportedTransactionVersion1
 
 	{
 		out, err := client.GetBlockWithOpts(ctx, slot, &rpc.GetBlockOpts{

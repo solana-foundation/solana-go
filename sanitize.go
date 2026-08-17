@@ -29,60 +29,64 @@ func IsSanitizeError(err error) bool {
 const maxAccountKeys = 256
 
 // Sanitize validates the structural integrity of a Message.
-// Ported from solana-sdk/message: legacy.rs sanitize() and v0/mod.rs sanitize().
+// Ported from solana-sdk/message legacy.rs, v0/mod.rs sanitize() and v1 validate().
 func (m *Message) Sanitize() error {
-	if m.IsVersioned() {
+	switch m.version {
+	case MessageVersionV1:
+		return m.sanitizeV1()
+	case MessageVersionV0:
 		return m.sanitizeV0()
+	default:
+		return m.sanitizeLegacy()
 	}
-	return m.sanitizeLegacy()
 }
 
-func (m *Message) sanitizeLegacy() error {
-	numKeys := len(m.AccountKeys)
-
+// sanitizeHeader checks the header against the number of static keys.
+func (m *Message) sanitizeHeader(numStaticKeys int, keysLabel string) error {
 	// Signing area and read-only non-signing area should not overlap.
-	if int(m.Header.NumRequiredSignatures)+int(m.Header.NumReadonlyUnsignedAccounts) > numKeys {
-		return newSanitizeError("header references more accounts than available: required_signatures(%d) + readonly_unsigned(%d) > account_keys(%d)",
-			m.Header.NumRequiredSignatures, m.Header.NumReadonlyUnsignedAccounts, numKeys)
+	if int(m.Header.NumRequiredSignatures)+int(m.Header.NumReadonlyUnsignedAccounts) > numStaticKeys {
+		return newSanitizeError("header references more accounts than available: required_signatures(%d) + readonly_unsigned(%d) > %s(%d)",
+			m.Header.NumRequiredSignatures, m.Header.NumReadonlyUnsignedAccounts, keysLabel, numStaticKeys)
 	}
-
 	// There should be at least 1 RW fee-payer account.
 	if m.Header.NumReadonlySignedAccounts >= m.Header.NumRequiredSignatures {
 		return newSanitizeError("no writable signer: readonly_signed(%d) >= required_signatures(%d)",
 			m.Header.NumReadonlySignedAccounts, m.Header.NumRequiredSignatures)
 	}
+	return nil
+}
 
+// sanitizeInstructions checks program and account indices against the given bounds.
+func (m *Message) sanitizeInstructions(maxProgramIdx, maxAccountIdx int, programErr string) error {
 	for i, ci := range m.Instructions {
-		if int(ci.ProgramIDIndex) >= numKeys {
-			return newSanitizeError("instruction %d: program_id_index %d out of bounds (account_keys len %d)", i, ci.ProgramIDIndex, numKeys)
+		if int(ci.ProgramIDIndex) > maxProgramIdx {
+			return newSanitizeError("instruction %d: program_id_index %d "+programErr, i, ci.ProgramIDIndex, maxProgramIdx)
 		}
 		// A program cannot be the payer.
 		if ci.ProgramIDIndex == 0 {
 			return newSanitizeError("instruction %d: program_id_index cannot be 0 (fee payer)", i)
 		}
 		for _, ai := range ci.Accounts {
-			if int(ai) >= numKeys {
-				return newSanitizeError("instruction %d: account index %d out of bounds (account_keys len %d)", i, ai, numKeys)
+			if int(ai) > maxAccountIdx {
+				return newSanitizeError("instruction %d: account index %d out of bounds (max %d)", i, ai, maxAccountIdx)
 			}
 		}
 	}
-
 	return nil
+}
+
+func (m *Message) sanitizeLegacy() error {
+	numKeys := len(m.AccountKeys)
+	if err := m.sanitizeHeader(numKeys, "account_keys"); err != nil {
+		return err
+	}
+	return m.sanitizeInstructions(numKeys-1, numKeys-1, "out of bounds (max %d)")
 }
 
 func (m *Message) sanitizeV0() error {
 	numStaticKeys := len(m.AccountKeys)
-
-	// Signing area and read-only non-signing area should not overlap.
-	if int(m.Header.NumRequiredSignatures)+int(m.Header.NumReadonlyUnsignedAccounts) > numStaticKeys {
-		return newSanitizeError("header references more accounts than available: required_signatures(%d) + readonly_unsigned(%d) > static_keys(%d)",
-			m.Header.NumRequiredSignatures, m.Header.NumReadonlyUnsignedAccounts, numStaticKeys)
-	}
-
-	// There should be at least 1 RW fee-payer account.
-	if m.Header.NumReadonlySignedAccounts >= m.Header.NumRequiredSignatures {
-		return newSanitizeError("no writable signer: readonly_signed(%d) >= required_signatures(%d)",
-			m.Header.NumReadonlySignedAccounts, m.Header.NumRequiredSignatures)
+	if err := m.sanitizeHeader(numStaticKeys, "static_keys"); err != nil {
+		return err
 	}
 
 	// Count dynamic keys from address table lookups.
@@ -107,26 +111,53 @@ func (m *Message) sanitizeV0() error {
 		return newSanitizeError("total account keys %d exceeds maximum %d", totalKeys, maxAccountKeys)
 	}
 
-	maxAccountIdx := totalKeys - 1
 	// Program IDs must be in static keys only (not from lookup tables).
-	maxProgramIdx := numStaticKeys - 1
+	return m.sanitizeInstructions(numStaticKeys-1, totalKeys-1, "exceeds static keys (max %d)")
+}
 
-	for i, ci := range m.Instructions {
-		if int(ci.ProgramIDIndex) > maxProgramIdx {
-			return newSanitizeError("instruction %d: program_id_index %d exceeds static keys (max %d)", i, ci.ProgramIDIndex, maxProgramIdx)
+// sanitizeV1 validates a V1 (SIMD-0385) message.
+// Ported from solana-sdk message/src/versions/v1/message.rs validate() (+ #699 heap bounds).
+func (m *Message) sanitizeV1() error {
+	if len(m.AddressTableLookups) > 0 {
+		return newSanitizeError("v1 messages do not support address table lookups (got %d)", len(m.AddressTableLookups))
+	}
+	if int(m.Header.NumRequiredSignatures) > MaxSignaturesV1 {
+		return newSanitizeError("too many signatures: required_signatures(%d) > max %d", m.Header.NumRequiredSignatures, MaxSignaturesV1)
+	}
+	if len(m.Instructions) > MaxInstructionsV1 {
+		return newSanitizeError("too many instructions: %d > max %d", len(m.Instructions), MaxInstructionsV1)
+	}
+	numKeys := len(m.AccountKeys)
+	if numKeys > MaxAddressesV1 {
+		return newSanitizeError("too many addresses: %d > max %d", numKeys, MaxAddressesV1)
+	}
+	if err := m.sanitizeHeader(numKeys, "account_keys"); err != nil {
+		return err
+	}
+	if m.HasDuplicates() {
+		return newSanitizeError("duplicate addresses found in message")
+	}
+	// Invalid mask bits only exist on the wire and are rejected by UnmarshalV1.
+	if hs := m.TransactionConfig.HeapSize; hs != nil {
+		if *hs%1024 != 0 {
+			return newSanitizeError("heap size %d is not a multiple of 1024", *hs)
 		}
-		// A program cannot be the payer.
-		if ci.ProgramIDIndex == 0 {
-			return newSanitizeError("instruction %d: program_id_index cannot be 0 (fee payer)", i)
-		}
-		for _, ai := range ci.Accounts {
-			if int(ai) > maxAccountIdx {
-				return newSanitizeError("instruction %d: account index %d out of bounds (max %d)", i, ai, maxAccountIdx)
-			}
+		if *hs < MinHeapSizeV1 || *hs > MaxHeapSizeV1 {
+			return newSanitizeError("heap size %d out of bounds [%d, %d]", *hs, MinHeapSizeV1, MaxHeapSizeV1)
 		}
 	}
-
-	return nil
+	if numKeys == 0 {
+		return newSanitizeError("message has no account keys")
+	}
+	for i, ci := range m.Instructions {
+		if len(ci.Accounts) > 255 {
+			return newSanitizeError("instruction %d: too many accounts (%d), max 255", i, len(ci.Accounts))
+		}
+		if len(ci.Data) > 65535 {
+			return newSanitizeError("instruction %d: data too large (%d bytes), max 65535", i, len(ci.Data))
+		}
+	}
+	return m.sanitizeInstructions(numKeys-1, numKeys-1, "out of bounds (max %d)")
 }
 
 // HasDuplicates checks if the message has duplicate account keys.

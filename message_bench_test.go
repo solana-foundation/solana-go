@@ -2,6 +2,8 @@ package solana
 
 import (
 	"testing"
+
+	bin "github.com/gagliardetto/binary"
 )
 
 // helpers to build realistic messages for benchmarking.
@@ -200,6 +202,38 @@ func BenchmarkMessage_MarshalBinary_V0(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = msg.MarshalBinary()
+	}
+}
+
+func buildV1Message() Message {
+	msg := buildLegacyMessage()
+	msg.version = MessageVersionV1
+	msg.TransactionConfig = TransactionConfig{}.
+		WithComputeUnitLimit(200_000).
+		WithPriorityFee(5_000)
+	return msg
+}
+
+func BenchmarkMessage_MarshalBinary_V1(b *testing.B) {
+	msg := buildV1Message()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = msg.MarshalBinary()
+	}
+}
+
+func BenchmarkMessage_UnmarshalBinary_V1(b *testing.B) {
+	msg := buildV1Message()
+	data, err := msg.MarshalBinary()
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var out Message
+		if err := out.UnmarshalWithDecoder(bin.NewBinDecoder(data)); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 

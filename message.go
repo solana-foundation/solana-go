@@ -100,12 +100,11 @@ type MessageVersion int
 const (
 	MessageVersionLegacy MessageVersion = 0 // default
 	MessageVersionV0     MessageVersion = 1 // v0
+	MessageVersionV1     MessageVersion = 2 // v1 (SIMD-0385)
 )
 
-// messageVersionPrefix is the high bit mask used to indicate a versioned message.
-// If the first byte has this bit set, the message is versioned; the remaining
-// 7 bits encode the version number (0 for V0, 1 for V1, etc.).
-// See: https://github.com/anza-xyz/solana-sdk/blob/master/message/src/versions/mod.rs
+// messageVersionPrefix marks a versioned message; low 7 bits are the version.
+// The Go enum is offset by one (V0=1 -> 0x80, V1=2 -> 0x81).
 const messageVersionPrefix = 0x80
 
 type Message struct {
@@ -126,8 +125,11 @@ type Message struct {
 	// and committed in one atomic transaction if all succeed.
 	Instructions []CompiledInstruction `json:"instructions"`
 
-	// List of address table lookups used to load additional accounts for this transaction.
+	// List of address table lookups used to load additional accounts for this transaction (v0 only).
 	AddressTableLookups MessageAddressTableLookupSlice `json:"addressTableLookups"`
+
+	// Inline compute budget (v1 only, SIMD-0385).
+	TransactionConfig TransactionConfig `json:"transactionConfig"`
 
 	// The actual tables that contain the list of account pubkeys.
 	// NOTE: you need to fetch these from the chain, and then call `SetAddressTables`
@@ -156,13 +158,19 @@ func (mx *Message) GetAddressTables() map[PublicKey]PublicKeySlice {
 
 var _ bin.EncoderDecoder = &Message{}
 
-// SetVersion sets the message version.
-// This method forces the message to be encoded in the specified version.
-// NOTE: if you set lookups, the version will default to V0.
+// SetVersion forces the encoding version.
+// V1 cannot carry lookups; leaving V1 with a non-empty config is an error.
 func (m *Message) SetVersion(version MessageVersion) (*Message, error) {
 	// check if the version is valid
 	switch version {
 	case MessageVersionV0, MessageVersionLegacy:
+		if !m.TransactionConfig.IsEmpty() {
+			return nil, fmt.Errorf("message has a TransactionConfig, which only v1 encodes; clear it before setting version %d", version)
+		}
+	case MessageVersionV1:
+		if len(m.AddressTableLookups) > 0 {
+			return nil, fmt.Errorf("v1 messages do not support address table lookups (got %d)", len(m.AddressTableLookups))
+		}
 	default:
 		return nil, fmt.Errorf("invalid message version: %d", version)
 	}
@@ -175,17 +183,21 @@ func (m *Message) GetVersion() MessageVersion {
 	return m.version
 }
 
-// SetAddressTableLookups (re)sets the lookups used by this message.
+// SetAddressTableLookups (re)sets the lookups; legacy becomes v0, v1 is kept.
 func (mx *Message) SetAddressTableLookups(lookups []MessageAddressTableLookup) *Message {
 	mx.AddressTableLookups = lookups
-	mx.version = MessageVersionV0
+	if mx.version != MessageVersionV1 {
+		mx.version = MessageVersionV0
+	}
 	return mx
 }
 
-// AddAddressTableLookup adds a new lookup to the message.
+// AddAddressTableLookup adds a lookup; legacy becomes v0, v1 is kept.
 func (mx *Message) AddAddressTableLookup(lookup MessageAddressTableLookup) *Message {
 	mx.AddressTableLookups = append(mx.AddressTableLookups, lookup)
-	mx.version = MessageVersionV0
+	if mx.version != MessageVersionV1 {
+		mx.version = MessageVersionV0
+	}
 	return mx
 }
 
@@ -223,6 +235,23 @@ func (mx Message) MarshalJSON() ([]byte, error) {
 		}
 		return json.Marshal(out)
 	}
+	if mx.version == MessageVersionV1 {
+		// V1: RPC (agave UiRawMessage) shape, `transactionConfig` and no lookups.
+		out := struct {
+			AccountKeys       PublicKeySlice        `json:"accountKeys"`
+			Header            MessageHeader         `json:"header"`
+			RecentBlockhash   Hash                  `json:"recentBlockhash"`
+			Instructions      []CompiledInstruction `json:"instructions"`
+			TransactionConfig TransactionConfig     `json:"transactionConfig"`
+		}{
+			AccountKeys:       mx.AccountKeys,
+			Header:            mx.Header,
+			RecentBlockhash:   mx.RecentBlockhash,
+			Instructions:      mx.Instructions,
+			TransactionConfig: mx.TransactionConfig,
+		}
+		return json.Marshal(out)
+	}
 	// Versioned message:
 	lookups := mx.AddressTableLookups
 	if lookups == nil {
@@ -244,20 +273,16 @@ func (mx Message) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// UnmarshalJSON decodes the message from JSON and determines its version.
-// The Solana RPC emits `addressTableLookups` only for versioned (V0+)
-// messages; its presence in the JSON is what distinguishes V0 from legacy,
-// since the private `version` field has no wire representation.
+// UnmarshalJSON decodes the message; `addressTableLookups` selects v0, `transactionConfig` v1.
 func (mx *Message) UnmarshalJSON(data []byte) error {
-	// Decode `addressTableLookups` via a RawMessage pointer so presence of the
-	// key can be detected in a single parse. A non-nil pointer means the key
-	// was present in the JSON (even if its value is `null`), which selects V0.
+	// RawMessage pointers detect key presence (non-nil = present, non-null).
 	aux := struct {
 		AccountKeys         PublicKeySlice        `json:"accountKeys"`
 		Header              MessageHeader         `json:"header"`
 		RecentBlockhash     Hash                  `json:"recentBlockhash"`
 		Instructions        []CompiledInstruction `json:"instructions"`
 		AddressTableLookups *gojson.RawMessage    `json:"addressTableLookups"`
+		TransactionConfig   *gojson.RawMessage    `json:"transactionConfig"`
 	}{}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -266,6 +291,16 @@ func (mx *Message) UnmarshalJSON(data []byte) error {
 	mx.Header = aux.Header
 	mx.RecentBlockhash = aux.RecentBlockhash
 	mx.Instructions = aux.Instructions
+	mx.TransactionConfig = TransactionConfig{}
+
+	if aux.TransactionConfig != nil {
+		if aux.AddressTableLookups != nil && string(*aux.AddressTableLookups) != "[]" {
+			return fmt.Errorf("message JSON has both transactionConfig (v1) and addressTableLookups (v0)")
+		}
+		mx.version = MessageVersionV1
+		mx.AddressTableLookups = nil
+		return json.Unmarshal(*aux.TransactionConfig, &mx.TransactionConfig)
+	}
 
 	if aux.AddressTableLookups == nil {
 		mx.version = MessageVersionLegacy
@@ -280,12 +315,20 @@ func (mx *Message) EncodeToTree(txTree treeout.Branches) {
 	switch mx.version {
 	case MessageVersionV0:
 		txTree.Child("Version: v0")
+	case MessageVersionV1:
+		txTree.Child("Version: v1")
 	case MessageVersionLegacy:
 		txTree.Child("Version: legacy")
 	default:
 		txTree.Child(text.Sf("Version (unknown): %v", mx.version))
 	}
 	txTree.Child(text.Sf("RecentBlockhash: %s", mx.RecentBlockhash))
+
+	if mx.version == MessageVersionV1 {
+		txTree.Child("TransactionConfig").ParentFunc(func(cfgBranch treeout.Branches) {
+			mx.TransactionConfig.EncodeToTree(cfgBranch)
+		})
+	}
 
 	txTree.Child(fmt.Sprintf("AccountKeys[len=%v]", mx.numStaticAccounts()+mx.AddressTableLookups.NumLookups())).ParentFunc(func(accountKeysBranch treeout.Branches) {
 		accountKeys, err := mx.AccountMetaList()
@@ -303,7 +346,7 @@ func (mx *Message) EncodeToTree(txTree treeout.Branches) {
 		}
 	})
 
-	if mx.IsVersioned() {
+	if mx.version == MessageVersionV0 {
 		txTree.Child(fmt.Sprintf("AddressTableLookups[len=%v]", len(mx.AddressTableLookups))).ParentFunc(func(lookupsBranch treeout.Branches) {
 			for _, lookup := range mx.AddressTableLookups {
 				lookupsBranch.Child(text.Sf("%s", text.ColorizeBG(lookup.AccountKey.String()))).ParentFunc(func(lookupBranch treeout.Branches) {
@@ -325,10 +368,27 @@ func (header *MessageHeader) EncodeToTree(mxBranch treeout.Branches) {
 	mxBranch.Child(text.Sf("NumReadonlyUnsignedAccounts: %v", header.NumReadonlyUnsignedAccounts))
 }
 
+// EncodeToTree renders the config; unset fields are shown as "<unset>".
+func (c *TransactionConfig) EncodeToTree(branch treeout.Branches) {
+	branch.Child(text.Sf("PriorityFee: %s", fmtOptional(c.PriorityFee)))
+	branch.Child(text.Sf("ComputeUnitLimit: %s", fmtOptional(c.ComputeUnitLimit)))
+	branch.Child(text.Sf("LoadedAccountsDataSizeLimit: %s", fmtOptional(c.LoadedAccountsDataSizeLimit)))
+	branch.Child(text.Sf("HeapSize: %s", fmtOptional(c.HeapSize)))
+}
+
+func fmtOptional[T uint32 | uint64](v *T) string {
+	if v == nil {
+		return "<unset>"
+	}
+	return fmt.Sprintf("%d", *v)
+}
+
 func (mx *Message) MarshalBinary() ([]byte, error) {
 	switch mx.version {
 	case MessageVersionV0:
 		return mx.MarshalV0()
+	case MessageVersionV1:
+		return mx.MarshalV1()
 	case MessageVersionLegacy:
 		return mx.MarshalLegacy()
 	default:
@@ -372,13 +432,11 @@ func (mx *Message) MarshalLegacy() ([]byte, error) {
 }
 
 func (mx *Message) MarshalV0() ([]byte, error) {
-	// The actual Solana version number is the Go enum value minus 1
-	// (MessageVersionV0=1 maps to Solana version 0).
-	// The wire prefix is messageVersionPrefix (0x80) OR'd with the version number.
-	solanaVersion := byte(mx.version - 1)
-	if solanaVersion > 0x7F {
-		return nil, fmt.Errorf("invalid message version: %d", mx.version)
+	if mx.version == MessageVersionV1 {
+		return nil, fmt.Errorf("cannot encode a v1 message as v0; use MarshalV1")
 	}
+	// Wire prefix: messageVersionPrefix (0x80) | version 0.
+	const solanaVersion = byte(0)
 
 	staticAccountKeys := mx.getStaticKeys()
 
@@ -451,21 +509,25 @@ func (mx Message) ToBase64() string {
 }
 
 func (mx *Message) UnmarshalWithDecoder(decoder *bin.Decoder) (err error) {
-	// peek first byte to determine if this is a legacy or v0 message
+	// peek first byte to determine if this is a legacy, v0 or v1 message
 	versionNum, err := decoder.Peek(1)
 	if err != nil {
 		return err
 	}
-	// If the high bit (0x80) is set, this is a versioned message;
-	// otherwise it is a legacy message where this byte is numRequiredSignatures.
-	if versionNum[0]&messageVersionPrefix == 0 {
+	// High bit set = versioned (0x81 = v1, else v0); otherwise legacy.
+	switch {
+	case versionNum[0]&messageVersionPrefix == 0:
 		mx.version = MessageVersionLegacy
-	} else {
+	case versionNum[0] == messageVersionV1Prefix:
+		mx.version = MessageVersionV1
+	default:
 		mx.version = MessageVersionV0
 	}
 	switch mx.version {
 	case MessageVersionV0:
 		return mx.UnmarshalV0(decoder)
+	case MessageVersionV1:
+		return mx.UnmarshalV1(decoder)
 	case MessageVersionLegacy:
 		return mx.UnmarshalLegacy(decoder)
 	default:
@@ -643,6 +705,9 @@ func (mx *Message) UnmarshalV0(decoder *bin.Decoder) (err error) {
 }
 
 func (mx *Message) UnmarshalLegacy(decoder *bin.Decoder) (err error) {
+	// Reset fields not present in this format (the receiver may be reused).
+	mx.AddressTableLookups = nil
+	mx.TransactionConfig = TransactionConfig{}
 	{
 		mx.Header.NumRequiredSignatures, err = decoder.ReadUint8()
 		if err != nil {
@@ -770,6 +835,7 @@ func (m *Message) AccountMetaList() (AccountMetaSlice, error) {
 	return out, nil
 }
 
+// IsVersioned reports whether the message is v0 or v1 (not legacy).
 func (m *Message) IsVersioned() bool {
 	return m.version != MessageVersionLegacy
 }
@@ -964,7 +1030,7 @@ func (m *Message) uncheckedAccountIndexIsWritable(index int) bool {
 }
 
 func (m *Message) signerKeys() PublicKeySlice {
-	return m.AccountKeys[0:m.Header.NumRequiredSignatures]
+	return m.AccountKeys[:min(int(m.Header.NumRequiredSignatures), len(m.AccountKeys))]
 }
 
 // ProgramIDs returns the deduplicated list of program IDs used by the message's instructions.

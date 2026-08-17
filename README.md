@@ -29,6 +29,7 @@ More contracts to come.
   - [Pretty-Print transactions/instructions](#pretty-print-transactionsinstructions)
   - [SendAndConfirmTransaction](#sendandconfirmtransaction)
   - [Address Lookup Tables](#address-lookup-tables)
+  - [V1 Transactions (SIMD-0385)](#v1-transactions-simd-0385)
   - [Parse/decode an instruction from a transaction](#parsedecode-an-instruction-from-a-transaction)
   - [Borsh encoding/decoding](#borsh-encodingdecoding)
   - [ZSTD account data encoding](#zstd-account-data-encoding)
@@ -56,6 +57,7 @@ More contracts to come.
   - [ ] stake
   - [ ] vote
   - [x] BPF Loader
+  - [x] [compute-budget](/programs/compute-budget) (for [V1 transactions](#v1-transactions-simd-0385) use the inline `solana.TransactionConfig` instead)
   - [ ] Secp256k1
 - [ ] Clients for Solana Program Library (SPL)
   - [x] [SPL token](/programs/token)
@@ -240,6 +242,127 @@ func processTransactionWithAddressLookups(txx *solana.Transaction, rpcClient *rp
 	fmt.Println(txx.String())
 }
 ```
+
+
+## V1 Transactions (SIMD-0385)
+
+V1 is the transaction format introduced by [SIMD-0385](https://github.com/solana-foundation/solana-improvement-documents/pull/385)
+(anza-xyz/solana-sdk [#538](https://github.com/anza-xyz/solana-sdk/pull/538)).
+Compared to legacy/v0 transactions:
+
+| | legacy / v0 | v1 |
+| --- | --- | --- |
+| max transaction size | 1232 bytes | 4096 bytes |
+| compute budget | `ComputeBudget` program instructions | inline `TransactionConfig` in the message header |
+| address lookup tables | v0 only | not supported |
+| max signatures / addresses / instructions | bounded by the 1232-byte size (indices are u8) | 12 / 64 / 64 (enforced by `Sanitize`) |
+| wire layout | `sigs (compact-u16 len) \|\| message` | `0x81 \|\| message \|\| sigs (fixed, no len)` |
+
+The Go API stays the same; you opt in with `solana.TransactionV1Config`
+(or `solana.TransactionMessageVersion(solana.MessageVersionV1)`):
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/system"
+	"github.com/gagliardetto/solana-go/rpc"
+)
+
+func main() {
+	ctx := context.Background()
+	client := rpc.New(rpc.DevNet_RPC)
+
+	sender, _ := solana.PrivateKeyFromSolanaKeygenFile("/path/to/id.json")
+	recipient := solana.NewWallet().PublicKey()
+
+	recent, err := client.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
+	if err != nil {
+		panic(err)
+	}
+
+	// The compute budget lives in the message header; every field is optional.
+	config := solana.TransactionConfig{}.
+		WithComputeUnitLimit(20_000). // unset means 0 CUs -> always set it
+		WithPriorityFee(1_000)        // TOTAL lamports, not micro-lamports/CU
+	// Also available: WithLoadedAccountsDataSizeLimit(bytes), WithHeapSize(bytes)
+	// (heap must be a multiple of 1024 within [32 KiB, 256 KiB]).
+
+	tx, err := solana.NewTransaction(
+		[]solana.Instruction{
+			system.NewTransferInstruction(solana.LAMPORTS_PER_SOL/1000, sender.PublicKey(), recipient).Build(),
+		},
+		recent.Value.Blockhash,
+		solana.TransactionPayer(sender.PublicKey()),
+		solana.TransactionV1Config(config), // <- selects the V1 format
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	// Signing, sending and confirming are unchanged.
+	if _, err := tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
+		if sender.PublicKey().Equals(key) {
+			return &sender
+		}
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+	sig, err := client.SendTransaction(ctx, tx)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sig)
+}
+```
+
+Decoding is automatic (`TransactionFromBytes`, `TransactionFromBase64`,
+`rpc` results, JSON): the version byte `0x81` selects the V1 decoder.
+
+```go
+tx, err := solana.TransactionFromBase64(b64)
+if err != nil {
+	panic(err)
+}
+if tx.Message.GetVersion() == solana.MessageVersionV1 {
+	cfg := tx.Message.TransactionConfig // *uint64 / *uint32 fields, nil = not requested
+	if cfg.ComputeUnitLimit != nil {
+		fmt.Println("compute unit limit:", *cfg.ComputeUnitLimit)
+	}
+}
+if err := tx.Sanitize(); err != nil { // structural limits; the 4096-byte cap is enforced by the cluster
+	panic(err)
+}
+```
+
+When fetching transactions/blocks from the RPC, ask for version 1
+(`getTransaction`, `getBlock`, `blockSubscribe`, ... all take the same option):
+
+```go
+out, err := client.GetTransaction(ctx, sig, &rpc.GetTransactionOpts{
+	MaxSupportedTransactionVersion: &rpc.MaxSupportedTransactionVersion1,
+})
+```
+
+Things to keep in mind:
+
+- The cluster must have SIMD-0385 activated, otherwise V1 transactions are
+  rejected during sanitization.
+- `PriorityFee` is the total priority fee in lamports for the whole
+  transaction (unlike `SetComputeUnitPrice`, which is micro-lamports per CU).
+- An unset `ComputeUnitLimit` means a requested limit of 0 compute units.
+- `ComputeBudget` program instructions are no-ops in V1 transactions; `NewTransaction` rejects them for V1.
+- V1 transactions cannot use address lookup tables; combining
+  `TransactionV1Config` with `TransactionAddressTables` is an error.
+- `solana.MaxTransactionSizeV1` (4096) is the size cap including signatures (checked by the cluster, not the SDK).
+
+See [rpc/examples/sendTransactionV1](/rpc/examples/sendTransactionV1) and the
+`ExampleNewTransaction_v1` godoc example for complete programs.
 
 
 ## Parse/decode an instruction from a transaction

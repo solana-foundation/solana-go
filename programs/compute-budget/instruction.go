@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package computebudget provides the ComputeBudget program instructions.
+// In v1 (SIMD-0385) transactions they are no-ops; use solana.TransactionConfig.
 package computebudget
 
 import (
