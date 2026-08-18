@@ -52,6 +52,15 @@ var (
 
 	Token2022ProgramID = MustPublicKeyFromBase58("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb")
 
+	// The p-token program: a Pinocchio reimplementation of the Token program
+	// (SIMD-0266). It is wire-compatible with TokenProgramID and adds the
+	// WithdrawExcessLamports, UnwrapLamports and Batch instructions.
+	//
+	// Point an instruction at it without mutating the package-level ProgramID:
+	//
+	//	token.NewBatchInstruction(ix1, ix2).Build().SetProgramID(solana.PTokenProgramID)
+	PTokenProgramID = MustPublicKeyFromBase58("ptokFjwyJtrwCa9Kgo9xoDS59V4QccBGEaRFnRPnSdP")
+
 	// A Uniswap-like exchange for the Token program on the Solana blockchain,
 	// implementing multiple automated market maker (AMM) curves.
 	TokenSwapProgramID = MustPublicKeyFromBase58("SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8")
