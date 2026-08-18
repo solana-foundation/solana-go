@@ -93,6 +93,13 @@ func TestAllBuildersSetPointerImpl(t *testing.T) {
 		{"ThawAccount", (*ThawAccount)(nil), NewThawAccountInstructionBuilder().Build()},
 		{"Transfer", (*Transfer)(nil), NewTransferInstructionBuilder().Build()},
 		{"TransferChecked", (*TransferChecked)(nil), NewTransferCheckedInstructionBuilder().Build()},
+		{"GetAccountDataSize", (*GetAccountDataSize)(nil), NewGetAccountDataSizeInstructionBuilder().Build()},
+		{"InitializeImmutableOwner", (*InitializeImmutableOwner)(nil), NewInitializeImmutableOwnerInstructionBuilder().Build()},
+		{"AmountToUiAmount", (*AmountToUiAmount)(nil), NewAmountToUiAmountInstructionBuilder().Build()},
+		{"UiAmountToAmount", (*UiAmountToAmount)(nil), NewUiAmountToAmountInstructionBuilder().Build()},
+		{"WithdrawExcessLamports", (*WithdrawExcessLamports)(nil), NewWithdrawExcessLamportsInstructionBuilder().Build()},
+		{"UnwrapLamports", (*UnwrapLamports)(nil), NewUnwrapLamportsInstructionBuilder().Build()},
+		{"Batch", (*Batch)(nil), NewBatchInstructionBuilder().Build()},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
