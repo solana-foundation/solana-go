@@ -1,6 +1,6 @@
 # Solana SDK library for Go
 
-[![GoDoc](https://pkg.go.dev/badge/github.com/gagliardetto/solana-go?status.svg)](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0?tab=doc)
+[![GoDoc](https://pkg.go.dev/badge/github.com/gagliardetto/solana-go?status.svg)](https://pkg.go.dev/github.com/gagliardetto/solana-go?tab=doc)
 [![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/gagliardetto/solana-go?include_prereleases&label=release-tag)](https://github.com/gagliardetto/solana-go/releases)
 [![Build Status](https://github.com/gagliardetto/solana-go/workflows/tests/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain)
 [![Lint Status](https://github.com/gagliardetto/solana-go/workflows/lint/badge.svg?branch=main)](https://github.com/gagliardetto/solana-go/actions?query=branch%3Amain+workflow%3Alint)
@@ -41,6 +41,7 @@ More contracts to come.
     - [Transfer Sol from one wallet to another wallet](#transfer-sol-from-one-wallet-to-another-wallet)
   - [RPC Methods](#rpc-methods)
   - [WebSocket Subscriptions](#websocket-subscriptions)
+  - [About v2](#about-v2)
   - [Contributing](#contributing)
   - [License](#license)
   - [Credits](#credits)
@@ -73,7 +74,12 @@ More contracts to come.
 
 ## Current development status
 
-There is currently **no stable release**. The SDK is actively developed and latest is `v1.16.0` which is an `alpha` release.
+`solana-go` ships from two parallel branches:
+
+- **`main` (v1) — recommended default.** Backward-compatible improvements only. Latest release: [v1.22.0](https://github.com/solana-foundation/solana-go/releases/tag/v1.22.0).
+- **`v2` — opt-in.** Same content as `main` plus breaking API cleanups. Latest: `v2.0.0-rc` (release candidate). See [About v2](#about-v2) below.
+
+Most users should stay on v1. Only choose v2 if you specifically want the changes listed in [About v2](#about-v2).
 
 The RPC and WS client implementation is based on the [Solana RPC API documentation](https://solana.com/docs/rpc).
 
@@ -90,8 +96,10 @@ The RPC and WS client implementation is based on the [Solana RPC API documentati
 
 ```bash
 $ cd my-project
-$ go get github.com/gagliardetto/solana-go@v1.16.0
+$ go get github.com/gagliardetto/solana-go@latest
 ```
+
+> Looking for v2? See [About v2](#about-v2).
 
 ## Pretty-Print transactions/instructions
 
@@ -831,15 +839,35 @@ func main() {
 
 All RPC methods from the [Solana JSON RPC API](https://solana.com/docs/rpc) are supported.
 Each method has a testable example in [`rpc/example_test.go`](rpc/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0/rpc#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go/rpc#pkg-examples).
 
 
 ## WebSocket Subscriptions
 
 All WebSocket subscriptions from the [Solana WebSocket API](https://solana.com/docs/rpc/websocket) are supported.
 Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go@v1.16.0/rpc/ws#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/gagliardetto/solana-go/rpc/ws#pkg-examples).
 
+
+## About v2
+
+A `v2` branch exists in parallel with `main`. It contains everything on `main` plus three breaking changes that couldn't ship on v1 without disrupting existing users:
+
+1. **Module path** — `github.com/solana-foundation/solana-go/v2`
+2. **Loader program packages** (`programs/loader-v2` / `-v3` / `-v4`) realigned to on-chain program specs ([#410](https://github.com/solana-foundation/solana-go/pull/410))
+3. **WebSocket subscription API** aligned to the JSON-RPC spec ([#407](https://github.com/solana-foundation/solana-go/pull/407))
+
+**v1 remains the recommended default.** Choose v2 only if you specifically need one of the above.
+
+To use v2 (currently `v2.0.0-rc`, a release candidate):
+
+```
+$ go get github.com/solana-foundation/solana-go/v2@v2.0.0-rc
+```
+
+Full v2 details, release notes, and migration guide:
+- [v2 branch README](https://github.com/solana-foundation/solana-go/blob/v2/README.md)
+- [v2.0.0-rc release notes](https://github.com/solana-foundation/solana-go/releases/tag/v2.0.0-rc)
 
 ## Contributing
 
