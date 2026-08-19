@@ -562,6 +562,9 @@ func (tx *Transaction) UnmarshalWithDecoder(decoder *bin.Decoder) (err error) {
 		if err != nil {
 			return fmt.Errorf("unable to read numSignatures: %w", err)
 		}
+		if numSignatures < 0 {
+			return fmt.Errorf("numSignatures %d is negative", numSignatures)
+		}
 		if numSignatures > decoder.Remaining()/64 {
 			return fmt.Errorf("numSignatures %d is too large for remaining bytes %d", numSignatures, decoder.Remaining())
 		}
