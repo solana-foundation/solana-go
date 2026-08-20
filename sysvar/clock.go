@@ -30,9 +30,12 @@ const (
 	DefaultHashesPerSecond uint64 = 10_000_000
 	SecondsPerDay          uint64 = 24 * 60 * 60
 	TicksPerDay            uint64 = DefaultTicksPerSecond * SecondsPerDay
-	// DefaultSlotsPerEpoch is ~2 days of slots (432000).
+	// DefaultSlotsPerEpoch is 432000 slots (~2 days at the default 400ms
+	// slot time; less as SIMD-0525 reductions activate).
 	DefaultSlotsPerEpoch uint64 = 2 * TicksPerDay / DefaultTicksPerSlot
-	// DefaultMsPerSlot is the default slot duration in milliseconds (400).
+	// DefaultMsPerSlot is the default/target slot duration in milliseconds (400).
+	// SIMD-0525 feature gates can reduce the actual duration (e.g. 350ms on
+	// mainnet-beta starting at epoch 1020); use MsPerSlotAt for the effective value.
 	DefaultMsPerSlot uint64 = 1000 * DefaultTicksPerSlot / DefaultTicksPerSecond
 	// MaxRecentBlockhashes is the number of blockhashes kept in the
 	// RecentBlockhashes sysvar (300).
