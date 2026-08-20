@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 func GetPassword(input string) (string, error) {
 	fd := os.Stdin.Fd()
 	fmt.Print(input)
-	pass, err := terminal.ReadPassword(int(fd))
+	pass, err := term.ReadPassword(int(fd))
 	fmt.Println("")
 	return string(pass), err
 }

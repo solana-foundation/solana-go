@@ -5,7 +5,7 @@ We encourage everyone to contribute — submit issues, PRs, and discuss. Every k
 ## Getting Started
 
 1. Fork the repository and clone your fork
-2. Make sure you have Go 1.24+ installed
+2. Make sure you have Go 1.25+ installed
 3. Run `go mod download` to fetch dependencies
 4. Run the tests to verify everything works: `go test ./... -count=1`
 5. Install [`golangci-lint`](https://golangci-lint.run/welcome/install/) (v2.11+) and run `golangci-lint run` to verify the linters pass
@@ -143,7 +143,7 @@ Every pull request runs the following checks:
 
 | Check            | What it does                                                                                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **tests**        | Runs `go test ./...` across Go 1.24.x on ubuntu, macos, and windows. Only triggered when `.go`, `go.mod`, `go.sum`, or the workflow file itself changes. |
+| **tests**        | Runs `go test ./...` across Go 1.25.x, 1.26.x, and 1.27.x on ubuntu, macos, and windows. Only triggered when `.go`, `go.mod`, `go.sum`, or the workflow file itself changes. |
 | **lint**         | Runs `golangci-lint` on ubuntu-latest with the config at `.golangci.yml`. See [Linting](#linting) above.                                                 |
 | **semver-check** | Runs `gorelease` to compare the public API against the latest release tag. Fails if breaking changes are detected without a major version bump.          |
 | **commit-lint**  | Validates that all commits in the PR follow Conventional Commits format.                                                                                 |

@@ -30,7 +30,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 const (
@@ -73,7 +73,7 @@ type Encoder struct {
 func NewEncoder(verbosity int) zapcore.Encoder {
 	isDebug := os.Getenv("DEBUG") != ""
 	isInfo := os.Getenv("INFO") != ""
-	isTTY := terminal.IsTerminal(int(os.Stdout.Fd()))
+	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
 
 	return &Encoder{
 		jsonEncoder: newJSONEncoder(zapcore.EncoderConfig{
