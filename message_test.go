@@ -173,11 +173,12 @@ func TestVersionDetection_PrefixByte(t *testing.T) {
 	}
 }
 
-// Tests that unsupported version numbers (> 0) in versioned messages are rejected.
+// Tests that unsupported version numbers (> 1) in versioned messages are rejected.
 // Ported from solana-sdk/message/src/versions/v0/mod.rs version validation.
+// (0x81 is V1 since SIMD-0385; see TestVersionDetection_V1PrefixByte.)
 func TestVersionDetection_UnsupportedVersion(t *testing.T) {
-	// 0x81 = messageVersionPrefix | 1 -> version 1 (unsupported)
-	buf := []byte{0x81, 1, 0, 0}
+	// 0x82 = messageVersionPrefix | 2 -> version 2 (unsupported)
+	buf := []byte{0x82, 1, 0, 0}
 	buf = append(buf, 1)                   // 1 account key
 	buf = append(buf, make([]byte, 32)...) // account key
 	buf = append(buf, make([]byte, 32)...) // blockhash
@@ -188,6 +189,25 @@ func TestVersionDetection_UnsupportedVersion(t *testing.T) {
 	err := msg.UnmarshalWithDecoder(bin.NewBinDecoder(buf))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported message version")
+}
+
+// Tests that 0x81 routes to the V1 decoder (SIMD-0385).
+func TestVersionDetection_V1PrefixByte(t *testing.T) {
+	// v1: prefix(1) + header(3) + mask(4) + blockhash(32) + num_ix(1) + num_addr(1) + key(32)
+	buf := []byte{0x81, 1, 0, 0}
+	buf = append(buf, 0, 0, 0, 0)          // config mask = 0
+	buf = append(buf, make([]byte, 32)...) // lifetime specifier
+	buf = append(buf, 0)                   // 0 instructions
+	buf = append(buf, 1)                   // 1 address
+	buf = append(buf, make([]byte, 32)...) // address
+
+	var msg Message
+	err := msg.UnmarshalWithDecoder(bin.NewBinDecoder(buf))
+	require.NoError(t, err)
+	assert.Equal(t, MessageVersionV1, msg.GetVersion())
+	assert.True(t, msg.IsVersioned())
+	assert.Len(t, msg.AccountKeys, 1)
+	assert.True(t, msg.TransactionConfig.IsEmpty())
 }
 
 // Ported from solana-sdk/message/src/legacy.rs: test_is_writable_index_saturating_behavior.
@@ -474,6 +494,11 @@ func TestMarshalV0_PrefixByte(t *testing.T) {
 
 	// Second byte should be numRequiredSignatures.
 	assert.Equal(t, byte(1), data[1])
+
+	// MarshalV0 refuses v1 messages (they would lose the inline config).
+	msg.version = MessageVersionV1
+	_, err = msg.MarshalV0()
+	require.Error(t, err)
 }
 
 // Tests that legacy message does NOT have the 0x80 prefix.
@@ -639,8 +664,20 @@ func TestSetVersion_Validation(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, MessageVersionV0, msg.GetVersion())
 
+	_, err = msg.SetVersion(MessageVersionV1)
+	require.NoError(t, err)
+	assert.Equal(t, MessageVersionV1, msg.GetVersion())
+
 	_, err = msg.SetVersion(MessageVersion(99))
 	require.Error(t, err)
+
+	// V1 cannot carry address table lookups.
+	withLookups := &Message{}
+	withLookups.AddAddressTableLookup(MessageAddressTableLookup{AccountKey: newUniqueKey(), WritableIndexes: []uint8{0}})
+	assert.Equal(t, MessageVersionV0, withLookups.GetVersion())
+	_, err = withLookups.SetVersion(MessageVersionV1)
+	require.Error(t, err)
+	assert.Equal(t, MessageVersionV0, withLookups.GetVersion())
 }
 
 // Tests IsVersioned().
@@ -650,6 +687,9 @@ func TestIsVersioned(t *testing.T) {
 	assert.False(t, msg.IsVersioned())
 
 	msg.version = MessageVersionV0
+	assert.True(t, msg.IsVersioned())
+
+	msg.version = MessageVersionV1
 	assert.True(t, msg.IsVersioned())
 }
 
@@ -1283,6 +1323,7 @@ func TestMessageJSONVersionRoundtrip(t *testing.T) {
 		{"v0_with_lookups", MessageVersionV0, MessageAddressTableLookupSlice{
 			{AccountKey: newUniqueKey(), WritableIndexes: []uint8{0, 1}, ReadonlyIndexes: []uint8{2}},
 		}},
+		{"v1", MessageVersionV1, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			original := Message{

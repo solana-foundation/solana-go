@@ -586,6 +586,10 @@ type ParsedMessage struct {
 	AccountKeys     []ParsedMessageAccount `json:"accountKeys"`
 	Instructions    []*ParsedInstruction   `json:"instructions"`
 	RecentBlockHash string                 `json:"recentBlockhash"`
+
+	// Inline compute budget configuration; only present for v1 (SIMD-0385)
+	// transactions.
+	TransactionConfig *solana.TransactionConfig `json:"transactionConfig,omitempty"`
 }
 
 type ParsedInstruction struct {

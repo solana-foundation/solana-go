@@ -36,6 +36,7 @@ type Transaction struct {
 	// The list is always of length `message.header.numRequiredSignatures` and not empty.
 	// The signature at index `i` corresponds to the public key at index
 	// `i` in `message.account_keys`. The first one is used as the transaction id.
+	// Wire: legacy/v0 = compact-u16 count + sigs + message; v1 = message + sigs.
 	Signatures []Signature `json:"signatures"`
 
 	// Defines the content of the transaction.
@@ -87,9 +88,19 @@ func TransactionFromDecoder(decoder *bin.Decoder) (*Transaction, error) {
 	return out, nil
 }
 
+// TransactionFromBytes decodes a transaction from the whole slice.
+// For v1, trailing bytes are rejected (SIMD-0385); legacy/v0 stay lenient.
+// Streaming callers can use TransactionFromDecoder, which is always lenient.
 func TransactionFromBytes(data []byte) (*Transaction, error) {
 	decoder := bin.NewBinDecoder(data)
-	return TransactionFromDecoder(decoder)
+	tx, err := TransactionFromDecoder(decoder)
+	if err != nil {
+		return nil, err
+	}
+	if tx.Message.version == MessageVersionV1 && decoder.Remaining() > 0 {
+		return nil, fmt.Errorf("v1 transaction: %d trailing bytes after signatures", decoder.Remaining())
+	}
+	return tx, nil
 }
 
 func TransactionFromBase64(b64 string) (*Transaction, error) {
@@ -164,6 +175,8 @@ type TransactionOption interface {
 type transactionOptions struct {
 	payer         PublicKey
 	addressTables map[PublicKey]PublicKeySlice // [tablePubkey]addresses
+	version       MessageVersion               // requested message version; zero value = auto (legacy, or v0 if lookups are used)
+	config        TransactionConfig            // v1 only
 }
 
 type transactionOptionFunc func(opts *transactionOptions)
@@ -178,6 +191,20 @@ func TransactionPayer(payer PublicKey) TransactionOption {
 
 func TransactionAddressTables(tables map[PublicKey]PublicKeySlice) TransactionOption {
 	return transactionOptionFunc(func(opts *transactionOptions) { opts.addressTables = tables })
+}
+
+// TransactionMessageVersion selects the message version built by NewTransaction.
+// V1 rejects address tables and ComputeBudget instructions; prefer TransactionV1Config.
+func TransactionMessageVersion(version MessageVersion) TransactionOption {
+	return transactionOptionFunc(func(opts *transactionOptions) { opts.version = version })
+}
+
+// TransactionV1Config sets the v1 inline compute budget and implies MessageVersionV1.
+func TransactionV1Config(config TransactionConfig) TransactionOption {
+	return transactionOptionFunc(func(opts *transactionOptions) {
+		opts.config = config
+		opts.version = MessageVersionV1
+	})
 }
 
 var debugNewTransaction = false
@@ -218,6 +245,18 @@ func (builder *TransactionBuilder) SetFeePayer(feePayer PublicKey) *TransactionB
 	return builder
 }
 
+// SetVersion selects the message version (see TransactionMessageVersion).
+func (builder *TransactionBuilder) SetVersion(version MessageVersion) *TransactionBuilder {
+	builder.opts = append(builder.opts, TransactionMessageVersion(version))
+	return builder
+}
+
+// SetTransactionConfig sets the v1 inline compute budget (see TransactionV1Config).
+func (builder *TransactionBuilder) SetTransactionConfig(config TransactionConfig) *TransactionBuilder {
+	builder.opts = append(builder.opts, TransactionV1Config(config))
+	return builder
+}
+
 // Build builds and returns a *Transaction.
 func (builder *TransactionBuilder) Build() (*Transaction, error) {
 	return NewTransaction(
@@ -240,6 +279,24 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	options := transactionOptions{}
 	for _, opt := range opts {
 		opt.apply(&options)
+	}
+
+	switch options.version {
+	case MessageVersionLegacy, MessageVersionV0:
+		if !options.config.IsEmpty() {
+			return nil, fmt.Errorf("TransactionV1Config requires MessageVersionV1 (got version %d)", options.version)
+		}
+	case MessageVersionV1:
+		if len(options.addressTables) > 0 {
+			return nil, fmt.Errorf("v1 transactions do not support address lookup tables; drop TransactionAddressTables or use v0")
+		}
+		for i, ix := range instructions {
+			if ix.ProgramID().Equals(ComputeBudget) {
+				return nil, fmt.Errorf("instruction %d: ComputeBudget instructions are no-ops in v1 transactions; use TransactionV1Config", i)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("invalid message version: %d", options.version)
 	}
 
 	feePayer := options.payer
@@ -514,6 +571,18 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		})
 	}
 
+	switch options.version {
+	case MessageVersionV0:
+		message.version = MessageVersionV0
+	case MessageVersionV1:
+		message.version = MessageVersionV1
+		message.TransactionConfig = options.config
+		// Fail early on the SIMD-0385 structural limits.
+		if err := message.sanitizeV1(); err != nil {
+			return nil, fmt.Errorf("v1 transaction: %w", err)
+		}
+	}
+
 	return &Transaction{
 		Message: message,
 	}, nil
@@ -533,6 +602,19 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 		// the serialized transaction will be invalid.
 		// reference: https://github.com/solana-labs/solana-web3.js/blob/4e9988cfc561f3ed11f4c5016a29090a61d129a8/src/transaction/versioned.ts#L36
 		signatures = append(signatures, make([]Signature, missing)...)
+	}
+
+	if tx.Message.version == MessageVersionV1 {
+		// V1: prefixed message, then exactly numRequiredSignatures signatures.
+		if numRequired := int(tx.Message.Header.NumRequiredSignatures); len(signatures) > numRequired {
+			return nil, fmt.Errorf("v1 transaction: %d signatures but header requires %d (the v1 wire format has no signature count)", len(signatures), numRequired)
+		}
+		binaryTx := make([]byte, 0, len(messageContent)+len(signatures)*64)
+		binaryTx = append(binaryTx, messageContent...)
+		for _, sig := range signatures {
+			binaryTx = append(binaryTx, sig[:]...)
+		}
+		return binaryTx, nil
 	}
 
 	var signaturesCountBytes []byte
@@ -557,6 +639,17 @@ func (tx Transaction) MarshalWithEncoder(encoder *bin.Encoder) error {
 }
 
 func (tx *Transaction) UnmarshalWithDecoder(decoder *bin.Decoder) (err error) {
+	// First byte: compact-u16 signature count (< 0x80) for legacy/v0, 0x81 for v1.
+	first, err := decoder.Peek(1)
+	if err != nil {
+		return fmt.Errorf("unable to peek transaction discriminator: %w", err)
+	}
+	if first[0] == messageVersionV1Prefix {
+		return tx.unmarshalV1(decoder)
+	}
+	if first[0]&messageVersionPrefix != 0 {
+		return fmt.Errorf("invalid transaction discriminator: 0x%02x", first[0])
+	}
 	{
 		numSignatures, err := decoder.ReadCompactU16()
 		if err != nil {
@@ -578,6 +671,31 @@ func (tx *Transaction) UnmarshalWithDecoder(decoder *bin.Decoder) (err error) {
 		err := tx.Message.UnmarshalWithDecoder(decoder)
 		if err != nil {
 			return fmt.Errorf("unable to decode tx.Message: %w", err)
+		}
+		// v1 message in a legacy/v0 envelope is malformed (upstream #566).
+		if tx.Message.version == MessageVersionV1 {
+			return fmt.Errorf("invalid message version: v1 message in a legacy/v0 transaction envelope")
+		}
+	}
+	return nil
+}
+
+// unmarshalV1 decodes a v1 transaction: message, then numRequiredSignatures signatures.
+func (tx *Transaction) unmarshalV1(decoder *bin.Decoder) error {
+	if err := tx.Message.UnmarshalV1(decoder); err != nil {
+		return fmt.Errorf("unable to decode tx.Message: %w", err)
+	}
+	numSignatures := int(tx.Message.Header.NumRequiredSignatures)
+	if numSignatures > len(tx.Message.AccountKeys) {
+		return fmt.Errorf("v1 transaction: header requires %d signatures but only %d account keys", numSignatures, len(tx.Message.AccountKeys))
+	}
+	if numSignatures*64 > decoder.Remaining() {
+		return fmt.Errorf("v1 transaction: header requires %d signatures (%d bytes) but only %d bytes remain", numSignatures, numSignatures*64, decoder.Remaining())
+	}
+	tx.Signatures = make([]Signature, numSignatures)
+	for i := range tx.Signatures {
+		if _, err := decoder.Read(tx.Signatures[i][:]); err != nil {
+			return fmt.Errorf("unable to read tx.Signatures[%d]: %w", i, err)
 		}
 	}
 	return nil
