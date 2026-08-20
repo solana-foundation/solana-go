@@ -195,8 +195,19 @@ func invokeWith(name string, parts ...any) ([]byte, error) {
 	if len(res) != 1 {
 		return nil, fmt.Errorf("zk: %s returned %d results, want 1", name, len(res))
 	}
+	return f.decodeResult(fn, res[0])
+}
 
-	packed := int64(res[0])
+// decodeResult interprets an export's single return value by its declared
+// result type.
+func (f *frame) decodeResult(fn api.Function, raw uint64) ([]byte, error) {
+	if fn.Definition().ResultTypes()[0] == api.ValueTypeI32 {
+		if status := int32(uint32(raw)); status != OK {
+			return nil, Error(status)
+		}
+		return nil, nil
+	}
+	packed := int64(raw)
 	if packed < 0 {
 		return nil, Error(int32(packed))
 	}
