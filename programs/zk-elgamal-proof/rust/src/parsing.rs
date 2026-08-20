@@ -55,6 +55,14 @@ pub(crate) unsafe fn ae_key(ptr: u32) -> Result<AeKey, i32> {
     AeKey::try_from(input::<AE_KEY_LEN>(ptr)?.as_slice()).map_err(|_| ERR_BAD_INPUT)
 }
 
+/// Validate a lo/hi recombination shift and return 2^bit_length.
+pub(crate) fn two_power(bit_length: u64) -> Result<u64, i32> {
+    if bit_length >= u64::BITS as u64 {
+        return Err(ERR_BAD_INPUT);
+    }
+    Ok(1u64 << bit_length)
+}
+
 /// Copy a fixed-size input out of a host buffer into an owned array.
 pub(crate) unsafe fn input<const N: usize>(ptr: u32) -> Result<[u8; N], i32> {
     let mut buf = [0u8; N];

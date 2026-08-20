@@ -38,6 +38,12 @@ func (kp *ElGamalKeypair) DecryptU32(ct ElGamalCiphertext) (uint64, error) {
 	return toAmount(out, err)
 }
 
+// CombineLoHiCiphertexts computes lo + 2^bitLength·hi.
+func CombineLoHiCiphertexts(lo, hi ElGamalCiphertext, bitLength uint8) (ElGamalCiphertext, error) {
+	out, err := invokeWith("elgamal_combine_lo_hi_ciphertexts", lo[:], hi[:], uint64(bitLength))
+	return toCiphertext(out, err)
+}
+
 // AddCiphertexts homomorphically adds two ciphertexts encrypted under the same public key.
 func AddCiphertexts(a, b ElGamalCiphertext) (ElGamalCiphertext, error) {
 	out, err := invokeWith("elgamal_add_ciphertexts", a[:], b[:])

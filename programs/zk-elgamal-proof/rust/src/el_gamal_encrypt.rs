@@ -3,7 +3,7 @@ use solana_zk_sdk::encryption::elgamal::ElGamalKeypair;
 use crate::{
     constants::{ELGAMAL_KEYPAIR_LEN, ERR_DECRYPTION},
     memory::{stash, stash_u64},
-    parsing::{ciphertext, opening, pubkey, secret_key, try_status},
+    parsing::{ciphertext, opening, pubkey, secret_key, try_status, two_power},
 };
 
 #[no_mangle]
@@ -59,6 +59,19 @@ pub unsafe extern "C" fn elgamal_sub_ciphertexts(left_ptr: u32, right_ptr: u32) 
     let left = try_status!(ciphertext(left_ptr));
     let right = try_status!(ciphertext(right_ptr));
     stash(&(left - right).to_bytes())
+}
+
+/// lo + hi·2^bit_length
+#[no_mangle]
+pub unsafe extern "C" fn elgamal_combine_lo_hi_ciphertexts(
+    lo_ptr: u32,
+    hi_ptr: u32,
+    bit_length: u64,
+) -> i64 {
+    let lo = try_status!(ciphertext(lo_ptr));
+    let hi = try_status!(ciphertext(hi_ptr));
+    let two_power = try_status!(two_power(bit_length));
+    stash(&(lo + hi * two_power).to_bytes())
 }
 
 #[no_mangle]

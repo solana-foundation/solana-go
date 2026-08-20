@@ -33,3 +33,35 @@ func NewPedersenOpening() (PedersenOpening, error) {
 	err = copyOut(opening[:], out, err)
 	return opening, err
 }
+
+// CombineLoHiCommitments computes lo + 2^bitLength·hi.
+func CombineLoHiCommitments(lo, hi PedersenCommitment, bitLength uint8) (PedersenCommitment, error) {
+	var commitment PedersenCommitment
+	out, err := invokeWith("pedersen_combine_lo_hi_commitments", lo[:], hi[:], uint64(bitLength))
+	err = copyOut(commitment[:], out, err)
+	return commitment, err
+}
+
+// CombineLoHiOpenings computes lo + 2^bitLength·hi.
+func CombineLoHiOpenings(lo, hi PedersenOpening, bitLength uint8) (PedersenOpening, error) {
+	var opening PedersenOpening
+	out, err := invokeWith("pedersen_combine_lo_hi_openings", lo[:], hi[:], uint64(bitLength))
+	err = copyOut(opening[:], out, err)
+	return opening, err
+}
+
+// SubtractCommitments computes a - b.
+func SubtractCommitments(a, b PedersenCommitment) (PedersenCommitment, error) {
+	var commitment PedersenCommitment
+	out, err := invokeWith("pedersen_sub_commitments", a[:], b[:])
+	err = copyOut(commitment[:], out, err)
+	return commitment, err
+}
+
+// SubtractOpenings computes a - b.
+func SubtractOpenings(a, b PedersenOpening) (PedersenOpening, error) {
+	var opening PedersenOpening
+	out, err := invokeWith("pedersen_sub_openings", a[:], b[:])
+	err = copyOut(opening[:], out, err)
+	return opening, err
+}
