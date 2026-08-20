@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"flag"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -490,6 +491,22 @@ func TestCreateWithSeed(t *testing.T) {
 		got, err := CreateWithSeed(PublicKey{}, "limber chicken: 4/45", PublicKey{})
 		require.NoError(t, err)
 		require.True(t, got.Equals(MustPublicKeyFromBase58("9h1HyLCW5dZnBVap8C5egQ9Z6pHyjsh5MNy83iPqqRuq")))
+	}
+	{
+		// An owner ending with the PDA marker must be rejected, matching
+		// solana-labs Pubkey::create_with_seed, so the derived address can
+		// never collide with a program-derived address.
+		var owner PublicKey
+		marker := []byte(PDA_MARKER)
+		copy(owner[PublicKeyLength-len(marker):], marker)
+
+		_, err := CreateWithSeed(PublicKey{}, "seed", owner)
+		require.ErrorIs(t, err, ErrIllegalOwner)
+	}
+	{
+		// A seed longer than MaxSeedLength is rejected.
+		_, err := CreateWithSeed(PublicKey{}, strings.Repeat("a", MaxSeedLength+1), PublicKey{})
+		require.ErrorIs(t, err, ErrMaxSeedLengthExceeded)
 	}
 }
 
