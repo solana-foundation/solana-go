@@ -2,6 +2,7 @@ package solana
 
 import (
 	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/hex"
 	"testing"
 
@@ -379,6 +380,42 @@ func TestV1_InvalidTransactionDiscriminator(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid transaction discriminator")
 	}
+}
+
+// SIMD-0385: no trailing data after the signatures. Slice-level decoding is
+// strict for v1; the streaming decoder stays lenient (wincode parity), and
+// legacy/v0 slices keep their historical lenient behavior.
+func TestV1_TrailingBytesRejected(t *testing.T) {
+	raw := mustHex(t, v1GoldenTxFeeHeap)
+	padded := append(append([]byte{}, raw...), 0x00)
+
+	_, err := TransactionFromBytes(padded)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "trailing bytes")
+	_, err = TransactionFromBase64(base64.StdEncoding.EncodeToString(padded))
+	require.Error(t, err)
+
+	// Exact bytes still decode.
+	_, err = TransactionFromBytes(raw)
+	require.NoError(t, err)
+
+	// Streaming decode is lenient and leaves the extra byte unread.
+	decoder := bin.NewBinDecoder(padded)
+	tx, err := TransactionFromDecoder(decoder)
+	require.NoError(t, err)
+	assert.Equal(t, MessageVersionV1, tx.Message.GetVersion())
+	assert.Equal(t, 1, decoder.Remaining())
+
+	// Legacy transactions with trailing bytes remain accepted.
+	legacyTx, err := NewTransaction(
+		[]Instruction{NewInstruction(pubkeyRepeat(0x10), AccountMetaSlice{Meta(newUniqueKey()).WRITE().SIGNER()}, []byte{1})},
+		uniqueHash(),
+	)
+	require.NoError(t, err)
+	legacyRaw, err := legacyTx.MarshalBinary()
+	require.NoError(t, err)
+	_, err = TransactionFromBytes(append(legacyRaw, 0x00))
+	require.NoError(t, err)
 }
 
 // A decoded header cannot require more signatures than there are keys.

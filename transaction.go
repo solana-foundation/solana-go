@@ -88,9 +88,19 @@ func TransactionFromDecoder(decoder *bin.Decoder) (*Transaction, error) {
 	return out, nil
 }
 
+// TransactionFromBytes decodes a transaction from the whole slice.
+// For v1, trailing bytes are rejected (SIMD-0385); legacy/v0 stay lenient.
+// Streaming callers can use TransactionFromDecoder, which is always lenient.
 func TransactionFromBytes(data []byte) (*Transaction, error) {
 	decoder := bin.NewBinDecoder(data)
-	return TransactionFromDecoder(decoder)
+	tx, err := TransactionFromDecoder(decoder)
+	if err != nil {
+		return nil, err
+	}
+	if tx.Message.version == MessageVersionV1 && decoder.Remaining() > 0 {
+		return nil, fmt.Errorf("v1 transaction: %d trailing bytes after signatures", decoder.Remaining())
+	}
+	return tx, nil
 }
 
 func TransactionFromBase64(b64 string) (*Transaction, error) {
