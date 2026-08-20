@@ -1,22 +1,24 @@
 package zk
 
 import (
-	"bytes"
 	"testing"
 )
 
 func TestPubkeyValidityProof(t *testing.T) {
 	kp := genKeyPair(t)
-	proof, err := PubkeyValidityProof(kp)
+	proof, err := NewPubkeyValidityProofData(kp)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if proof.Context.Pubkey != kp.Pubkey {
+		t.Fatal("proof context does not echo the proved pubkey")
 	}
 	if err := proof.Verify(); err != nil {
 		t.Fatalf("valid proof rejected: %v", err)
 	}
 
-	tampered := &Proof{Type: proof.Type, Data: bytes.Clone(proof.Data)}
-	tampered.Data[len(tampered.Data)-1] ^= 0x01
+	tampered := *proof
+	tampered.Proof[len(tampered.Proof)-1] ^= 0x01
 	err = tampered.Verify()
 	if err == nil {
 		t.Fatal("tampered proof verified")
@@ -30,7 +32,7 @@ func TestZeroCiphertextProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof, err := ZeroCiphertextProof(kp, ct)
+	proof, err := NewZeroCiphertextProofData(kp, ct)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,9 +52,12 @@ func TestCiphertextCommitmentEqualityProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof, err := CiphertextCommitmentEqualityProof(kp, ct, commitment, opening, amount)
+	proof, err := NewCiphertextCommitmentEqualityProofData(kp, ct, commitment, opening, amount)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if proof.Context.Ciphertext != ct || proof.Context.Commitment != commitment {
+		t.Fatal("proof context does not echo the proved ciphertext and commitment")
 	}
 	if err := proof.Verify(); err != nil {
 		t.Fatalf("valid proof rejected: %v", err)
@@ -63,7 +68,7 @@ func TestCiphertextCommitmentEqualityProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = CiphertextCommitmentEqualityProof(kp, wrongCt, commitment, opening, amount)
+	_, err = NewCiphertextCommitmentEqualityProofData(kp, wrongCt, commitment, opening, amount)
 	expectStatusError(t, err, PROOF_GENERATION_ERROR)
 }
 
@@ -84,7 +89,7 @@ func TestCiphertextCiphertextEqualityProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof, err := CiphertextCiphertextEqualityProof(source, dest.Pubkey, sourceCt, destCt, destOpening, amount)
+	proof, err := NewCiphertextCiphertextEqualityProofData(source, dest.Pubkey, sourceCt, destCt, destOpening, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +118,7 @@ func TestPercentageWithCapProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof, err := PercentageWithCapProof(
+	proof, err := NewPercentageWithCapProofData(
 		percentageCommitment, percentageOpening, percentageAmount,
 		deltaCommitment, deltaOpening, deltaAmount,
 		claimedCommitment, claimedOpening, maxValue)
@@ -137,9 +142,12 @@ func TestBatchedRangeProofU64(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	proof, err := BatchedRangeProofU64(commitments, amounts, bitLengths, openings)
+	proof, err := NewBatchedRangeProofU64Data(commitments, amounts, bitLengths, openings)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if proof.Context.Commitments[0] != commitments[0] || proof.Context.BitLengths[1] != 32 {
+		t.Fatal("range proof context does not echo the committed inputs")
 	}
 	if err := proof.Verify(); err != nil {
 		t.Fatalf("valid proof rejected: %v", err)
@@ -147,14 +155,14 @@ func TestBatchedRangeProofU64(t *testing.T) {
 
 	// Bit lengths that do not sum to 64 are rejected before reaching the
 	// prover.
-	if _, err := BatchedRangeProofU64(commitments, amounts, []uint8{32, 16}, openings); err == nil {
+	if _, err := NewBatchedRangeProofU64Data(commitments, amounts, []uint8{32, 16}, openings); err == nil {
 		t.Fatal("bit lengths summing to 48 accepted for a u64 range proof")
 	}
 
 	// An amount inconsistent with its commitment yields a proof that fails
 	// verification (the builder does not validate consistency up front).
 	inconsistent := []uint64{amounts[0] + 1, amounts[1]}
-	badProof, err := BatchedRangeProofU64(commitments, inconsistent, bitLengths, openings)
+	badProof, err := NewBatchedRangeProofU64Data(commitments, inconsistent, bitLengths, openings)
 	if err == nil {
 		if err := badProof.Verify(); err == nil {
 			t.Fatal("proof over inconsistent amounts verified")
@@ -177,7 +185,7 @@ func TestBatchedRangeProofU256(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	proof, err := BatchedRangeProofU256(commitments, amounts, bitLengths, openings)
+	proof, err := NewBatchedRangeProofU256Data(commitments, amounts, bitLengths, openings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +210,7 @@ func TestGroupedCiphertextValidityProofs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof2, err := GroupedCiphertext2HandlesValidityProof(pubkeys2, grouped2, amount, opening)
+	proof2, err := NewGroupedCiphertext2HandlesValidityProofData(pubkeys2, grouped2, amount, opening)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +222,7 @@ func TestGroupedCiphertextValidityProofs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof3, err := GroupedCiphertext3HandlesValidityProof(pubkeys3, grouped3, amount, opening)
+	proof3, err := NewGroupedCiphertext3HandlesValidityProofData(pubkeys3, grouped3, amount, opening)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +253,7 @@ func TestBatchedGroupedCiphertext2HandlesValidityProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof, err := BatchedGroupedCiphertext2HandlesValidityProof(
+	proof, err := NewBatchedGroupedCiphertext2HandlesValidityProofData(
 		pubkeys, groupedLo, groupedHi, amountLo, amountHi, openingLo, openingHi)
 	if err != nil {
 		t.Fatal(err)

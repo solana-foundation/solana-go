@@ -53,7 +53,7 @@ type AeKey [16]byte
 // Authenticated encryption of a u64 amount.
 type AeCiphertext [36]byte
 
-// ProofType tags a generated proof for verification.
+// ProofType tags proof data for verification.
 type ProofType uint32
 
 const (
@@ -70,12 +70,3 @@ const (
 	ProofTypeGroupedCiphertext3HandlesValidity        ProofType = 11
 	ProofTypeBatchedGroupedCiphertext3HandlesValidity ProofType = 12
 )
-
-type Proof struct {
-	Type ProofType
-	Data []byte
-}
-
-func (p *Proof) Verify() error {
-	return invokeStatus("zk_verify_proof", uint64(p.Type), p.Data)
-}

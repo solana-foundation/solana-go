@@ -13,7 +13,7 @@ func TestConcurrentProofGeneration(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			proof, err := PubkeyValidityProof(kp)
+			proof, err := NewPubkeyValidityProofData(kp)
 			if err != nil {
 				errs <- err
 				return
