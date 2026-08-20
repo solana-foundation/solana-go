@@ -2,6 +2,7 @@ package zk
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	_ "embed"
 	"encoding/binary"
 	"errors"
@@ -62,8 +63,11 @@ func acquireInstance() (api.Module, error) {
 	}
 	ctx := context.Background()
 
-	// Configure as anonymous library module
-	cfg := wazero.NewModuleConfig().WithName("").WithStartFunctions() // WASI reactor: suppress _start
+	// Configure as anonymous library module.
+	cfg := wazero.NewModuleConfig().
+		WithName("").
+		WithStartFunctions().             // WASI reactor: suppress _start
+		WithRandSource(cryptorand.Reader) // Randomness source must be set explicitly, wazero's default uses fixed seed
 	mod, err := wasmRuntime.InstantiateModule(ctx, wasmCompiled, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("zk: instantiating bridge module: %w", err)
