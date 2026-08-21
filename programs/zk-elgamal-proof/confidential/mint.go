@@ -55,12 +55,12 @@ func MintSplitProofData(
 	}
 
 	// New supply = current supply + (lo + 2^16 * hi)
-	combined, err := mintAmountLoHiCiphertextValidityProof.combinedCiphertextForHandle(1, MintAmountLoBits)
+	mintAmountCiphertext, err := mintAmountLoHiCiphertextValidityProof.combinedCiphertextForHandle(1, MintAmountLoBits)
 	if err != nil {
 		return nil, err
 	}
-	equality, newSupplyCommitment, newSupplyOpening, err := proveCiphertextSum(
-		supplyKeypair, currentSupplyCiphertext, combined, newSupplyPlaintext)
+	newSupplyCiphertextValidityProof, newSupplyCommitment, newSupplyOpening, err := proveCiphertextSum(
+		supplyKeypair, currentSupplyCiphertext, mintAmountCiphertext, newSupplyPlaintext)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func MintSplitProofData(
 	}
 
 	return &MintProofData{
-		SupplyEqualityProofData:                   equality,
+		SupplyEqualityProofData:                   newSupplyCiphertextValidityProof,
 		CiphertextValidityProofDataWithCiphertext: mintAmountLoHiCiphertextValidityProof,
 		RangeProofData:                            rangeProof,
 	}, nil
