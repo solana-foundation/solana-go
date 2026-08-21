@@ -1,18 +1,20 @@
-package zk
+package encryption_test
 
 import (
 	"testing"
+
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
 )
 
 func TestPedersenCommitmentConsistency(t *testing.T) {
 	const amount = 987_654
-	commitment, opening, err := NewPedersenCommitment(amount)
+	commitment, opening, err := encryption.NewPedersenCommitment(amount)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Recommitting with the returned opening must reproduce the commitment.
-	again, err := PedersenCommitmentWith(amount, opening)
+	again, err := encryption.PedersenCommitmentWith(amount, opening)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +23,7 @@ func TestPedersenCommitmentConsistency(t *testing.T) {
 	}
 
 	// A different amount under the same opening must commit differently.
-	other, err := PedersenCommitmentWith(amount+1, opening)
+	other, err := encryption.PedersenCommitmentWith(amount+1, opening)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,11 +33,11 @@ func TestPedersenCommitmentConsistency(t *testing.T) {
 }
 
 func TestNewPedersenOpeningIsRandom(t *testing.T) {
-	a, err := NewPedersenOpening()
+	a, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := NewPedersenOpening()
+	b, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}

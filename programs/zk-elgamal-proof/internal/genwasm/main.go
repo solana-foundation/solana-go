@@ -67,7 +67,7 @@ func run(check bool) error {
 		return fmt.Errorf("reading build output: %w", err)
 	}
 	sum := sha256.Sum256(built)
-	installed := filepath.Join(pkgDir, wasmName)
+	installed := filepath.Join(pkgDir, "internal", "bridge", wasmName)
 	if check {
 		current, err := os.ReadFile(installed)
 		if err != nil {

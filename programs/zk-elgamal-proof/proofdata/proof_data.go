@@ -1,8 +1,11 @@
-package zk
+package proofdata
 
 import (
 	"encoding/binary"
 	"fmt"
+
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/bridge"
 )
 
 // ProofData is implemented by every proof data type.
@@ -19,7 +22,7 @@ type ProofData interface {
 }
 
 func verifyProofData(p ProofData) error {
-	return invokeStatus("zk_verify_proof", uint64(p.ProofType()), p.Bytes())
+	return bridge.InvokeStatus("zk_verify_proof", uint64(p.ProofType()), p.Bytes())
 }
 
 // Pod sigma and range proofs, sized like their Rust counterparts.
@@ -50,8 +53,8 @@ type ZeroCiphertextProofData struct {
 }
 
 type ZeroCiphertextProofContext struct {
-	Pubkey     ElGamalPubkey
-	Ciphertext ElGamalCiphertext
+	Pubkey     encryption.ElGamalPubkey
+	Ciphertext encryption.ElGamalCiphertext
 }
 
 func (p *ZeroCiphertextProofData) fields() [][]byte {
@@ -69,10 +72,10 @@ type CiphertextCiphertextEqualityProofData struct {
 }
 
 type CiphertextCiphertextEqualityProofContext struct {
-	FirstPubkey      ElGamalPubkey
-	SecondPubkey     ElGamalPubkey
-	FirstCiphertext  ElGamalCiphertext
-	SecondCiphertext ElGamalCiphertext
+	FirstPubkey      encryption.ElGamalPubkey
+	SecondPubkey     encryption.ElGamalPubkey
+	FirstCiphertext  encryption.ElGamalCiphertext
+	SecondCiphertext encryption.ElGamalCiphertext
 }
 
 func (p *CiphertextCiphertextEqualityProofData) fields() [][]byte {
@@ -93,9 +96,9 @@ type CiphertextCommitmentEqualityProofData struct {
 }
 
 type CiphertextCommitmentEqualityProofContext struct {
-	Pubkey     ElGamalPubkey
-	Ciphertext ElGamalCiphertext
-	Commitment PedersenCommitment
+	Pubkey     encryption.ElGamalPubkey
+	Ciphertext encryption.ElGamalCiphertext
+	Commitment encryption.PedersenCommitment
 }
 
 func (p *CiphertextCommitmentEqualityProofData) fields() [][]byte {
@@ -115,7 +118,7 @@ type PubkeyValidityProofData struct {
 }
 
 type PubkeyValidityProofContext struct {
-	Pubkey ElGamalPubkey
+	Pubkey encryption.ElGamalPubkey
 }
 
 func (p *PubkeyValidityProofData) fields() [][]byte {
@@ -133,9 +136,9 @@ type PercentageWithCapProofData struct {
 }
 
 type PercentageWithCapProofContext struct {
-	PercentageCommitment PedersenCommitment
-	DeltaCommitment      PedersenCommitment
-	ClaimedCommitment    PedersenCommitment
+	PercentageCommitment encryption.PedersenCommitment
+	DeltaCommitment      encryption.PedersenCommitment
+	ClaimedCommitment    encryption.PedersenCommitment
 	MaxValue             PodU64
 }
 
@@ -153,7 +156,7 @@ const MaxRangeProofCommitments = 8
 
 // BatchedRangeProofContext is the context shared by the batched range proofs.
 type BatchedRangeProofContext struct {
-	Commitments [MaxRangeProofCommitments]PedersenCommitment
+	Commitments [MaxRangeProofCommitments]encryption.PedersenCommitment
 	BitLengths  [MaxRangeProofCommitments]uint8
 }
 
@@ -215,9 +218,9 @@ type GroupedCiphertext2HandlesValidityProofData struct {
 }
 
 type GroupedCiphertext2HandlesValidityProofContext struct {
-	FirstPubkey       ElGamalPubkey
-	SecondPubkey      ElGamalPubkey
-	GroupedCiphertext GroupedElGamalCiphertext2
+	FirstPubkey       encryption.ElGamalPubkey
+	SecondPubkey      encryption.ElGamalPubkey
+	GroupedCiphertext encryption.GroupedElGamalCiphertext2
 }
 
 func (p *GroupedCiphertext2HandlesValidityProofData) fields() [][]byte {
@@ -241,10 +244,10 @@ type BatchedGroupedCiphertext2HandlesValidityProofData struct {
 }
 
 type BatchedGroupedCiphertext2HandlesValidityProofContext struct {
-	FirstPubkey         ElGamalPubkey
-	SecondPubkey        ElGamalPubkey
-	GroupedCiphertextLo GroupedElGamalCiphertext2
-	GroupedCiphertextHi GroupedElGamalCiphertext2
+	FirstPubkey         encryption.ElGamalPubkey
+	SecondPubkey        encryption.ElGamalPubkey
+	GroupedCiphertextLo encryption.GroupedElGamalCiphertext2
+	GroupedCiphertextHi encryption.GroupedElGamalCiphertext2
 }
 
 func (p *BatchedGroupedCiphertext2HandlesValidityProofData) fields() [][]byte {
@@ -269,10 +272,10 @@ type GroupedCiphertext3HandlesValidityProofData struct {
 }
 
 type GroupedCiphertext3HandlesValidityProofContext struct {
-	FirstPubkey       ElGamalPubkey
-	SecondPubkey      ElGamalPubkey
-	ThirdPubkey       ElGamalPubkey
-	GroupedCiphertext GroupedElGamalCiphertext3
+	FirstPubkey       encryption.ElGamalPubkey
+	SecondPubkey      encryption.ElGamalPubkey
+	ThirdPubkey       encryption.ElGamalPubkey
+	GroupedCiphertext encryption.GroupedElGamalCiphertext3
 }
 
 func (p *GroupedCiphertext3HandlesValidityProofData) fields() [][]byte {
@@ -296,11 +299,11 @@ type BatchedGroupedCiphertext3HandlesValidityProofData struct {
 }
 
 type BatchedGroupedCiphertext3HandlesValidityProofContext struct {
-	FirstPubkey         ElGamalPubkey
-	SecondPubkey        ElGamalPubkey
-	ThirdPubkey         ElGamalPubkey
-	GroupedCiphertextLo GroupedElGamalCiphertext3
-	GroupedCiphertextHi GroupedElGamalCiphertext3
+	FirstPubkey         encryption.ElGamalPubkey
+	SecondPubkey        encryption.ElGamalPubkey
+	ThirdPubkey         encryption.ElGamalPubkey
+	GroupedCiphertextLo encryption.GroupedElGamalCiphertext3
+	GroupedCiphertextHi encryption.GroupedElGamalCiphertext3
 }
 
 func (p *BatchedGroupedCiphertext3HandlesValidityProofData) fields() [][]byte {
@@ -343,3 +346,21 @@ func readFields(b []byte, fields ...[]byte) error {
 	}
 	return nil
 }
+
+// ProofType tags proof data for verification.
+type ProofType uint32
+
+const (
+	ProofTypeZeroCiphertext                           ProofType = 1
+	ProofTypeCiphertextCiphertextEquality             ProofType = 2
+	ProofTypeCiphertextCommitmentEquality             ProofType = 3
+	ProofTypePubkeyValidity                           ProofType = 4
+	ProofTypePercentageWithCap                        ProofType = 5
+	ProofTypeBatchedRangeProofU64                     ProofType = 6
+	ProofTypeBatchedRangeProofU128                    ProofType = 7
+	ProofTypeBatchedRangeProofU256                    ProofType = 8
+	ProofTypeGroupedCiphertext2HandlesValidity        ProofType = 9
+	ProofTypeBatchedGroupedCiphertext2HandlesValidity ProofType = 10
+	ProofTypeGroupedCiphertext3HandlesValidity        ProofType = 11
+	ProofTypeBatchedGroupedCiphertext3HandlesValidity ProofType = 12
+)

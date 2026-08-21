@@ -1,19 +1,22 @@
-package zk
+package encryption_test
 
 import (
 	"testing"
+
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/zktest"
 )
 
 func TestGroupedElGamalEncrypt3RoundTrip(t *testing.T) {
-	amount := genAmount(t, 1<<32-1)
-	keypairs := [3]*ElGamalKeypair{genKeyPair(t), genKeyPair(t), genKeyPair(t)}
-	pubkeys := [3]ElGamalPubkey{keypairs[0].Pubkey, keypairs[1].Pubkey, keypairs[2].Pubkey}
+	amount := zktest.GenAmount(t, 1<<32-1)
+	keypairs := [3]*encryption.ElGamalKeypair{zktest.GenKeyPair(t), zktest.GenKeyPair(t), zktest.GenKeyPair(t)}
+	pubkeys := [3]encryption.ElGamalPubkey{keypairs[0].Pubkey, keypairs[1].Pubkey, keypairs[2].Pubkey}
 
-	opening, err := NewPedersenOpening()
+	opening, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}
-	grouped, err := GroupedElGamalEncrypt3(pubkeys, amount, opening)
+	grouped, err := encryption.GroupedElGamalEncrypt3(pubkeys, amount, opening)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,15 +46,15 @@ func TestGroupedElGamalEncrypt3RoundTrip(t *testing.T) {
 }
 
 func TestGroupedElGamalEncrypt2RoundTrip(t *testing.T) {
-	amount := genAmount(t, 1<<32-1)
-	keypairs := [2]*ElGamalKeypair{genKeyPair(t), genKeyPair(t)}
-	pubkeys := [2]ElGamalPubkey{keypairs[0].Pubkey, keypairs[1].Pubkey}
+	amount := zktest.GenAmount(t, 1<<32-1)
+	keypairs := [2]*encryption.ElGamalKeypair{zktest.GenKeyPair(t), zktest.GenKeyPair(t)}
+	pubkeys := [2]encryption.ElGamalPubkey{keypairs[0].Pubkey, keypairs[1].Pubkey}
 
-	opening, err := NewPedersenOpening()
+	opening, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}
-	grouped, err := GroupedElGamalEncrypt2(pubkeys, amount, opening)
+	grouped, err := encryption.GroupedElGamalEncrypt2(pubkeys, amount, opening)
 	if err != nil {
 		t.Fatal(err)
 	}

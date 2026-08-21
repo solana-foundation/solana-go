@@ -1,12 +1,14 @@
-package zk
+package proofdata
 
 import (
 	"sync"
 	"testing"
+
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/zktest"
 )
 
 func TestConcurrentProofGeneration(t *testing.T) {
-	kp := genKeyPair(t)
+	kp := zktest.GenKeyPair(t)
 	var wg sync.WaitGroup
 	errs := make(chan error, 8)
 	for i := 0; i < 8; i++ {

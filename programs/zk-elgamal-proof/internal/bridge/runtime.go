@@ -1,4 +1,4 @@
-package zk
+package bridge
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+
+	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
 )
 
 // Solana-zk-sdk Rust prover compiled to wasm32.
@@ -160,7 +162,7 @@ func (f *frame) write(b []byte) (uint64, error) {
 	// zk_alloc returns 0 to signal allocation failure
 	ptr := uint32(res[0])
 	if ptr == 0 {
-		return 0, Error(OOM)
+		return 0, zk.Error(zk.OOM)
 	}
 	f.allocs = append(f.allocs, span{ptr, uint32(len(b))})
 	if !f.inst.Memory().Write(ptr, b) {
@@ -169,9 +171,9 @@ func (f *frame) write(b []byte) (uint64, error) {
 	return uint64(ptr), nil
 }
 
-// invokeWith borrows an instance, marshals parts into export arguments, calls the named export,
+// InvokeWith borrows an instance, marshals parts into export arguments, calls the named export,
 // and copies out its result.
-func invokeWith(name string, parts ...any) ([]byte, error) {
+func InvokeWith(name string, parts ...any) ([]byte, error) {
 	f := &frame{}
 	if err := f.acquire(); err != nil {
 		return nil, err
@@ -202,14 +204,14 @@ func invokeWith(name string, parts ...any) ([]byte, error) {
 // result type.
 func (f *frame) decodeResult(fn api.Function, raw uint64) ([]byte, error) {
 	if fn.Definition().ResultTypes()[0] == api.ValueTypeI32 {
-		if status := int32(uint32(raw)); status != OK {
-			return nil, Error(status)
+		if status := int32(uint32(raw)); status != zk.OK {
+			return nil, zk.Error(status)
 		}
 		return nil, nil
 	}
 	packed := int64(raw)
 	if packed < 0 {
-		return nil, Error(int32(packed))
+		return nil, zk.Error(int32(packed))
 	}
 	if packed == 0 {
 		return nil, nil
@@ -247,15 +249,15 @@ func buildArgs(f *frame, parts ...any) ([]uint64, error) {
 	return args, nil
 }
 
-// invokeStatus is invokeWith for exports that return only a status code.
-func invokeStatus(name string, parts ...any) error {
-	_, err := invokeWith(name, parts...)
+// InvokeStatus is InvokeWith for exports that return only a status code.
+func InvokeStatus(name string, parts ...any) error {
+	_, err := InvokeWith(name, parts...)
 	return err
 }
 
-// copyOut copies a guest result into dst, rejecting results whose length does
+// CopyOut copies a guest result into dst, rejecting results whose length does
 // not match exactly.
-func copyOut(dst, out []byte, err error) error {
+func CopyOut(dst, out []byte, err error) error {
 	if err != nil {
 		return err
 	}
@@ -266,8 +268,15 @@ func copyOut(dst, out []byte, err error) error {
 	return nil
 }
 
-// toAmount decodes a guest result holding a little-endian u64 amount.
-func toAmount(out []byte, err error) (uint64, error) {
+// Zeroize clears a transient buffer holding secret material.
+func Zeroize(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
+}
+
+// ToAmount decodes a guest result holding a little-endian u64 amount.
+func ToAmount(out []byte, err error) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}

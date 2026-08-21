@@ -26,14 +26,6 @@ var (
 	ErrOutOfMemory       = errors.New("zk: out of memory")
 )
 
-// Proof-generation errors, mirroring TokenProofGenerationError in the
-// spl-token confidential-transfer proof-generation crate.
-var (
-	ErrNotEnoughFunds         = errors.New("zk: not enough funds in account")
-	ErrIllegalAmountBitLength = errors.New("zk: amount has illegal bit length")
-	ErrFeeCalculation         = errors.New("zk: fee calculation failed")
-)
-
 // Error maps a prover status code to its sentinel error.
 func Error(status int32) error {
 	switch status {

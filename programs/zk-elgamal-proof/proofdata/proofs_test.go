@@ -1,11 +1,15 @@
-package zk
+package proofdata
 
 import (
 	"testing"
+
+	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/zktest"
 )
 
 func TestPubkeyValidityProof(t *testing.T) {
-	kp := genKeyPair(t)
+	kp := zktest.GenKeyPair(t)
 	proof, err := NewPubkeyValidityProofData(kp)
 	if err != nil {
 		t.Fatal(err)
@@ -23,11 +27,11 @@ func TestPubkeyValidityProof(t *testing.T) {
 	if err == nil {
 		t.Fatal("tampered proof verified")
 	}
-	expectStatusError(t, err, PROOF_VERIFICATION_ERROR)
+	zktest.ExpectStatusError(t, err, zk.PROOF_VERIFICATION_ERROR)
 }
 
 func TestZeroCiphertextProof(t *testing.T) {
-	kp := genKeyPair(t)
+	kp := zktest.GenKeyPair(t)
 	ct, err := kp.Pubkey.Encrypt(0)
 	if err != nil {
 		t.Fatal(err)
@@ -42,13 +46,13 @@ func TestZeroCiphertextProof(t *testing.T) {
 }
 
 func TestCiphertextCommitmentEqualityProof(t *testing.T) {
-	amount := genAmount(t, 1<<32-2) // headroom for the amount+1 mismatch case
-	kp := genKeyPair(t)
+	amount := zktest.GenAmount(t, 1<<32-2) // headroom for the amount+1 mismatch case
+	kp := zktest.GenKeyPair(t)
 	ct, err := kp.Pubkey.Encrypt(amount)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commitment, opening, err := NewPedersenCommitment(amount)
+	commitment, opening, err := encryption.NewPedersenCommitment(amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,19 +73,19 @@ func TestCiphertextCommitmentEqualityProof(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = NewCiphertextCommitmentEqualityProofData(kp, wrongCt, commitment, opening, amount)
-	expectStatusError(t, err, PROOF_GENERATION_ERROR)
+	zktest.ExpectStatusError(t, err, zk.PROOF_GENERATION_ERROR)
 }
 
 func TestCiphertextCiphertextEqualityProof(t *testing.T) {
-	amount := genAmount(t, 1<<32-1)
-	source := genKeyPair(t)
-	dest := genKeyPair(t)
+	amount := zktest.GenAmount(t, 1<<32-1)
+	source := zktest.GenKeyPair(t)
+	dest := zktest.GenKeyPair(t)
 
 	sourceCt, err := source.Pubkey.Encrypt(amount)
 	if err != nil {
 		t.Fatal(err)
 	}
-	destOpening, err := NewPedersenOpening()
+	destOpening, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,16 +109,16 @@ func TestPercentageWithCapProof(t *testing.T) {
 		maxValue         = 3
 		percentageAmount = 3
 	)
-	deltaAmount := genAmount(t, 1<<32-1)
-	percentageCommitment, percentageOpening, err := NewPedersenCommitment(percentageAmount)
+	deltaAmount := zktest.GenAmount(t, 1<<32-1)
+	percentageCommitment, percentageOpening, err := encryption.NewPedersenCommitment(percentageAmount)
 	if err != nil {
 		t.Fatal(err)
 	}
-	deltaCommitment, deltaOpening, err := NewPedersenCommitment(deltaAmount)
+	deltaCommitment, deltaOpening, err := encryption.NewPedersenCommitment(deltaAmount)
 	if err != nil {
 		t.Fatal(err)
 	}
-	claimedCommitment, claimedOpening, err := NewPedersenCommitment(deltaAmount)
+	claimedCommitment, claimedOpening, err := encryption.NewPedersenCommitment(deltaAmount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,13 +135,13 @@ func TestPercentageWithCapProof(t *testing.T) {
 }
 
 func TestBatchedRangeProofU64(t *testing.T) {
-	amounts := []uint64{genAmount(t, 1<<32-1), genAmount(t, 1<<32-1)}
+	amounts := []uint64{zktest.GenAmount(t, 1<<32-1), zktest.GenAmount(t, 1<<32-1)}
 	bitLengths := []uint8{32, 32}
-	commitments := make([]PedersenCommitment, len(amounts))
-	openings := make([]PedersenOpening, len(amounts))
+	commitments := make([]encryption.PedersenCommitment, len(amounts))
+	openings := make([]encryption.PedersenOpening, len(amounts))
 	for i, amount := range amounts {
 		var err error
-		commitments[i], openings[i], err = NewPedersenCommitment(amount)
+		commitments[i], openings[i], err = encryption.NewPedersenCommitment(amount)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -172,15 +176,15 @@ func TestBatchedRangeProofU64(t *testing.T) {
 
 func TestBatchedRangeProofU256(t *testing.T) {
 	amounts := []uint64{
-		genAmount(t, 1<<63), genAmount(t, 1<<63),
-		genAmount(t, 1<<63), genAmount(t, 1<<63),
+		zktest.GenAmount(t, 1<<63), zktest.GenAmount(t, 1<<63),
+		zktest.GenAmount(t, 1<<63), zktest.GenAmount(t, 1<<63),
 	}
 	bitLengths := []uint8{64, 64, 64, 64}
-	commitments := make([]PedersenCommitment, len(amounts))
-	openings := make([]PedersenOpening, len(amounts))
+	commitments := make([]encryption.PedersenCommitment, len(amounts))
+	openings := make([]encryption.PedersenOpening, len(amounts))
 	for i, amount := range amounts {
 		var err error
-		commitments[i], openings[i], err = NewPedersenCommitment(amount)
+		commitments[i], openings[i], err = encryption.NewPedersenCommitment(amount)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -195,18 +199,18 @@ func TestBatchedRangeProofU256(t *testing.T) {
 }
 
 func TestGroupedCiphertextValidityProofs(t *testing.T) {
-	amount := genAmount(t, 1<<32-1)
-	kp2 := [2]*ElGamalKeypair{genKeyPair(t), genKeyPair(t)}
-	pubkeys2 := [2]ElGamalPubkey{kp2[0].Pubkey, kp2[1].Pubkey}
-	kp3 := [3]*ElGamalKeypair{genKeyPair(t), genKeyPair(t), genKeyPair(t)}
-	pubkeys3 := [3]ElGamalPubkey{kp3[0].Pubkey, kp3[1].Pubkey, kp3[2].Pubkey}
+	amount := zktest.GenAmount(t, 1<<32-1)
+	kp2 := [2]*encryption.ElGamalKeypair{zktest.GenKeyPair(t), zktest.GenKeyPair(t)}
+	pubkeys2 := [2]encryption.ElGamalPubkey{kp2[0].Pubkey, kp2[1].Pubkey}
+	kp3 := [3]*encryption.ElGamalKeypair{zktest.GenKeyPair(t), zktest.GenKeyPair(t), zktest.GenKeyPair(t)}
+	pubkeys3 := [3]encryption.ElGamalPubkey{kp3[0].Pubkey, kp3[1].Pubkey, kp3[2].Pubkey}
 
-	opening, err := NewPedersenOpening()
+	opening, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	grouped2, err := GroupedElGamalEncrypt2(pubkeys2, amount, opening)
+	grouped2, err := encryption.GroupedElGamalEncrypt2(pubkeys2, amount, opening)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +222,7 @@ func TestGroupedCiphertextValidityProofs(t *testing.T) {
 		t.Fatalf("2-handle validity proof rejected: %v", err)
 	}
 
-	grouped3, err := GroupedElGamalEncrypt3(pubkeys3, amount, opening)
+	grouped3, err := encryption.GroupedElGamalEncrypt3(pubkeys3, amount, opening)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,24 +236,24 @@ func TestGroupedCiphertextValidityProofs(t *testing.T) {
 }
 
 func TestBatchedGroupedCiphertext2HandlesValidityProof(t *testing.T) {
-	amountLo := genAmount(t, 1<<16-1)
-	amountHi := genAmount(t, 1<<32-1)
-	kps := [2]*ElGamalKeypair{genKeyPair(t), genKeyPair(t)}
-	pubkeys := [2]ElGamalPubkey{kps[0].Pubkey, kps[1].Pubkey}
+	amountLo := zktest.GenAmount(t, 1<<16-1)
+	amountHi := zktest.GenAmount(t, 1<<32-1)
+	kps := [2]*encryption.ElGamalKeypair{zktest.GenKeyPair(t), zktest.GenKeyPair(t)}
+	pubkeys := [2]encryption.ElGamalPubkey{kps[0].Pubkey, kps[1].Pubkey}
 
-	openingLo, err := NewPedersenOpening()
+	openingLo, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}
-	openingHi, err := NewPedersenOpening()
+	openingHi, err := encryption.NewPedersenOpening()
 	if err != nil {
 		t.Fatal(err)
 	}
-	groupedLo, err := GroupedElGamalEncrypt2(pubkeys, amountLo, openingLo)
+	groupedLo, err := encryption.GroupedElGamalEncrypt2(pubkeys, amountLo, openingLo)
 	if err != nil {
 		t.Fatal(err)
 	}
-	groupedHi, err := GroupedElGamalEncrypt2(pubkeys, amountHi, openingHi)
+	groupedHi, err := encryption.GroupedElGamalEncrypt2(pubkeys, amountHi, openingHi)
 	if err != nil {
 		t.Fatal(err)
 	}
