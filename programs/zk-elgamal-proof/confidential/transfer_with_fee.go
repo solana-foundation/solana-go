@@ -113,7 +113,13 @@ func TransferWithFeeSplitProofData(
 
 	// Combined commitments and openings to the full transfer amount and fee.
 	transferAmountLoCommitment, transferAmountHiCommitment, transferAmountCommitment, transferAmountOpening, err := combineHiLoOpeningsCommitments(transferAmountLoPlaintext, transferAmountHiPlaintext, transferAmountLoOpening, transferAmountHiOpening)
+	if err != nil {
+		return nil, err
+	}
 	feeLoCommitment, feeHiCommitment, combinedFeeCommitment, combinedFeeOpening, err := combineHiLoOpeningsCommitments(feeLoPlaintext, feeHiPlaintext, feeLoOpening, feeHiOpening)
+	if err != nil {
+		return nil, err
+	}
 
 	// Net transfer amount = transfer amount - fee.
 	netCommitment, err := encryption.SubtractCommitments(transferAmountCommitment, combinedFeeCommitment)
