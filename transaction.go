@@ -815,15 +815,12 @@ func countWriteableAccounts(tx *Transaction) (count int) {
 		}
 		return count
 	}
-	numStaticKeys := len(tx.Message.AccountKeys)
+	numStaticKeys := tx.Message.numStaticAccounts()
 	h := tx.Message.Header
 	numSig := int(h.NumRequiredSignatures)
 	numWritableSigned := max(numSig-int(h.NumReadonlySignedAccounts), 0)
 	numWritableUnsigned := max(numStaticKeys-numSig-int(h.NumReadonlyUnsignedAccounts), 0)
 	count += numWritableSigned + numWritableUnsigned
-	if tx.Message.IsResolved() {
-		return count
-	}
 	count += tx.Message.NumWritableLookups()
 	return count
 }

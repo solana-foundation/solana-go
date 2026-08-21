@@ -884,6 +884,40 @@ func TestTransaction_NumWriteableAccounts_V0(t *testing.T) {
 	assert.Equal(t, 2, tx.NumWriteableAccounts())
 }
 
+// Tests NumWriteableAccounts for a RESOLVED V0 transaction whose lookup table
+// contributes a readonly account: the readonly lookup account must not be
+// counted as writable.
+func TestTransaction_NumWriteableAccounts_V0_Resolved(t *testing.T) {
+	payer := newUniqueKey()
+	programID := newUniqueKey()
+	acctA := newUniqueKey() // writable lookup
+	acctB := newUniqueKey() // readonly lookup
+	tableKey := newUniqueKey()
+
+	tables := map[PublicKey]PublicKeySlice{
+		tableKey: {acctA, acctB},
+	}
+
+	tx, err := NewTransaction(
+		[]Instruction{
+			newTestInstruction(programID, []*AccountMeta{
+				{PublicKey: acctA, IsSigner: false, IsWritable: true},
+				{PublicKey: acctB, IsSigner: false, IsWritable: false},
+			}, []byte{0x01}),
+		},
+		Hash{},
+		TransactionPayer(payer),
+		TransactionAddressTables(tables),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, tx.Message.ResolveLookups())
+	require.True(t, tx.Message.IsResolved())
+
+	// payer (writable signer) + acctA (writable lookup) = 2; acctB (readonly lookup) must not count
+	assert.Equal(t, 2, tx.NumWriteableAccounts())
+}
+
 // Tests PartialSign with no signer provided doesn't corrupt state.
 func TestPartialSign_NoSignerProvided(t *testing.T) {
 	signer := NewWallet().PrivateKey
