@@ -1,0 +1,23 @@
+[package]
+name = "solana-zk-sdk-wasm"
+description = "Exposes solana-zk-sdk to WASM32 interpreter"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bytemuck = "1"
+solana-zk-sdk = "=7.0.1"
+solana-zk-elgamal-proof-interface = "=0.1.3"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+

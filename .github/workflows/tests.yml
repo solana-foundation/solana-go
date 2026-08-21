@@ -27,4 +27,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Test
-        run: go test ./... -race -count=100
+        shell: bash
+        # Exclude confidential transfer tests from running 100 times
+        run: go test $(go list ./... | grep -v zk-elgamal-proof) -race -count=100
+      - name: Confidential Transfer Tests
+        shell: bash
+        run: |
+          go test ./programs/zk-elgamal-proof/... -race -count=1
+          # Repeatedly race-check 8 concurrent goroutines generating proofs.
+          go test ./programs/zk-elgamal-proof/proofdata -race -run TestConcurrentProofGeneration -count=20
