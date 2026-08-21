@@ -112,6 +112,12 @@ linters:
       - path: rpc/ws/client\.go
         linters:
           - unused
+      - path: bip39/wordlists
+        linters:
+          - misspell
+      - path: bip39/bip39\.go
+        linters:
+          - staticcheck
 
 formatters:
   enable:

@@ -23,8 +23,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gagliardetto/solana-go/bip39"
 	voied25519 "github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
-	"github.com/tyler-smith/go-bip39"
 )
 
 // SolanaDerivationPath is the default BIP-44 derivation path used by Phantom
