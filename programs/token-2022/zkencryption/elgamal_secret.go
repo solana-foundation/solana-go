@@ -1,7 +1,8 @@
 package zkencryption
 
 import (
-	"crypto/sha3"
+	"crypto/hkdf"
+	"crypto/sha512"
 	"fmt"
 
 	"filippo.io/edwards25519"
@@ -13,39 +14,62 @@ import (
 // encoded in little-endian form (matches curve25519-dalek Scalar::as_bytes).
 const ElGamalSecretKeyLen = 32
 
-// elGamalSigningDomain is the domain-separation prefix prepended to the
-// public seed before signing. It must match b"ElGamalSecretKey" in
-// solana-zk-sdk.
-const elGamalSigningDomain = "ElGamalSecretKey"
+// SigningDomain is the domain-separation prefix for confidential-balances key
+// derivation. It must match HKDF_SALT (b"solana-conf-bal/v1") in solana-zk-sdk
+// (derive_confidential_keys_from_ikm): it is both the message prefix the
+// signer signs and the HKDF salt.
+const SigningDomain = "solana-conf-bal/v1"
 
-// minElGamalSeedLen / maxElGamalSeedLen mirror the bounds enforced in
-// solana-zk-sdk's ElGamalSecretKey::from_seed implementation.
-const (
-	minElGamalSeedLen = ElGamalSecretKeyLen
-	maxElGamalSeedLen = 65535
-)
+// elgamalInfo is the HKDF info string that scopes the ElGamal expansion,
+// matching ELGAMAL_HKDF_INFO in solana-zk-sdk.
+const elgamalInfo = "elgamal"
+
+// elgamalMinSeedLen is the minimum seed length accepted by the ElGamal
+// derivation. It mirrors MINIMUM_SEED_LEN in solana-zk-sdk's
+// derive_confidential_keys_from_ikm (32), which is independent from the AE
+// minimum of 16.
+const elgamalMinSeedLen = ElGamalSecretKeyLen
+
+// maxSeedLen mirrors the maximum bound enforced by solana-zk-sdk's
+// derive_confidential_keys_from_ikm (MAXIMUM_IKM_LEN). It applies to both the
+// AE and ElGamal derivations.
+const maxSeedLen = 65535
 
 // ElGamalSecretKey is a canonical little-endian encoding of a Ristretto/Ed25519
 // scalar mod ell. It is the Token-2022 confidential-transfer ElGamal private
 // key; byte-for-byte equivalent to ElGamalSecretKey::as_bytes in solana-zk-sdk.
 type ElGamalSecretKey [ElGamalSecretKeyLen]byte
 
-// ElGamalSecretKeyFromSeed derives an ElGamal secret key from an entropy seed
-// by computing Scalar::from_bytes_mod_order_wide(SHA3-512(seed)), matching
-// curve25519-dalek's Scalar::hash_from_bytes::<Sha3_512>.
-func ElGamalSecretKeyFromSeed(seed []byte) (ElGamalSecretKey, error) {
-	if len(seed) < minElGamalSeedLen {
+// ConfidentialDerivationMessage returns the canonical confidential-balances
+// derivation message, b"solana-conf-bal/v1" || publicSeed. Mirrors
+// confidential_derivation_message in solana-zk-sdk; this is the exact message
+// a Signer must sign to derive confidential-balances keys.
+func ConfidentialDerivationMessage(publicSeed []byte) []byte {
+	msg := make([]byte, 0, len(SigningDomain)+len(publicSeed))
+	msg = append(msg, SigningDomain...)
+	msg = append(msg, publicSeed...)
+	return msg
+}
+
+// deriveElGamalSecretKey implements the solana-conf-bal/v1 derivation:
+// HKDF-SHA512(salt=SigningDomain, ikm).expand(info="elgamal", 64) reduced via
+// Scalar::from_bytes_mod_order_wide, matching derive_confidential_keys_from_ikm.
+func deriveElGamalSecretKey(ikm []byte) (ElGamalSecretKey, error) {
+	if len(ikm) < elgamalMinSeedLen {
 		return ElGamalSecretKey{}, ErrSeedTooShort
 	}
-	if len(seed) > maxElGamalSeedLen {
+	if len(ikm) > maxSeedLen {
 		return ElGamalSecretKey{}, ErrSeedTooLong
 	}
 
-	h := sha3.Sum512(seed)
-	// SetUniformBytes only errors on wrong input length; Sum512 always
-	// returns 64 bytes, so this branch is unreachable in practice but kept
-	// to avoid an implicit panic if the upstream contract ever changes.
-	s, err := edwards25519.NewScalar().SetUniformBytes(h[:])
+	wide, err := hkdf.Key(sha512.New, ikm, []byte(SigningDomain), elgamalInfo, 64)
+	if err != nil {
+		return ElGamalSecretKey{}, fmt.Errorf("zkencryption: HKDF expand elgamal: %w", err)
+	}
+	// SetUniformBytes performs Scalar::from_bytes_mod_order_wide on 64 bytes.
+	s, err := edwards25519.NewScalar().SetUniformBytes(wide)
+	// wide holds expanded secret material; scrub it before it leaves scope.
+	clear(wide)
 	if err != nil {
 		return ElGamalSecretKey{}, ErrInvalidScalarEncoding
 	}
@@ -55,38 +79,40 @@ func ElGamalSecretKeyFromSeed(seed []byte) (ElGamalSecretKey, error) {
 	return out, nil
 }
 
+// ElGamalSecretKeyFromSeed derives an ElGamal secret key from raw input key
+// material, matching derive_confidential_keys_from_ikm in solana-zk-sdk.
+func ElGamalSecretKeyFromSeed(seed []byte) (ElGamalSecretKey, error) {
+	return deriveElGamalSecretKey(seed)
+}
+
 // ElGamalSecretKeyFromSignature derives an ElGamal secret key from an ed25519
-// signature by using SHA3-512(signature) as the seed. Mirrors
-// ElGamalSecretKey::seed_from_signature + from_seed in solana-zk-sdk.
+// signature over ConfidentialDerivationMessage. Mirrors
+// derive_confidential_keys_from_signature in solana-zk-sdk. An all-zero
+// (default) signature is rejected, matching the Rust implementation.
 func ElGamalSecretKeyFromSignature(sig solana.Signature) (ElGamalSecretKey, error) {
-	h := sha3.Sum512(sig[:])
-	return ElGamalSecretKeyFromSeed(h[:])
+	if sig == (solana.Signature{}) {
+		return ElGamalSecretKey{}, ErrDefaultSignature
+	}
+	return deriveElGamalSecretKey(sig[:])
 }
 
 // ElGamalSecretKeyFromSigner deterministically derives an ElGamal secret key
 // from a Solana signer and a public seed. The signer signs
-// b"ElGamalSecretKey" || publicSeed; the signature is hashed with SHA3-512
-// and fed into ElGamalSecretKeyFromSeed. An all-zero (default) signature is
-// rejected to match the Rust implementation.
+// b"solana-conf-bal/v1" || publicSeed (see ConfidentialDerivationMessage); the
+// signature is fed through the HKDF-SHA512 solana-conf-bal/v1 derivation. The
+// all-zero signature rejection lives in ElGamalSecretKeyFromSignature.
 func ElGamalSecretKeyFromSigner(signer Signer, publicSeed []byte) (ElGamalSecretKey, error) {
-	msg := make([]byte, 0, len(elGamalSigningDomain)+len(publicSeed))
-	msg = append(msg, elGamalSigningDomain...)
-	msg = append(msg, publicSeed...)
-
-	sig, err := signer.Sign(msg)
+	sig, err := signer.Sign(ConfidentialDerivationMessage(publicSeed))
 	if err != nil {
-		return ElGamalSecretKey{}, fmt.Errorf("zkencryption: sign ElGamalSecretKey public seed: %w", err)
-	}
-	if sig == (solana.Signature{}) {
-		return ElGamalSecretKey{}, ErrDefaultSignature
+		return ElGamalSecretKey{}, fmt.Errorf("zkencryption: sign confidential-balances public seed: %w", err)
 	}
 	return ElGamalSecretKeyFromSignature(sig)
 }
 
 // ElGamalSecretKeyFromSeedPhraseAndPassphrase derives an ElGamal secret key
-// from a BIP39 mnemonic and an optional passphrase, matching
-// solana_seed_phrase's PBKDF2-HMAC-SHA512 derivation. Solana does not
-// validate the mnemonic checksum at this layer, and neither do we.
+// from a BIP39 mnemonic and an optional passphrase using the standard BIP39
+// PBKDF2-HMAC-SHA512 seed derivation (2048 iterations, 64-byte output). The
+// seed is used directly as the HKDF input key material.
 func ElGamalSecretKeyFromSeedPhraseAndPassphrase(mnemonic, passphrase string) (ElGamalSecretKey, error) {
 	return ElGamalSecretKeyFromSeed(bip39.NewSeed(mnemonic, passphrase))
 }

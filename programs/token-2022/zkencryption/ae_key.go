@@ -1,7 +1,8 @@
 package zkencryption
 
 import (
-	"crypto/sha3"
+	"crypto/hkdf"
+	"crypto/sha512"
 	"fmt"
 
 	"github.com/gagliardetto/solana-go"
@@ -11,70 +12,76 @@ import (
 // AeKeyLen is the byte length of an authenticated-encryption key (AES-128-GCM-SIV).
 const AeKeyLen = 16
 
-// aeSigningDomain is the domain-separation prefix prepended to the public
-// seed before signing. It must match b"AeKey" in solana-zk-sdk.
-const aeSigningDomain = "AeKey"
+// aeInfo is the HKDF info string that scopes the AE key expansion, matching
+// AE_HKDF_INFO in solana-zk-sdk.
+const aeInfo = "ae"
 
-// minAeSeedLen / maxAeSeedLen mirror the bounds enforced in solana-zk-sdk's
-// SeedDerivable::from_seed implementation for AeKey.
-const (
-	minAeSeedLen = AeKeyLen
-	maxAeSeedLen = 65535
-)
+// aeMinSeedLen is the minimum seed length accepted by the AE derivation. It
+// mirrors MINIMUM_SEED_LEN in solana-zk-sdk's derive_confidential_keys_from_ikm
+// (AE_KEY_LEN = 16), which is independent from the ElGamal minimum of 32.
+const aeMinSeedLen = AeKeyLen
 
 // AeKey is a 128-bit authenticated-encryption key used by the Token-2022
 // confidential-transfer extension to encrypt u64 amounts under AES-128-GCM-SIV.
 type AeKey [AeKeyLen]byte
 
-// AeKeyFromSeed derives an AeKey from an entropy seed by hashing the seed with
-// SHA3-512 and taking the first 16 bytes, matching SeedDerivable::from_seed in
-// solana-zk-sdk.
-func AeKeyFromSeed(seed []byte) (AeKey, error) {
-	if len(seed) < minAeSeedLen {
+// deriveAeKey implements the solana-conf-bal/v1 derivation:
+// HKDF-SHA512(salt=SigningDomain, ikm).expand(info="ae", 16), matching
+// derive_confidential_keys_from_ikm in solana-zk-sdk.
+func deriveAeKey(ikm []byte) (AeKey, error) {
+	if len(ikm) < aeMinSeedLen {
 		return AeKey{}, ErrSeedTooShort
 	}
-	if len(seed) > maxAeSeedLen {
+	if len(ikm) > maxSeedLen {
 		return AeKey{}, ErrSeedTooLong
 	}
-	h := sha3.Sum512(seed)
+
+	key, err := hkdf.Key(sha512.New, ikm, []byte(SigningDomain), aeInfo, AeKeyLen)
+	if err != nil {
+		return AeKey{}, fmt.Errorf("zkencryption: HKDF expand ae: %w", err)
+	}
+
 	var out AeKey
-	copy(out[:], h[:AeKeyLen])
+	copy(out[:], key)
+	// key holds expanded secret material; scrub it before it leaves scope.
+	clear(key)
 	return out, nil
 }
 
-// AeKeyFromSignature derives an AeKey from an ed25519 signature by using
-// SHA3-512(signature) as the seed. Mirrors AeKey::seed_from_signature +
-// from_seed in solana-zk-sdk. No default-signature check is performed here;
-// use AeKeyFromSigner if the signature originates from a local signer.
+// AeKeyFromSeed derives an AeKey from raw input key material, matching
+// derive_confidential_keys_from_ikm in solana-zk-sdk.
+func AeKeyFromSeed(seed []byte) (AeKey, error) {
+	return deriveAeKey(seed)
+}
+
+// AeKeyFromSignature derives an AeKey from an ed25519 signature over
+// ConfidentialDerivationMessage. Mirrors derive_confidential_keys_from_signature
+// in solana-zk-sdk. An all-zero (default) signature is rejected, matching the
+// Rust implementation.
 func AeKeyFromSignature(sig solana.Signature) (AeKey, error) {
-	h := sha3.Sum512(sig[:])
-	return AeKeyFromSeed(h[:])
+	if sig == (solana.Signature{}) {
+		return AeKey{}, ErrDefaultSignature
+	}
+	return deriveAeKey(sig[:])
 }
 
 // AeKeyFromSigner deterministically derives an AeKey from a Solana signer and
-// a public seed. The signer signs b"AeKey" || publicSeed; the signature is
-// then hashed with SHA3-512 and the result fed into AeKeyFromSeed. An
-// all-zero (default) signature is rejected, matching the Rust implementation.
+// a public seed. The signer signs b"solana-conf-bal/v1" || publicSeed (see
+// ConfidentialDerivationMessage); the signature is fed through the HKDF-SHA512
+// solana-conf-bal/v1 derivation. The all-zero signature rejection lives in
+// AeKeyFromSignature.
 func AeKeyFromSigner(signer Signer, publicSeed []byte) (AeKey, error) {
-	msg := make([]byte, 0, len(aeSigningDomain)+len(publicSeed))
-	msg = append(msg, aeSigningDomain...)
-	msg = append(msg, publicSeed...)
-
-	sig, err := signer.Sign(msg)
+	sig, err := signer.Sign(ConfidentialDerivationMessage(publicSeed))
 	if err != nil {
-		return AeKey{}, fmt.Errorf("zkencryption: sign AeKey public seed: %w", err)
-	}
-	if sig == (solana.Signature{}) {
-		return AeKey{}, ErrDefaultSignature
+		return AeKey{}, fmt.Errorf("zkencryption: sign confidential-balances public seed: %w", err)
 	}
 	return AeKeyFromSignature(sig)
 }
 
 // AeKeyFromSeedPhraseAndPassphrase derives an AeKey from a BIP39 mnemonic and
 // an optional passphrase using the standard BIP39 PBKDF2-HMAC-SHA512 seed
-// derivation (2048 iterations, 64-byte output), matching
-// solana_seed_phrase::generate_seed_from_seed_phrase_and_passphrase. Solana
-// does not validate the mnemonic checksum at this layer, and neither do we.
+// derivation (2048 iterations, 64-byte output). The seed is used directly as
+// the HKDF input key material.
 func AeKeyFromSeedPhraseAndPassphrase(mnemonic, passphrase string) (AeKey, error) {
 	return AeKeyFromSeed(bip39.NewSeed(mnemonic, passphrase))
 }
