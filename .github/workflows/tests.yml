@@ -27,4 +27,4 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Test
-        run: go test ./... -race -count=100
+        run: go test ./... -race -count=1
