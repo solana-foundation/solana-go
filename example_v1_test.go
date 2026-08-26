@@ -4,7 +4,7 @@ import (
 	"crypto/ed25519"
 	"fmt"
 
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 )
 
 // ExampleNewTransaction_v1 builds, signs, serializes and decodes a V1

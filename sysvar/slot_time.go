@@ -19,7 +19,7 @@ package sysvar
 // and devnet); clusters with a custom genesis baseline are not modeled.
 
 import (
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 )
 
 // Slot durations selectable by the SIMD-0525 feature gates

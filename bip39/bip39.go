@@ -14,7 +14,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/gagliardetto/solana-go/bip39/wordlists"
+	"github.com/solana-foundation/solana-go/v2/bip39/wordlists"
 	"golang.org/x/crypto/pbkdf2"
 )
 
