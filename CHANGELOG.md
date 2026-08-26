@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.23.0](https://github.com/solana-foundation/solana-go/compare/v1.22.0...v1.23.0) (2026-08-26)
+
+
+### Features
+
+* account state ([#465](https://github.com/solana-foundation/solana-go/issues/465)) ([e02ee68](https://github.com/solana-foundation/solana-go/commit/e02ee68cf554846587b17dbad4c0ff92915db258))
+* make slot time dependent on feature sets ([#483](https://github.com/solana-foundation/solana-go/issues/483)) ([b153d5a](https://github.com/solana-foundation/solana-go/commit/b153d5af4983e3961dc7b67b94b9e17d2224faef))
+* serde token-2022 extensions ([#472](https://github.com/solana-foundation/solana-go/issues/472)) ([e52badb](https://github.com/solana-foundation/solana-go/commit/e52badbfe95a3e1cb8497819c30e1538dde45121))
+* **transaction:** add V1 transaction format SIMD-0385 ([#481](https://github.com/solana-foundation/solana-go/issues/481)) ([9b95d84](https://github.com/solana-foundation/solana-go/commit/9b95d84971be1461933b4cea70beefd4ebaa8e09))
+
+
+### Bug Fixes
+
+* **deps:** Replace deleted go-bip39 dependency with a local copy ([#464](https://github.com/solana-foundation/solana-go/issues/464)) ([580f4c2](https://github.com/solana-foundation/solana-go/commit/580f4c2d520cca5bc9d755ebb952a7b11d9f526c))
+* **keys:** reject PDA-marker owner in CreateWithSeed ([#470](https://github.com/solana-foundation/solana-go/issues/470)) ([64c3d11](https://github.com/solana-foundation/solana-go/commit/64c3d1172a72485ce70a4ce40dab406c288ec21a))
+* **stake:** correct DelegateStake account flags ([#453](https://github.com/solana-foundation/solana-go/issues/453)) ([5571a12](https://github.com/solana-foundation/solana-go/commit/5571a12f86c88ce3472afb0850f720b3b0c51f43))
+* **text:** honour DisableColors in YellowBG ([#468](https://github.com/solana-foundation/solana-go/issues/468)) ([24a553a](https://github.com/solana-foundation/solana-go/commit/24a553a3ab7d658e1d1e14b5421711f96af6f84a))
+* **token:** mark InitializeMultisig member accounts as read-only ([#461](https://github.com/solana-foundation/solana-go/issues/461)) ([e119412](https://github.com/solana-foundation/solana-go/commit/e11941274b6eac46afc24f49b257a8bc6f9c930a))
+* **transaction:** correct NumWriteableAccounts for resolved v0 messages ([#475](https://github.com/solana-foundation/solana-go/issues/475)) ([f8449ac](https://github.com/solana-foundation/solana-go/commit/f8449ac662941c0333a5e0e423e03786ca21997d))
+* **vault:** reject ciphertext shorter than the salt and nonce prefix ([#467](https://github.com/solana-foundation/solana-go/issues/467)) ([2716b50](https://github.com/solana-foundation/solana-go/commit/2716b505cd4bdbdb8a6ba6aeef814adacc90fc17))
+* **ws:** send jsonParsed encoding in ParsedBlockSubscribe with nil options ([#466](https://github.com/solana-foundation/solana-go/issues/466)) ([f20c907](https://github.com/solana-foundation/solana-go/commit/f20c907f5a31824a8d2f117c6fdb047a00292575))
+
+
+### Performance Improvements
+
+* **base58:** add AVX2 ([#479](https://github.com/solana-foundation/solana-go/issues/479)) ([f839fd7](https://github.com/solana-foundation/solana-go/commit/f839fd705dce460fded8ad92e16c2315bd71eb5e))
+
 ## [1.22.0](https://github.com/solana-foundation/solana-go/compare/v1.21.0...v1.22.0) (2026-06-30)
 
 
