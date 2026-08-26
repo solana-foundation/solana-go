@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/gagliardetto/solana-go/bip39/wordlists"
+	"github.com/solana-foundation/solana-go/v2/bip39/wordlists"
 )
 
 type vector struct {

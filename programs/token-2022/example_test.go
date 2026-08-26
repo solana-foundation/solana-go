@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	token2022 "github.com/gagliardetto/solana-go/programs/token-2022"
+	token2022 "github.com/solana-foundation/solana-go/v2/programs/token-2022"
 )
 
 // xStockMintAccountData is the on-chain account data of the token-2022 mint
