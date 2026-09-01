@@ -60,7 +60,7 @@ type BlockReward struct {
 	// Account balance in lamports after the reward was applied.
 	PostBalance uint64 `json:"postBalance"`
 
-	// Type of reward: "Fee", "Rent", "Voting", "Staking".
+	// Type of reward: "Fee", "Rent", "Voting", "Staking", "DeactivatedStake".
 	RewardType RewardType `json:"rewardType"`
 
 	// Vote account commission when the reward was credited,
@@ -71,10 +71,11 @@ type BlockReward struct {
 type RewardType string
 
 const (
-	RewardTypeFee     RewardType = "Fee"
-	RewardTypeRent    RewardType = "Rent"
-	RewardTypeVoting  RewardType = "Voting"
-	RewardTypeStaking RewardType = "Staking"
+	RewardTypeFee              RewardType = "Fee"
+	RewardTypeRent             RewardType = "Rent"
+	RewardTypeVoting           RewardType = "Voting"
+	RewardTypeStaking          RewardType = "Staking"
+	RewardTypeDeactivatedStake RewardType = "DeactivatedStake"
 )
 
 type TransactionWithMeta struct {
