@@ -92,7 +92,7 @@ The RPC and WS client implementation is based on the [Solana RPC API documentati
 
 ## Requirements
 
-- Go 1.24 or later
+- Go 1.25 or later
 
 ## Installation
 
