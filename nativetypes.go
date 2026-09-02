@@ -318,6 +318,12 @@ func (t Data) String() string {
 	case EncodingBase64:
 		return base64.StdEncoding.EncodeToString(t.Content)
 	case EncodingBase64Zstd:
+		// Empty content stays empty: klauspost/compress >= v1.18.7 emits a
+		// 9-byte empty frame for empty input, which would change the wire
+		// output for accounts with no data.
+		if len(t.Content) == 0 {
+			return ""
+		}
 		enc, err := zstdEncoderPool.Get(nil)
 		if err != nil {
 			return fmt.Sprintf("<zstd encoder error: %v>", err)
