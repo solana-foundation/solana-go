@@ -64,8 +64,12 @@ type BlockReward struct {
 	RewardType RewardType `json:"rewardType"`
 
 	// Vote account commission when the reward was credited,
-	// only present for voting and staking rewards.
+	// only present for voting, staking, and deactivated-stake rewards.
 	Commission *uint8 `json:"commission,omitempty"`
+
+	// Vote account commission in basis points when the reward was credited,
+	// only present for voting, staking, and deactivated-stake rewards.
+	CommissionBps *uint16 `json:"commissionBps,omitempty"`
 }
 
 type RewardType string

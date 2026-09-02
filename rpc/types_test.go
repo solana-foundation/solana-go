@@ -29,13 +29,17 @@ func TestBlockRewardDeactivatedStake(t *testing.T) {
 		"lamports":296220,
 		"postBalance":1359503519,
 		"rewardType":"DeactivatedStake",
-		"commission":null
+		"commission":null,
+		"commissionBps":0
 	}`
 
 	var reward BlockReward
 	err := stdjson.Unmarshal([]byte(in), &reward)
 	assert.NoError(t, err)
 	assert.Equal(t, RewardTypeDeactivatedStake, reward.RewardType)
+	if assert.NotNil(t, reward.CommissionBps) {
+		assert.Equal(t, uint16(0), *reward.CommissionBps)
+	}
 }
 
 func TestData_base64_zstd(t *testing.T) {
