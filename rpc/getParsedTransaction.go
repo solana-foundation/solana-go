@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -80,7 +81,9 @@ func (wrap *InstructionInfoEnvelope) UnmarshalJSON(data []byte) error {
 	case '{':
 		// It's JSON, most likely.
 		{
-			return json.Unmarshal(data, &wrap.asInstructionInfo)
+			dec := json.NewDecoder(bytes.NewReader(data))
+			dec.UseNumber()
+			return dec.Decode(&wrap.asInstructionInfo)
 		}
 	default:
 		return fmt.Errorf("unknown kind: %v", data)
