@@ -69,7 +69,9 @@ func AeKeyFromSignature(sig solana.Signature) (AeKey, error) {
 // a public seed. The signer signs b"solana-conf-bal/v1" || publicSeed (see
 // ConfidentialDerivationMessage); the signature is fed through the HKDF-SHA512
 // solana-conf-bal/v1 derivation. The all-zero signature rejection lives in
-// AeKeyFromSignature.
+// AeKeyFromSignature. The standard publicSeed is empty (wallet-only keys that
+// match other standard clients); non-empty seeds are supported but
+// non-standard.
 func AeKeyFromSigner(signer Signer, publicSeed []byte) (AeKey, error) {
 	sig, err := signer.Sign(ConfidentialDerivationMessage(publicSeed))
 	if err != nil {

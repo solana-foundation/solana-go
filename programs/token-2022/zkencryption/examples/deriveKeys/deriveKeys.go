@@ -39,11 +39,13 @@ func main() {
 	// the example output is reproducible.
 	wallet := solana.NewWallet().PrivateKey
 
-	// The public seed scopes the derived keys. For confidential transfers this
-	// is conventionally the token account (ATA) address whose balance the keys
-	// protect, so distinct accounts owned by the same wallet get distinct keys.
-	tokenAccount := solana.NewWallet().PublicKey()
-	publicSeed := tokenAccount.Bytes()
+	// The standard public seed is empty: keys are bound to the wallet alone,
+	// so one signature recovers the keys for every confidential balance the
+	// wallet owns, and they match what other standard clients (Rust
+	// solana-zk-sdk, JS @solana/zk-sdk, @solana-program/token-2022) derive for
+	// the same wallet. Non-empty seeds are supported for finer-grained key
+	// scoping, but keys derived with them will not match standard clients.
+	publicSeed := []byte{}
 
 	elgamal, err := zkencryption.ElGamalSecretKeyFromSigner(wallet, publicSeed)
 	if err != nil {
@@ -56,7 +58,6 @@ func main() {
 	}
 
 	fmt.Println("wallet:            ", wallet.PublicKey())
-	fmt.Println("token account:     ", tokenAccount)
 	fmt.Println("ElGamal secret key:", hex.EncodeToString(elgamal[:]))
 	fmt.Println("AeKey:             ", hex.EncodeToString(aeKey[:]))
 
