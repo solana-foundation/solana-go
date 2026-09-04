@@ -1,6 +1,6 @@
 //! Emits the encodings for the go package to check itself against.
 //!
-//! Regenerate the vectors with: cargo run > ../../zkprogram/testdata/rust_parity.json
+//! Regenerate the vectors with: cargo run --bin zkprogram > ../../zkprogram/testdata/rust_parity.json
 use {
     bytemuck::Pod,
     core::mem::size_of,

@@ -1,0 +1,33 @@
+name: rust parity vectors reproducibility
+
+on:
+  push:
+    branches: [main, v2]
+    paths:
+      - "programs/zk-elgamal-proof/internal/paritygen/**"
+      - "programs/zk-elgamal-proof/zkprogram/testdata/rust_parity.json"
+      - "programs/token-2022/testdata/confidential_transfer_rust_parity.json"
+      - ".github/workflows/parity-vectors.yml"
+  pull_request:
+    paths:
+      - "programs/zk-elgamal-proof/internal/paritygen/**"
+      - "programs/zk-elgamal-proof/zkprogram/testdata/rust_parity.json"
+      - "programs/token-2022/testdata/confidential_transfer_rust_parity.json"
+      - ".github/workflows/parity-vectors.yml"
+
+jobs:
+  verify-vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Regenerate parity vectors from pinned sources
+        working-directory: programs/zk-elgamal-proof/internal/paritygen
+        run: |
+          cargo run --locked --bin zkprogram > "$RUNNER_TEMP/rust_parity.json"
+          cargo run --locked --bin token2022 > "$RUNNER_TEMP/confidential_transfer_rust_parity.json"
+
+      - name: Confirm committed vectors match
+        run: |
+          diff -u programs/zk-elgamal-proof/zkprogram/testdata/rust_parity.json "$RUNNER_TEMP/rust_parity.json"
+          diff -u programs/token-2022/testdata/confidential_transfer_rust_parity.json "$RUNNER_TEMP/confidential_transfer_rust_parity.json"
