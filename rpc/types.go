@@ -272,6 +272,10 @@ type TransactionMeta struct {
 	ReturnData ReturnData `json:"returnData"`
 
 	ComputeUnitsConsumed *uint64 `json:"computeUnitsConsumed"`
+
+	// The cost the block cost model charged this transaction against the block
+	// limits. Nil when the RPC node does not report it.
+	CostUnits *uint64 `json:"costUnits"`
 }
 
 type ReturnData struct {
@@ -574,6 +578,10 @@ type ParsedTransactionMeta struct {
 	ReturnData ReturnData `json:"returnData"`
 
 	ComputeUnitsConsumed *uint64 `json:"computeUnitsConsumed"`
+
+	// The cost the block cost model charged this transaction against the block
+	// limits. Nil when the RPC node does not report it.
+	CostUnits *uint64 `json:"costUnits"`
 }
 
 type ParsedInnerInstruction struct {
