@@ -752,7 +752,7 @@ func (tx *Transaction) String() string {
 	buf := new(bytes.Buffer)
 	_, err := tx.EncodeTree(text.NewTreeEncoder(buf, ""))
 	if err != nil {
-		panic(err)
+		return fmt.Sprintf("<transaction encoding error: %s>", err)
 	}
 	return buf.String()
 }
