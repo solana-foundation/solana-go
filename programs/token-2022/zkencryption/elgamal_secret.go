@@ -100,7 +100,9 @@ func ElGamalSecretKeyFromSignature(sig solana.Signature) (ElGamalSecretKey, erro
 // from a Solana signer and a public seed. The signer signs
 // b"solana-conf-bal/v1" || publicSeed (see ConfidentialDerivationMessage); the
 // signature is fed through the HKDF-SHA512 solana-conf-bal/v1 derivation. The
-// all-zero signature rejection lives in ElGamalSecretKeyFromSignature.
+// all-zero signature rejection lives in ElGamalSecretKeyFromSignature. The
+// standard publicSeed is empty (wallet-only keys that match other standard
+// clients); non-empty seeds are supported but non-standard.
 func ElGamalSecretKeyFromSigner(signer Signer, publicSeed []byte) (ElGamalSecretKey, error) {
 	sig, err := signer.Sign(ConfidentialDerivationMessage(publicSeed))
 	if err != nil {

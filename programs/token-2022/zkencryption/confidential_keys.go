@@ -13,6 +13,9 @@ import (
 // keys always belong together and are reproducible even with non-deterministic
 // signers (hardware wallets, hedged ed25519). Mirrors derive_confidential_keys
 // in solana-zk-sdk.
+//
+// The standard publicSeed is empty (wallet-only keys that match other standard
+// clients); non-empty seeds are supported but non-standard.
 func DeriveConfidentialKeys(signer Signer, publicSeed []byte) (ElGamalSecretKey, AeKey, error) {
 	sig, err := signer.Sign(ConfidentialDerivationMessage(publicSeed))
 	if err != nil {
