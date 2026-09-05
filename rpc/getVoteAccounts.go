@@ -96,5 +96,5 @@ type VoteAccountsResult struct {
 
 	// History of how many credits earned by the end of each epoch,
 	// as an array of arrays containing: [epoch, credits, previousCredits]
-	EpochCredits [][]int64 `json:"epochCredits,omitempty"`
+	EpochCredits [][]uint64 `json:"epochCredits,omitempty"`
 }
