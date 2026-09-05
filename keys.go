@@ -711,7 +711,16 @@ func FindProgramAddress(seed [][]byte, programID PublicKey) (PublicKey, uint8, e
 	var err error
 	bumpSeed := uint8(math.MaxUint8)
 	for bumpSeed != 0 {
-		address, err = CreateProgramAddress(append(seed, []byte{byte(bumpSeed)}), programID)
+		// Build a fresh seed set each iteration instead of append(seed, ...):
+		// appending onto the caller's slice can write into its backing array
+		// (when it has spare capacity), corrupting the caller's data and causing
+		// a data race when FindProgramAddress is called concurrently on shared
+		// seeds.
+		seeds := make([][]byte, len(seed), len(seed)+1)
+		copy(seeds, seed)
+		seeds = append(seeds, []byte{byte(bumpSeed)})
+
+		address, err = CreateProgramAddress(seeds, programID)
 		if err == nil {
 			return address, bumpSeed, nil
 		}
