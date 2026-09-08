@@ -65,14 +65,16 @@ func AeKeyFromSignature(sig solana.Signature) (AeKey, error) {
 	return deriveAeKey(sig[:])
 }
 
-// AeKeyFromSigner deterministically derives an AeKey from a Solana signer and
-// a public seed. The signer signs b"solana-conf-bal/v1" || publicSeed (see
-// ConfidentialDerivationMessage); the signature is fed through the HKDF-SHA512
-// solana-conf-bal/v1 derivation. The all-zero signature rejection lives in
-// AeKeyFromSignature. The standard publicSeed is empty (wallet-only keys that
-// match other standard clients); non-empty seeds are supported but
-// non-standard.
-func AeKeyFromSigner(signer Signer, publicSeed []byte) (AeKey, error) {
+// AeKeyFromSignerWithSeed derives an AeKey from a Solana signer and a
+// NON-STANDARD public seed. The signer signs b"solana-conf-bal/v1" ||
+// publicSeed (see ConfidentialDerivationMessage); the signature is fed through
+// the HKDF-SHA512 solana-conf-bal/v1 derivation. The all-zero signature
+// rejection lives in AeKeyFromSignature.
+//
+// Keys derived with a non-empty seed will not match the standard keys other
+// clients derive for the same wallet. For the standard wallet-level keys use
+// DeriveConfidentialKeys, which also signs only once for both keys.
+func AeKeyFromSignerWithSeed(signer Signer, publicSeed []byte) (AeKey, error) {
 	sig, err := signer.Sign(ConfidentialDerivationMessage(publicSeed))
 	if err != nil {
 		return AeKey{}, fmt.Errorf("zkencryption: sign confidential-balances public seed: %w", err)

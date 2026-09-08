@@ -1,6 +1,7 @@
 package zkencryption_test
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
@@ -139,7 +140,7 @@ func TestFromSigner_MatchesRust(t *testing.T) {
 			priv := solana.PrivateKey(ed25519.NewKeyFromSeed(seed32))
 			publicSeed := mustHex(t, v.PublicSeedHex)
 
-			ae, err := zkencryption.AeKeyFromSigner(priv, publicSeed)
+			ae, err := zkencryption.AeKeyFromSignerWithSeed(priv, publicSeed)
 			if err != nil {
 				t.Fatalf("AeKeyFromSigner: %v", err)
 			}
@@ -147,7 +148,7 @@ func TestFromSigner_MatchesRust(t *testing.T) {
 				t.Errorf("AeKey mismatch: got %s want %s", got, v.AeKeyHex)
 			}
 
-			el, err := zkencryption.ElGamalSecretKeyFromSigner(priv, publicSeed)
+			el, err := zkencryption.ElGamalSecretKeyFromSignerWithSeed(priv, publicSeed)
 			if err != nil {
 				t.Fatalf("ElGamalSecretKeyFromSigner: %v", err)
 			}
@@ -245,10 +246,10 @@ func TestFromSigner_RejectsDefaultSignature(t *testing.T) {
 	t.Parallel()
 	signer := stubSigner{} // zero-valued Signature
 
-	if _, err := zkencryption.AeKeyFromSigner(signer, []byte("seed")); !errors.Is(err, zkencryption.ErrDefaultSignature) {
+	if _, err := zkencryption.AeKeyFromSignerWithSeed(signer, []byte("seed")); !errors.Is(err, zkencryption.ErrDefaultSignature) {
 		t.Fatalf("AeKeyFromSigner: err = %v, want ErrDefaultSignature", err)
 	}
-	if _, err := zkencryption.ElGamalSecretKeyFromSigner(signer, []byte("seed")); !errors.Is(err, zkencryption.ErrDefaultSignature) {
+	if _, err := zkencryption.ElGamalSecretKeyFromSignerWithSeed(signer, []byte("seed")); !errors.Is(err, zkencryption.ErrDefaultSignature) {
 		t.Fatalf("ElGamalSecretKeyFromSigner: err = %v, want ErrDefaultSignature", err)
 	}
 }
@@ -258,10 +259,10 @@ func TestFromSigner_WrapsSignerError(t *testing.T) {
 	sentinel := errors.New("hsm unreachable")
 	signer := stubSigner{err: sentinel}
 
-	if _, err := zkencryption.AeKeyFromSigner(signer, nil); !errors.Is(err, sentinel) {
+	if _, err := zkencryption.AeKeyFromSignerWithSeed(signer, nil); !errors.Is(err, sentinel) {
 		t.Fatalf("AeKeyFromSigner: err = %v, want wrapped sentinel", err)
 	}
-	if _, err := zkencryption.ElGamalSecretKeyFromSigner(signer, nil); !errors.Is(err, sentinel) {
+	if _, err := zkencryption.ElGamalSecretKeyFromSignerWithSeed(signer, nil); !errors.Is(err, sentinel) {
 		t.Fatalf("ElGamalSecretKeyFromSigner: err = %v, want wrapped sentinel", err)
 	}
 }
@@ -292,7 +293,7 @@ func TestFromSigner_MatchesFromSignature(t *testing.T) {
 		t.Fatalf("sign: %v", err)
 	}
 
-	aeFromSigner, err := zkencryption.AeKeyFromSigner(priv, publicSeed)
+	aeFromSigner, err := zkencryption.AeKeyFromSignerWithSeed(priv, publicSeed)
 	if err != nil {
 		t.Fatalf("AeKeyFromSigner: %v", err)
 	}
@@ -304,7 +305,7 @@ func TestFromSigner_MatchesFromSignature(t *testing.T) {
 		t.Errorf("AeKey signer/signature mismatch:\n signer: %x\n sig:    %x", aeFromSigner[:], aeFromSig[:])
 	}
 
-	elFromSigner, err := zkencryption.ElGamalSecretKeyFromSigner(priv, publicSeed)
+	elFromSigner, err := zkencryption.ElGamalSecretKeyFromSignerWithSeed(priv, publicSeed)
 	if err != nil {
 		t.Fatalf("ElGamalSecretKeyFromSigner: %v", err)
 	}
@@ -326,7 +327,7 @@ func TestDeriveConfidentialKeys_SingleSignature(t *testing.T) {
 	priv := solana.PrivateKey(ed25519.NewKeyFromSeed(seed32))
 	publicSeed := []byte("derive-confidential-keys-seed")
 
-	el, ae, err := zkencryption.DeriveConfidentialKeys(priv, publicSeed)
+	el, ae, err := zkencryption.DeriveConfidentialKeysWithSeed(priv, publicSeed)
 	if err != nil {
 		t.Fatalf("DeriveConfidentialKeys: %v", err)
 	}
@@ -355,6 +356,57 @@ func TestDeriveConfidentialKeys_SingleSignature(t *testing.T) {
 	// The all-zero signature must be rejected in the combined path too.
 	if _, _, err := zkencryption.DeriveConfidentialKeysFromSignature(solana.Signature{}); !errors.Is(err, zkencryption.ErrDefaultSignature) {
 		t.Fatalf("DeriveConfidentialKeysFromSignature(zero): err = %v, want ErrDefaultSignature", err)
+	}
+}
+
+func TestDeriveConfidentialKeys_StandardVector(t *testing.T) {
+	t.Parallel()
+	// The standard (no seed) path must reproduce the canonical cross-SDK
+	// vector: the same inputs and outputs are pinned in the solana-zk-sdk Rust
+	// tests and the Token-2022 JS client tests, and in this repo's
+	// kdf_vectors.json as keypair_a_empty_seed.
+	var vec *fromSignerVec
+	for _, v := range loadVectors(t).FromSigner {
+		if v.Name == "keypair_a_empty_seed" {
+			vec = &v
+			break
+		}
+	}
+	if vec == nil {
+		t.Fatal("keypair_a_empty_seed vector missing from kdf_vectors.json")
+	}
+
+	seed32 := mustHex(t, vec.KeypairSecretHex)
+	priv := solana.PrivateKey(ed25519.NewKeyFromSeed(seed32))
+
+	el, ae, err := zkencryption.DeriveConfidentialKeys(priv)
+	if err != nil {
+		t.Fatalf("DeriveConfidentialKeys: %v", err)
+	}
+	if got := hex.EncodeToString(ae[:]); got != vec.AeKeyHex {
+		t.Errorf("AeKey mismatch: got %s want %s", got, vec.AeKeyHex)
+	}
+	if got := hex.EncodeToString(el[:]); got != vec.ElGamalSecretHex {
+		t.Errorf("ElGamalSecretKey mismatch: got %s want %s", got, vec.ElGamalSecretHex)
+	}
+
+	// The standard message is the bare protocol identifier, equal to the
+	// seeded message with an empty seed.
+	std := zkencryption.StandardDerivationMessage()
+	if string(std) != "solana-conf-bal/v1" {
+		t.Errorf("StandardDerivationMessage = %q", std)
+	}
+	if !bytes.Equal(std, zkencryption.ConfidentialDerivationMessage(nil)) {
+		t.Error("StandardDerivationMessage != ConfidentialDerivationMessage(nil)")
+	}
+
+	// And the no-seed path equals the seeded path with an empty seed.
+	elSeeded, aeSeeded, err := zkencryption.DeriveConfidentialKeysWithSeed(priv, nil)
+	if err != nil {
+		t.Fatalf("DeriveConfidentialKeysWithSeed: %v", err)
+	}
+	if el != elSeeded || ae != aeSeeded {
+		t.Error("DeriveConfidentialKeys != DeriveConfidentialKeysWithSeed(nil)")
 	}
 }
 

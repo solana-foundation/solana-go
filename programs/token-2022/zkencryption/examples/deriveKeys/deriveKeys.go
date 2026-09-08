@@ -16,12 +16,11 @@
 // materials used by the Token-2022 confidential-transfer extension from a
 // Solana signer: the ElGamal secret key and the AES (AeKey) key.
 //
-// This is the primary derivation path used by wallets: the same signer and
-// public seed always derive the same keys, so a user can recover their
-// confidential-transfer keys from their wallet alone, with nothing stored
-// on-chain or off-chain. The keys produced here are byte-for-byte identical
-// to those from the Rust solana-zk-sdk and the JS/WASM @solana/zk-sdk, given
-// the same signer and seed.
+// This is the primary derivation path used by wallets: the same signer always
+// derives the same keys, so a user can recover their confidential-transfer
+// keys from their wallet alone, with nothing stored on-chain or off-chain.
+// The keys produced here are byte-for-byte identical to those from the Rust
+// solana-zk-sdk and the JS/WASM @solana/zk-sdk for the same signer.
 package main
 
 import (
@@ -39,20 +38,14 @@ func main() {
 	// the example output is reproducible.
 	wallet := solana.NewWallet().PrivateKey
 
-	// The standard public seed is empty: keys are bound to the wallet alone,
-	// so one signature recovers the keys for every confidential balance the
-	// wallet owns, and they match what other standard clients (Rust
-	// solana-zk-sdk, JS @solana/zk-sdk, @solana-program/token-2022) derive for
-	// the same wallet. Non-empty seeds are supported for finer-grained key
-	// scoping, but keys derived with them will not match standard clients.
-	publicSeed := []byte{}
-
-	elgamal, err := zkencryption.ElGamalSecretKeyFromSigner(wallet, publicSeed)
-	if err != nil {
-		panic(err)
-	}
-
-	aeKey, err := zkencryption.AeKeyFromSigner(wallet, publicSeed)
+	// The standard derivation: one signature over the constant message
+	// "solana-conf-bal/v1", both keys expanded from it. The keys are bound to
+	// the wallet alone, so this one signature recovers the keys for every
+	// confidential balance the wallet owns, and they match what other standard
+	// clients (Rust solana-zk-sdk, JS @solana/zk-sdk,
+	// @solana-program/token-2022) derive for the same wallet. There is no seed
+	// to choose; that is what makes the keys portable across clients.
+	elgamal, aeKey, err := zkencryption.DeriveConfidentialKeys(wallet)
 	if err != nil {
 		panic(err)
 	}
@@ -61,9 +54,9 @@ func main() {
 	fmt.Println("ElGamal secret key:", hex.EncodeToString(elgamal[:]))
 	fmt.Println("AeKey:             ", hex.EncodeToString(aeKey[:]))
 
-	// Derivation is deterministic: signer + public seed always yield the same
+	// Derivation is deterministic: the same signer always yields the same
 	// keys, which is what lets a wallet recover them on demand.
-	again, err := zkencryption.ElGamalSecretKeyFromSigner(wallet, publicSeed)
+	again, _, err := zkencryption.DeriveConfidentialKeys(wallet)
 	if err != nil {
 		panic(err)
 	}
