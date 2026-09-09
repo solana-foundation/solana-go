@@ -6,7 +6,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 )
 
-// DeriveConfidentialKeys is THE standard confidential-balances derivation: the
+// DeriveConfidentialKeys is the standard confidential-balances derivation: the
 // signer signs StandardDerivationMessage (the constant "solana-conf-bal/v1")
 // exactly once and both keys (ElGamal and AE) are expanded from that one
 // signature. The keys are bound to the wallet alone, one key pair across all
@@ -21,7 +21,7 @@ func DeriveConfidentialKeys(signer Signer) (ElGamalSecretKey, AeKey, error) {
 	return DeriveConfidentialKeysWithSeed(signer, nil)
 }
 
-// DeriveConfidentialKeysWithSeed is the NON-STANDARD, seed-scoped derivation:
+// DeriveConfidentialKeysWithSeed is the non-standard, seed-scoped derivation:
 // both keys from a single ed25519 signature over
 // ConfidentialDerivationMessage(publicSeed). Use it only for schemes that
 // genuinely need keys scoped more finely than the wallet; keys derived with a

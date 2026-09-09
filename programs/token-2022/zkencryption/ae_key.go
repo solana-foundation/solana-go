@@ -66,7 +66,7 @@ func AeKeyFromSignature(sig solana.Signature) (AeKey, error) {
 }
 
 // AeKeyFromSignerWithSeed derives an AeKey from a Solana signer and a
-// NON-STANDARD public seed. The signer signs b"solana-conf-bal/v1" ||
+// non-standard public seed. The signer signs b"solana-conf-bal/v1" ||
 // publicSeed (see ConfidentialDerivationMessage); the signature is fed through
 // the HKDF-SHA512 solana-conf-bal/v1 derivation. The all-zero signature
 // rejection lives in AeKeyFromSignature.
