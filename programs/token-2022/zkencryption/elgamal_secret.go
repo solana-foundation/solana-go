@@ -42,8 +42,7 @@ type ElGamalSecretKey [ElGamalSecretKeyLen]byte
 
 // StandardDerivationMessage returns the standard confidential-balances
 // derivation message: the constant bytes "solana-conf-bal/v1" a wallet signs
-// once to derive its wallet-level keys via DeriveConfidentialKeys. Mirrors
-// STANDARD_DERIVATION_MESSAGE in solana-zk-sdk.
+// once to derive its wallet-level keys via DeriveConfidentialKeys.
 //
 // Wallets SHOULD recognize these exact bytes, expose the signature only
 // through a dedicated key-derivation API, and refuse any generic signMessage
