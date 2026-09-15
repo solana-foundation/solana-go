@@ -45,7 +45,6 @@ var (
 	ctContextRange       = ctAddr(25)
 	ctRegistry           = ctAddr(30)
 	ctPayer              = ctAddr(31)
-	ctRecord             = ctAddr(32)
 
 	ctAuditorPubkey      = (*encryption.ElGamalPubkey)(ctPattern(1, 32))
 	ctDecryptableBalance = encryption.AeCiphertext(ctPattern(2, 36))
