@@ -1,6 +1,6 @@
 # Solana SDK library for Go
 
-[![GoDoc](https://pkg.go.dev/badge/github.com/solana-foundation/solana-go/v2?status.svg)](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.0.0-rc?tab=doc)
+[![GoDoc](https://pkg.go.dev/badge/github.com/solana-foundation/solana-go/v2?status.svg)](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.1.0?tab=doc)
 [![GitHub tag (latest SemVer pre-release)](https://img.shields.io/github/v/tag/solana-foundation/solana-go?include_prereleases&label=release-tag)](https://github.com/solana-foundation/solana-go/v2/releases)
 [![Build Status](https://github.com/solana-foundation/solana-go/v2/workflows/tests/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain)
 [![Lint Status](https://github.com/solana-foundation/solana-go/v2/workflows/lint/badge.svg?branch=main)](https://github.com/solana-foundation/solana-go/v2/actions?query=branch%3Amain+workflow%3Alint)
@@ -74,9 +74,9 @@ More contracts to come.
 
 ## Current development status
 
-The **v1 line** (stable, backward-compatible improvements only) ships from the `main` branch — latest release is [v1.22.0](https://github.com/solana-foundation/solana-go/releases/tag/v1.22.0).
+The **v1 line** (stable, backward-compatible improvements only) ships from the `main` branch — latest release is [v1.24.0](https://github.com/solana-foundation/solana-go/releases/tag/v1.24.0).
 
-The **v2 line** (v1 features + breaking API cleanups) ships from the `v2` branch — latest release is `v2.0.0-rc` (release candidate; not production-ready). See [Migrating from v1](#migrating-from-v1) below.
+The **v2 line** (v1 features + breaking API cleanups) ships from the `v2` branch — latest release is [v2.1.0](https://github.com/solana-foundation/solana-go/releases/tag/v2.1.0). See [Migrating from v1](#migrating-from-v1) below.
 
 The RPC and WS client implementation is based on the [Solana RPC API documentation](https://solana.com/docs/rpc).
 
@@ -98,11 +98,11 @@ $ cd my-project
 $ go get github.com/solana-foundation/solana-go@latest
 ```
 
-For the **v2 release candidate** (includes breaking changes — see [Migrating from v1](#migrating-from-v1)):
+For the **v2 line** (includes breaking changes — see [Migrating from v1](#migrating-from-v1)):
 
 ```bash
 $ cd my-project
-$ go get github.com/solana-foundation/solana-go/v2@v2.0.0-rc
+$ go get github.com/solana-foundation/solana-go/v2@v2.1.0
 ```
 
 ## Migrating from v1
@@ -125,7 +125,7 @@ One-liner migration:
 ```bash
 find . -type f -name '*.go' -exec sed -i.bak \
   's|github.com/gagliardetto/solana-go|github.com/solana-foundation/solana-go/v2|g' {} +
-go get github.com/solana-foundation/solana-go/v2@v2.0.0-rc
+go get github.com/solana-foundation/solana-go/v2@v2.1.0
 go mod tidy
 ```
 
@@ -879,14 +879,14 @@ func main() {
 
 All RPC methods from the [Solana JSON RPC API](https://solana.com/docs/rpc) are supported.
 Each method has a testable example in [`rpc/example_test.go`](rpc/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.0.0-rc/rpc#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.1.0/rpc#pkg-examples).
 
 
 ## WebSocket Subscriptions
 
 All WebSocket subscriptions from the [Solana WebSocket API](https://solana.com/docs/rpc/websocket) are supported.
 Each subscription has a testable example in [`rpc/ws/example_test.go`](rpc/ws/example_test.go) that is rendered on
-[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.0.0-rc/rpc/ws#pkg-examples).
+[pkg.go.dev](https://pkg.go.dev/github.com/solana-foundation/solana-go/v2@v2.1.0/rpc/ws#pkg-examples).
 
 
 ## Contributing
