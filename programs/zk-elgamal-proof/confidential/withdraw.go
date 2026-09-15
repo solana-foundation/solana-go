@@ -1,8 +1,8 @@
 package confidential
 
 import (
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/proofdata"
 )
 
 // WithdrawProofData is the proof data a confidential Withdraw instruction.

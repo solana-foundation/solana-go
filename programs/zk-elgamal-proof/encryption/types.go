@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gagliardetto/solana-go/programs/token-2022/zkencryption"
+	"github.com/solana-foundation/solana-go/v2/programs/token-2022/zkencryption"
 )
 
 var ErrZeroSecretKey = errors.New("zk: ElGamal secret key is zero")

@@ -10,7 +10,7 @@ import (
 
 	"github.com/tetratelabs/wazero/api"
 
-	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
+	zk "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof"
 )
 
 // decoder is a pointer to T that can decode result bytes.

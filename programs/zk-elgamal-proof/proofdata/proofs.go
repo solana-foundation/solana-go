@@ -3,8 +3,8 @@ package proofdata
 import (
 	"fmt"
 
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/bridge"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/bridge"
 )
 
 // NewPubkeyValidityProofData proves knowledge of the secret key for the

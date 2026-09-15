@@ -6,8 +6,8 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
+	zk "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
 )
 
 // GenKeyPair returns a fresh random ElGamal keypair.

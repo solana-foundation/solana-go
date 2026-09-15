@@ -1,10 +1,10 @@
 package confidential
 
 import (
-	"github.com/gagliardetto/solana-go/programs/token-2022/zkencryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/bridge"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
+	"github.com/solana-foundation/solana-go/v2/programs/token-2022/zkencryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/bridge"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/proofdata"
 )
 
 // TransferWithFeeProofData is the proof data a confidential Transfer

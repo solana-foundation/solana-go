@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/zktest"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
+	zk "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/zktest"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/proofdata"
 )
 
 func TestTransferProofData(t *testing.T) {

@@ -3,7 +3,7 @@ package encryption
 import (
 	"fmt"
 
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/bridge"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/bridge"
 )
 
 // GroupedElGamalEncrypt2 encrypts amount under two public keys with the given opening.

@@ -3,9 +3,9 @@ package proofdata
 import (
 	"testing"
 
-	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/zktest"
+	zk "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/zktest"
 )
 
 // commitAll commits to every amount with a fresh random opening.

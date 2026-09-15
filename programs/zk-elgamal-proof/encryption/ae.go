@@ -1,8 +1,8 @@
 package encryption
 
 import (
-	"github.com/gagliardetto/solana-go/programs/token-2022/zkencryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/bridge"
+	"github.com/solana-foundation/solana-go/v2/programs/token-2022/zkencryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/bridge"
 )
 
 // NewAeKey generates a random AES-GCM-SIV key.

@@ -3,7 +3,7 @@ package zkencryption
 import (
 	"fmt"
 
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 )
 
 // DeriveConfidentialKeys is the standard confidential-balances derivation: the

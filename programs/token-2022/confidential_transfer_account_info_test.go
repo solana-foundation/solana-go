@@ -5,11 +5,11 @@ import (
 	"math"
 	"testing"
 
-	"github.com/gagliardetto/solana-go/programs/token-2022/zkencryption"
-	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/confidential"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
+	"github.com/solana-foundation/solana-go/v2/programs/token-2022/zkencryption"
+	zk "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/confidential"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/proofdata"
 )
 
 func TestApplyPendingBalanceAccountInfo(t *testing.T) {

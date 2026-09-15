@@ -3,10 +3,10 @@ package zkprogram_test
 import (
 	"fmt"
 
-	ag_solanago "github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/programs/system"
-	zk_proofdata "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
-	zk_program "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/zkprogram"
+	ag_solanago "github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/programs/system"
+	zk_proofdata "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/proofdata"
+	zk_program "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/zkprogram"
 )
 
 // Example_contextState records a verified statement in a proof context state

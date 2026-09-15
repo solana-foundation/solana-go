@@ -1,6 +1,6 @@
 package encryption
 
-import "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/bridge"
+import "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/bridge"
 
 // NewPedersenCommitment commits to amount with a fresh random opening.
 func NewPedersenCommitment(amount uint64) (PedersenCommitment, PedersenOpening, error) {

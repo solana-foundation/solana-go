@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/zktest"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/zktest"
 )
 
 func TestConcurrentProofGeneration(t *testing.T) {

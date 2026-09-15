@@ -1,7 +1,7 @@
 package token2022
 
 import (
-	"github.com/gagliardetto/solana-go"
+	"github.com/solana-foundation/solana-go/v2"
 )
 
 // NewConfidentialTransferApproveAccountInstruction approves a token account

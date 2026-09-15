@@ -11,7 +11,7 @@ import (
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
-	zk "github.com/gagliardetto/solana-go/programs/zk-elgamal-proof"
+	zk "github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof"
 )
 
 // Solana-zk-sdk Rust prover compiled to wasm32.

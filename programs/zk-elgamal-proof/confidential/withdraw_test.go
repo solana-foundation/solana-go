@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/internal/zktest"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/internal/zktest"
 )
 
 func TestWithdrawProofData(t *testing.T) {

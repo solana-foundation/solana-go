@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"filippo.io/edwards25519"
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/bip39"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/bip39"
 )
 
 // The functions in this file preserve the pre-solana-conf-bal/v1 SHA3-512 key
