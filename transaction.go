@@ -156,6 +156,9 @@ func (ci *CompiledInstruction) ResolveInstructionAccounts(message *Message) ([]*
 		return nil, err
 	}
 	for i, acct := range ci.Accounts {
+		if int(acct) >= len(metas) {
+			return nil, fmt.Errorf("instruction account index %d out of range (message has %d accounts)", acct, len(metas))
+		}
 		out[i] = metas[acct]
 	}
 
