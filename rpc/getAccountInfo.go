@@ -43,6 +43,9 @@ func (cl *Client) GetAccountDataInto(ctx context.Context, account solana.PublicK
 	if err != nil {
 		return err
 	}
+	if resp == nil || resp.Value == nil {
+		return ErrNotFound
+	}
 	return bin.NewBinDecoder(resp.Value.Data.GetBinary()).Decode(inVar)
 }
 
@@ -52,6 +55,9 @@ func (cl *Client) GetAccountDataBorshInto(ctx context.Context, account solana.Pu
 	resp, err := cl.GetAccountInfo(ctx, account)
 	if err != nil {
 		return err
+	}
+	if resp == nil || resp.Value == nil {
+		return ErrNotFound
 	}
 	return bin.NewBorshDecoder(resp.Value.Data.GetBinary()).Decode(inVar)
 }
@@ -100,7 +106,7 @@ func (cl *Client) GetAccountInfoWithOpts(
 		return nil, err
 	}
 	if out == nil || out.Value == nil {
-		return nil, ErrNotFound
+		return out, nil
 	}
 	return out, nil
 }
