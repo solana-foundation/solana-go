@@ -113,16 +113,20 @@ func (obj UiAmountToAmount) MarshalWithEncoder(encoder *ag_binary.Encoder) (err 
 }
 
 func (obj *UiAmountToAmount) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
-	// Read remaining bytes as raw string.
+	// Read remaining bytes as raw string. An empty payload is a valid
+	// encoding of the empty string (the program parses it and fails at
+	// runtime); leaving UiAmount nil made Data() and EncodeToTree panic on
+	// such an instruction decoded from a block.
 	remaining := decoder.Remaining()
+	var s string
 	if remaining > 0 {
 		data, err := decoder.ReadNBytes(remaining)
 		if err != nil {
 			return err
 		}
-		s := string(data)
-		obj.UiAmount = &s
+		s = string(data)
 	}
+	obj.UiAmount = &s
 	return nil
 }
 
