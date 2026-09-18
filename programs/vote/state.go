@@ -68,7 +68,11 @@ type AuthorizedVoter struct {
 }
 
 func (av *AuthorizedVoters) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	count, err := dec.ReadUint64(binary.LittleEndian)
+	rawCount, err := dec.ReadUint64(binary.LittleEndian)
+	if err != nil {
+		return err
+	}
+	count, err := checkedCount(dec, rawCount, 40, "authorized voter") // u64 epoch + pubkey
 	if err != nil {
 		return err
 	}
@@ -182,7 +186,11 @@ type EpochCredit struct {
 
 // decodeEpochCredits decodes a Vec<(Epoch, u64, u64)> with a u64 length prefix.
 func decodeEpochCredits(dec *bin.Decoder) ([]EpochCredit, error) {
-	count, err := dec.ReadUint64(binary.LittleEndian)
+	rawCount, err := dec.ReadUint64(binary.LittleEndian)
+	if err != nil {
+		return nil, err
+	}
+	count, err := checkedCount(dec, rawCount, 24, "epoch credit") // three u64
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +327,11 @@ func (s *VoteState1_14_11) unmarshalBody(dec *bin.Decoder) error {
 	if err != nil {
 		return err
 	}
-	count, err := dec.ReadUint64(binary.LittleEndian)
+	rawCount, err := dec.ReadUint64(binary.LittleEndian)
+	if err != nil {
+		return err
+	}
+	count, err := checkedCount(dec, rawCount, 12, "vote lockout") // u64 slot + u32 confirmation_count
 	if err != nil {
 		return err
 	}
@@ -394,7 +406,11 @@ func (s *VoteStateV3) unmarshalBody(dec *bin.Decoder) error {
 	if err != nil {
 		return err
 	}
-	count, err := dec.ReadUint64(binary.LittleEndian)
+	rawCount, err := dec.ReadUint64(binary.LittleEndian)
+	if err != nil {
+		return err
+	}
+	count, err := checkedCount(dec, rawCount, 13, "landed vote") // u8 latency + lockout
 	if err != nil {
 		return err
 	}
@@ -503,7 +519,11 @@ func (s *VoteStateV4) unmarshalBody(dec *bin.Decoder) error {
 	} else if hasBls != 0 {
 		return fmt.Errorf("invalid Option<BLSPubkey> discriminant: %d", hasBls)
 	}
-	count, err := dec.ReadUint64(binary.LittleEndian)
+	rawCount, err := dec.ReadUint64(binary.LittleEndian)
+	if err != nil {
+		return err
+	}
+	count, err := checkedCount(dec, rawCount, 13, "landed vote") // u8 latency + lockout
 	if err != nil {
 		return err
 	}

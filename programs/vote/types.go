@@ -345,7 +345,11 @@ type VoteStateUpdate struct {
 }
 
 func (u *VoteStateUpdate) UnmarshalWithDecoder(dec *bin.Decoder) error {
-	count, err := dec.ReadUint64(binary.LittleEndian)
+	rawCount, err := dec.ReadUint64(binary.LittleEndian)
+	if err != nil {
+		return err
+	}
+	count, err := checkedCount(dec, rawCount, 12, "lockout") // u64 slot + u32 confirmation_count
 	if err != nil {
 		return err
 	}
