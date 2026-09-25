@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.24.1](https://github.com/solana-foundation/solana-go/compare/v1.24.0...v1.24.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* remove duplicate confidential AccountInfo helpers to break import cycle ([#500](https://github.com/solana-foundation/solana-go/issues/500)) ([7c26c06](https://github.com/solana-foundation/solana-go/commit/7c26c0682eaed0cdce1137a2f63013ef39213bd0))
+* return errors instead of panicking on malformed instruction data ([#501](https://github.com/solana-foundation/solana-go/issues/501)) ([5cf5b46](https://github.com/solana-foundation/solana-go/commit/5cf5b4610ab89443c9e6c4fc013da80d410822a1))
+
 ## [1.23.0](https://github.com/solana-foundation/solana-go/compare/v1.22.0...v1.23.0) (2026-08-26)
 
 
