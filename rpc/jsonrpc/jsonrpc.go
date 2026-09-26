@@ -585,12 +585,12 @@ var UseIntegerID = false
 
 var integerID = new(atomic.Uint64)
 
-var useFixedID = false
+var UseFixedID = false
 
 const defaultFixedID = 1
 
 func newID() any {
-	if useFixedID {
+	if UseFixedID {
 		return defaultFixedID
 	}
 	if UseIntegerID {
