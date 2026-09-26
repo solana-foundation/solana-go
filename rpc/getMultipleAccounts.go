@@ -68,6 +68,9 @@ func (cl *Client) GetMultipleAccountsWithOpts(
 		if opts.MinContextSlot != nil {
 			obj["minContextSlot"] = *opts.MinContextSlot
 		}
+		if opts.ChangedSinceSlot != nil {
+			obj["changedSinceSlot"] = *opts.ChangedSinceSlot
+		}
 		if len(obj) > 0 {
 			params = append(params, obj)
 		}

@@ -85,6 +85,21 @@ type GetAccountInfoOpts struct {
 	// The minimum slot that the request can be evaluated at.
 	// This parameter is optional.
 	MinContextSlot *uint64
+
+	// ChangedSinceSlot, if set, asks the RPC node to return account data only
+	// when it has changed since the given slot. Useful for incremental sync of
+	// large programs (e.g. PumpFun) where a full getProgramAccounts is no longer
+	// feasible.
+	//
+	// NOTE: This is NOT part of the official Solana JSON-RPC specification
+	// (https://solana.com/docs/rpc/http). It is a non-standard extension
+	// supported by some commercial RPC providers (e.g. Helius, FluxRPC).
+	// Public RPC endpoints and stock agave-validator nodes will ignore this
+	// field or reject the request. Verify support with your provider before
+	// using.
+	//
+	// This parameter is optional.
+	ChangedSinceSlot *uint64 `json:"changedSinceSlot,omitempty"`
 }
 
 // GetAccountInfoWithOpts returns all information associated with the account of provided publicKey.
@@ -134,6 +149,9 @@ func (cl *Client) getAccountInfoWithOpts(
 		}
 		if opts.MinContextSlot != nil {
 			obj["minContextSlot"] = *opts.MinContextSlot
+		}
+		if opts.ChangedSinceSlot != nil {
+			obj["changedSinceSlot"] = *opts.ChangedSinceSlot
 		}
 	}
 
