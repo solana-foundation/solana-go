@@ -22,6 +22,7 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/token"
+	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 )
@@ -43,6 +44,9 @@ var tokenGetMintCmd = &cobra.Command{
 		acct, err := client.GetAccountInfo(ctx, mintAddress)
 		if err != nil {
 			return fmt.Errorf("couldn't get account data: %w", err)
+		}
+		if acct == nil || acct.Value == nil {
+			return rpc.ErrNotFound
 		}
 
 		mint := &token.Mint{}
