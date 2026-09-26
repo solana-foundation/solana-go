@@ -7,12 +7,16 @@ on:
       - "programs/zk-elgamal-proof/internal/paritygen/**"
       - "programs/zk-elgamal-proof/zkprogram/testdata/rust_parity.json"
       - "programs/token-2022/testdata/confidential_transfer_rust_parity.json"
+      - "programs/token-2022/testdata/confidential_mint_burn_rust_parity.json"
+      - "programs/token-2022/testdata/confidential_transfer_fee_rust_parity.json"
       - ".github/workflows/parity-vectors.yml"
   pull_request:
     paths:
       - "programs/zk-elgamal-proof/internal/paritygen/**"
       - "programs/zk-elgamal-proof/zkprogram/testdata/rust_parity.json"
       - "programs/token-2022/testdata/confidential_transfer_rust_parity.json"
+      - "programs/token-2022/testdata/confidential_mint_burn_rust_parity.json"
+      - "programs/token-2022/testdata/confidential_transfer_fee_rust_parity.json"
       - ".github/workflows/parity-vectors.yml"
 
 jobs:
@@ -26,8 +30,12 @@ jobs:
         run: |
           cargo run --locked --bin zkprogram > "$RUNNER_TEMP/rust_parity.json"
           cargo run --locked --bin token2022 > "$RUNNER_TEMP/confidential_transfer_rust_parity.json"
+          cargo run --locked --bin mintburn > "$RUNNER_TEMP/confidential_mint_burn_rust_parity.json"
+          cargo run --locked --bin transferfee > "$RUNNER_TEMP/confidential_transfer_fee_rust_parity.json"
 
       - name: Confirm committed vectors match
         run: |
           diff -u programs/zk-elgamal-proof/zkprogram/testdata/rust_parity.json "$RUNNER_TEMP/rust_parity.json"
           diff -u programs/token-2022/testdata/confidential_transfer_rust_parity.json "$RUNNER_TEMP/confidential_transfer_rust_parity.json"
+          diff -u programs/token-2022/testdata/confidential_mint_burn_rust_parity.json "$RUNNER_TEMP/confidential_mint_burn_rust_parity.json"
+          diff -u programs/token-2022/testdata/confidential_transfer_fee_rust_parity.json "$RUNNER_TEMP/confidential_transfer_fee_rust_parity.json"

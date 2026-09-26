@@ -34,21 +34,24 @@ type ctParityData struct {
 	Builders  []ctParityBuilder `json:"builders"`
 }
 
+// builtOne adapts a single-instruction builder to the shape the parity vectors are checked in.
+func builtOne[T interface{ ValidateAndBuild() (*Instruction, error) }](inst T, err error) ([]solana.Instruction, error) {
+	if err != nil {
+		return nil, err
+	}
+	built, err := inst.ValidateAndBuild()
+	if err != nil {
+		return nil, err
+	}
+	return []solana.Instruction{built}, nil
+}
+
 // ctBuilders maps every parity vector to the Go builder call that must encode
 // identically to its Rust counterpart.
 func ctBuilders() map[string]func() ([]solana.Instruction, error) {
-	single := func(inst *ConfidentialTransferExtension, err error) ([]solana.Instruction, error) {
-		if err != nil {
-			return nil, err
-		}
-		built, err := inst.ValidateAndBuild()
-		if err != nil {
-			return nil, err
-		}
-		return []solana.Instruction{built}, nil
-	}
+	single := builtOne[*ConfidentialTransferExtension]
 	noErr := func(inst *ConfidentialTransferExtension) ([]solana.Instruction, error) {
-		return single(inst, nil)
+		return builtOne(inst, nil)
 	}
 	return map[string]func() ([]solana.Instruction, error){
 		"initialize_mint": func() ([]solana.Instruction, error) {
@@ -197,7 +200,15 @@ func ctBuilders() map[string]func() ([]solana.Instruction, error) {
 
 func TestConfidentialTransferRustParity(t *testing.T) {
 	t.Parallel()
-	raw, err := os.ReadFile("testdata/confidential_transfer_rust_parity.json")
+	runConfidentialRustParity(t, "testdata/confidential_transfer_rust_parity.json", ctBuilders())
+}
+
+// runConfidentialRustParity checks every Go builder against the Rust encoding
+// recorded for it, and holds the two sides in step: a vector without a builder
+// and a builder without a vector are both failures.
+func runConfidentialRustParity(t *testing.T, testdataPath string, builders map[string]func() ([]solana.Instruction, error)) {
+	t.Helper()
+	raw, err := os.ReadFile(testdataPath)
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
@@ -210,7 +221,6 @@ func TestConfidentialTransferRustParity(t *testing.T) {
 		t.Fatalf("program ID = %x, want %s", ProgramID.Bytes(), parity.ProgramID)
 	}
 
-	builders := ctBuilders()
 	seen := make(map[string]bool)
 	for _, vector := range parity.Builders {
 		build, ok := builders[vector.Name]

@@ -22,7 +22,7 @@ const (
 	proofOffsetSize       = 1
 )
 
-// newConfidentialTransferSubInstruction assembles a ConfidentialTransfer sub-instruction
+// newConfidentialTransferSubInstruction assembles a ConfidentialTransfer sub-instruction.
 func newConfidentialTransferSubInstruction(
 	subInstruction uint8,
 	data ConfidentialTransferSubInstructionData,
@@ -30,36 +30,21 @@ func newConfidentialTransferSubInstruction(
 	authority solana.PublicKey,
 	multisigSigners []solana.PublicKey,
 ) *ConfidentialTransferExtension {
-	authorityMeta := solana.Meta(authority)
-	// Authority signs absent of multisig signers
-	if len(multisigSigners) == 0 {
-		authorityMeta.SIGNER()
-	}
-	instruction := &ConfidentialTransferExtension{
+	accounts, signers := confidentialAuthorityAccounts(accounts, authority, multisigSigners)
+	return &ConfidentialTransferExtension{
 		SubInstruction: subInstruction,
 		RawData:        data.bytes(),
-		Accounts:       append(accounts, authorityMeta),
-		Signers:        make(solana.AccountMetaSlice, 0, len(multisigSigners)),
+		Accounts:       accounts,
+		Signers:        signers,
 	}
-	for _, signer := range multisigSigners {
-		instruction.Signers = append(instruction.Signers, solana.Meta(signer).SIGNER())
-	}
-	return instruction
 }
 
 // ctNoData is embedded by the data structs of sub-instructions that carry no
 // data beyond the sub-instruction byte.
-type ctNoData struct{}
-
-func (ctNoData) bytes() []byte { return nil }
-
-func (ctNoData) MarshalBinary() ([]byte, error) { return nil, nil }
+type ctNoData struct{ noSubInstructionData }
 
 func (*ctNoData) UnmarshalBinary(b []byte) error {
-	if len(b) != 0 {
-		return fmt.Errorf("token2022: ConfidentialTransfer sub-instruction takes no data, got %d bytes", len(b))
-	}
-	return nil
+	return rejectSubInstructionData(confidentialTransferName, b)
 }
 
 // resolveProofLocation resolves a proof location to the account the consuming

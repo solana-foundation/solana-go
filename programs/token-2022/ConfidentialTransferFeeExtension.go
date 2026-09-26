@@ -1,11 +1,11 @@
 package token2022
 
 import (
+	"encoding"
 	"errors"
 
 	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
-	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
 
@@ -19,12 +19,21 @@ const (
 	ConfidentialTransferFee_DisableHarvestToMint
 )
 
+// ConfidentialTransferFeeSubInstructionData is the data of a ConfidentialTransferFee sub-instruction,
+// implemented by the ConfidentialTransferFee*Data structs.
+type ConfidentialTransferFeeSubInstructionData interface {
+	encoding.BinaryMarshaler
+	encoding.BinaryUnmarshaler
+	bytes() []byte
+}
+
 // ConfidentialTransferFeeExtension is the instruction wrapper for the
 // ConfidentialTransferFee extension (ID 37).
 // This is a complex extension involving encrypted fee amounts and ZK proofs.
 type ConfidentialTransferFeeExtension struct {
 	SubInstruction uint8
-	RawData        []byte
+	// Raw data for the sub-instruction.
+	RawData []byte
 
 	Accounts ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 	Signers  ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
@@ -35,10 +44,47 @@ func (obj *ConfidentialTransferFeeExtension) SetAccounts(accounts []*ag_solanago
 	return nil
 }
 
+// GetAccounts emits Signers last; a layout that does not end with the signers must inline them into Accounts and leave Signers empty.
 func (slice ConfidentialTransferFeeExtension) GetAccounts() (accounts []*ag_solanago.AccountMeta) {
 	accounts = append(accounts, slice.Accounts...)
 	accounts = append(accounts, slice.Signers...)
 	return
+}
+
+func (obj ConfidentialTransferFeeExtension) getName() string { return confidentialTransferFeeName }
+
+// getSubInstructions describes every ConfidentialTransferFee sub-instruction,
+// indexed by sub-instruction ID: the index is the on-chain discriminator.
+func (obj ConfidentialTransferFeeExtension) getSubInstructions() []confidentialSubInstruction[ConfidentialTransferFeeSubInstructionData] {
+	return []confidentialSubInstruction[ConfidentialTransferFeeSubInstructionData]{
+		ConfidentialTransferFee_InitializeConfidentialTransferFeeConfig: {"InitializeConfidentialTransferFeeConfig", func() ConfidentialTransferFeeSubInstructionData {
+			return &ConfidentialTransferFeeInitializeConfigData{}
+		}},
+		ConfidentialTransferFee_WithdrawWithheldTokensFromMint: {"WithdrawWithheldTokensFromMint", func() ConfidentialTransferFeeSubInstructionData {
+			return &ConfidentialTransferFeeWithdrawWithheldTokensFromMintData{}
+		}},
+		ConfidentialTransferFee_WithdrawWithheldTokensFromAccounts: {"WithdrawWithheldTokensFromAccounts", func() ConfidentialTransferFeeSubInstructionData {
+			return &ConfidentialTransferFeeWithdrawWithheldTokensFromAccountsData{}
+		}},
+		ConfidentialTransferFee_HarvestWithheldTokensToMint: {"HarvestWithheldTokensToMint", func() ConfidentialTransferFeeSubInstructionData {
+			return &ConfidentialTransferFeeHarvestWithheldTokensToMintData{}
+		}},
+		ConfidentialTransferFee_EnableHarvestToMint: {"EnableHarvestToMint", func() ConfidentialTransferFeeSubInstructionData {
+			return &ConfidentialTransferFeeEnableHarvestToMintData{}
+		}},
+		ConfidentialTransferFee_DisableHarvestToMint: {"DisableHarvestToMint", func() ConfidentialTransferFeeSubInstructionData {
+			return &ConfidentialTransferFeeDisableHarvestToMintData{}
+		}},
+	}
+}
+
+func (obj ConfidentialTransferFeeExtension) getSubInstruction() uint8 { return obj.SubInstruction }
+
+func (obj ConfidentialTransferFeeExtension) getRawData() []byte { return obj.RawData }
+
+// DecodeSubInstructionData outputs the typed instruction data for SubInstruction.
+func (obj ConfidentialTransferFeeExtension) DecodeSubInstructionData() (ConfidentialTransferFeeSubInstructionData, error) {
+	return decodeConfidentialSubInstruction(obj)
 }
 
 func (inst ConfidentialTransferFeeExtension) Build() *Instruction {
@@ -63,27 +109,7 @@ func (inst *ConfidentialTransferFeeExtension) Validate() error {
 }
 
 func (inst *ConfidentialTransferFeeExtension) EncodeToTree(parent ag_treeout.Branches) {
-	names := []string{
-		"InitializeConfidentialTransferFeeConfig",
-		"WithdrawWithheldTokensFromMint",
-		"WithdrawWithheldTokensFromAccounts",
-		"HarvestWithheldTokensToMint",
-		"EnableHarvestToMint",
-		"DisableHarvestToMint",
-	}
-	name := "Unknown"
-	if int(inst.SubInstruction) < len(names) {
-		name = names[inst.SubInstruction]
-	}
-	parent.Child(ag_format.Program(ProgramName, ProgramID)).
-		ParentFunc(func(programBranch ag_treeout.Branches) {
-			programBranch.Child(ag_format.Instruction("ConfidentialTransferFee." + name)).
-				ParentFunc(func(instructionBranch ag_treeout.Branches) {
-					instructionBranch.Child("Params").ParentFunc(func(paramsBranch ag_treeout.Branches) {
-						paramsBranch.Child(ag_format.Param("RawData (len)", len(inst.RawData)))
-					})
-				})
-		})
+	encodeConfidentialExtensionToTree(*inst, parent)
 }
 
 func (obj ConfidentialTransferFeeExtension) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
@@ -105,8 +131,8 @@ func (obj *ConfidentialTransferFeeExtension) UnmarshalWithDecoder(decoder *ag_bi
 	if err != nil {
 		return err
 	}
-	remaining := decoder.Remaining()
-	if remaining > 0 {
+	obj.RawData = nil
+	if remaining := decoder.Remaining(); remaining > 0 {
 		obj.RawData, err = decoder.ReadNBytes(remaining)
 		if err != nil {
 			return err
@@ -115,7 +141,10 @@ func (obj *ConfidentialTransferFeeExtension) UnmarshalWithDecoder(decoder *ag_bi
 	return nil
 }
 
-// NewConfidentialTransferFeeInstruction creates a raw confidential transfer fee extension instruction.
+// NewConfidentialTransferFeeInstruction creates a confidential transfer fee
+// extension instruction from a raw sub-instruction payload.
+//
+// Prefer the typed NewConfidentialTransferFee*Instruction builders.
 func NewConfidentialTransferFeeInstruction(
 	subInstruction uint8,
 	rawData []byte,

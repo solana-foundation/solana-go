@@ -1,29 +1,39 @@
 package token2022
 
 import (
+	"encoding"
 	"errors"
 
 	ag_binary "github.com/gagliardetto/binary"
 	ag_solanago "github.com/gagliardetto/solana-go"
-	ag_format "github.com/gagliardetto/solana-go/text/format"
 	ag_treeout "github.com/gagliardetto/treeout"
 )
 
 // ConfidentialMintBurn sub-instruction IDs.
 const (
 	ConfidentialMintBurn_InitializeMint uint8 = iota
-	ConfidentialMintBurn_UpdateDecryptableSupply
 	ConfidentialMintBurn_RotateSupplyElGamalPubkey
+	ConfidentialMintBurn_UpdateDecryptableSupply
 	ConfidentialMintBurn_Mint
 	ConfidentialMintBurn_Burn
+	ConfidentialMintBurn_ApplyPendingBurn
 )
+
+// ConfidentialMintBurnSubInstructionData is the data of a ConfidentialMintBurn
+// sub-instruction, implemented by the ConfidentialMintBurn*Data structs.
+type ConfidentialMintBurnSubInstructionData interface {
+	encoding.BinaryMarshaler
+	encoding.BinaryUnmarshaler
+	bytes() []byte
+}
 
 // ConfidentialMintBurnExtension is the instruction wrapper for the
 // ConfidentialMintBurn extension (ID 42).
 // This is a complex extension involving encrypted supply and ZK proofs.
 type ConfidentialMintBurnExtension struct {
 	SubInstruction uint8
-	RawData        []byte
+	// Raw data for the sub-instruction.
+	RawData []byte
 
 	Accounts ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 	Signers  ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
@@ -38,6 +48,42 @@ func (slice ConfidentialMintBurnExtension) GetAccounts() (accounts []*ag_solanag
 	accounts = append(accounts, slice.Accounts...)
 	accounts = append(accounts, slice.Signers...)
 	return
+}
+
+func (obj ConfidentialMintBurnExtension) getName() string { return confidentialMintBurnName }
+
+// getSubInstructions describes every ConfidentialMintBurn sub-instruction,
+// indexed by sub-instruction ID: the index is the on-chain discriminator.
+func (obj ConfidentialMintBurnExtension) getSubInstructions() []confidentialSubInstruction[ConfidentialMintBurnSubInstructionData] {
+	return []confidentialSubInstruction[ConfidentialMintBurnSubInstructionData]{
+		ConfidentialMintBurn_InitializeMint: {"InitializeMint", func() ConfidentialMintBurnSubInstructionData {
+			return &ConfidentialMintBurnInitializeMintData{}
+		}},
+		ConfidentialMintBurn_RotateSupplyElGamalPubkey: {"RotateSupplyElGamalPubkey", func() ConfidentialMintBurnSubInstructionData {
+			return &ConfidentialMintBurnRotateSupplyElGamalPubkeyData{}
+		}},
+		ConfidentialMintBurn_UpdateDecryptableSupply: {"UpdateDecryptableSupply", func() ConfidentialMintBurnSubInstructionData {
+			return &ConfidentialMintBurnUpdateDecryptableSupplyData{}
+		}},
+		ConfidentialMintBurn_Mint: {"Mint", func() ConfidentialMintBurnSubInstructionData {
+			return &ConfidentialMintBurnMintData{}
+		}},
+		ConfidentialMintBurn_Burn: {"Burn", func() ConfidentialMintBurnSubInstructionData {
+			return &ConfidentialMintBurnBurnData{}
+		}},
+		ConfidentialMintBurn_ApplyPendingBurn: {"ApplyPendingBurn", func() ConfidentialMintBurnSubInstructionData {
+			return &ConfidentialMintBurnApplyPendingBurnData{}
+		}},
+	}
+}
+
+func (obj ConfidentialMintBurnExtension) getSubInstruction() uint8 { return obj.SubInstruction }
+
+func (obj ConfidentialMintBurnExtension) getRawData() []byte { return obj.RawData }
+
+// DecodeSubInstructionData outputs the typed instruction data for SubInstruction.
+func (obj ConfidentialMintBurnExtension) DecodeSubInstructionData() (ConfidentialMintBurnSubInstructionData, error) {
+	return decodeConfidentialSubInstruction(obj)
 }
 
 func (inst ConfidentialMintBurnExtension) Build() *Instruction {
@@ -62,23 +108,7 @@ func (inst *ConfidentialMintBurnExtension) Validate() error {
 }
 
 func (inst *ConfidentialMintBurnExtension) EncodeToTree(parent ag_treeout.Branches) {
-	names := []string{
-		"InitializeMint", "UpdateDecryptableSupply",
-		"RotateSupplyElGamalPubkey", "Mint", "Burn",
-	}
-	name := "Unknown"
-	if int(inst.SubInstruction) < len(names) {
-		name = names[inst.SubInstruction]
-	}
-	parent.Child(ag_format.Program(ProgramName, ProgramID)).
-		ParentFunc(func(programBranch ag_treeout.Branches) {
-			programBranch.Child(ag_format.Instruction("ConfidentialMintBurn." + name)).
-				ParentFunc(func(instructionBranch ag_treeout.Branches) {
-					instructionBranch.Child("Params").ParentFunc(func(paramsBranch ag_treeout.Branches) {
-						paramsBranch.Child(ag_format.Param("RawData (len)", len(inst.RawData)))
-					})
-				})
-		})
+	encodeConfidentialExtensionToTree(*inst, parent)
 }
 
 func (obj ConfidentialMintBurnExtension) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
@@ -100,8 +130,8 @@ func (obj *ConfidentialMintBurnExtension) UnmarshalWithDecoder(decoder *ag_binar
 	if err != nil {
 		return err
 	}
-	remaining := decoder.Remaining()
-	if remaining > 0 {
+	obj.RawData = nil
+	if remaining := decoder.Remaining(); remaining > 0 {
 		obj.RawData, err = decoder.ReadNBytes(remaining)
 		if err != nil {
 			return err
@@ -110,7 +140,10 @@ func (obj *ConfidentialMintBurnExtension) UnmarshalWithDecoder(decoder *ag_binar
 	return nil
 }
 
-// NewConfidentialMintBurnInstruction creates a raw confidential mint/burn extension instruction.
+// NewConfidentialMintBurnInstruction creates a confidential mint/burn extension
+// instruction from a raw sub-instruction payload.
+//
+// Prefer the typed NewConfidentialMintBurn*Instruction builders.
 func NewConfidentialMintBurnInstruction(
 	subInstruction uint8,
 	rawData []byte,

@@ -5,16 +5,15 @@
 //! cargo run --bin token2022 > ../../../token-2022/testdata/confidential_transfer_rust_parity.json
 use {
     bytemuck::Zeroable,
-    solana_instruction::Instruction,
+    parity::{addr, emit, offset, pod, print_vectors},
     solana_pubkey::Pubkey,
-    solana_zk_sdk::encryption::pod::{
+    solana_zk_elgamal_proof_interface::proof_data::*,
+    solana_zk_sdk_pod::encryption::{
         auth_encryption::PodAeCiphertext,
         elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
     },
-    solana_zk_sdk::zk_elgamal_proof_program::proof_data::*,
     spl_token_2022_interface::extension::confidential_transfer::instruction as ct,
     spl_token_confidential_transfer_proof_extraction::instruction::ProofLocation,
-    std::num::NonZeroI8,
 };
 
 const TOKEN_ACCOUNT: u8 = 10;
@@ -35,60 +34,6 @@ const PAYER: u8 = 31;
 const AMOUNT: u64 = 0x1122334455667788;
 const DECIMALS: u8 = 9;
 const MAX_PENDING_COUNTER: u64 = 65536;
-
-fn hex(b: &[u8]) -> String {
-    b.iter().map(|x| format!("{:02x}", x)).collect()
-}
-
-// pattern fills pods with distinct, non-zero bytes; seed keeps two values of
-// the same type distinguishable.
-fn pattern(seed: u8, n: usize) -> Vec<u8> {
-    (0..n)
-        .map(|i| ((i + seed as usize) % 251 + 1) as u8)
-        .collect()
-}
-
-fn pod<T: bytemuck::Pod>(seed: u8) -> T {
-    *bytemuck::from_bytes(&pattern(seed, core::mem::size_of::<T>()))
-}
-
-fn addr(n: u8) -> Pubkey {
-    Pubkey::from([n; 32])
-}
-
-fn ix_json(ix: &Instruction) -> String {
-    let accounts: Vec<String> = ix
-        .accounts
-        .iter()
-        .map(|a| {
-            format!(
-                r#"{{"pubkey":"{}","is_signer":{},"is_writable":{}}}"#,
-                hex(a.pubkey.as_ref()),
-                a.is_signer,
-                a.is_writable
-            )
-        })
-        .collect();
-    format!(
-        r#"{{"program_id":"{}","data":"{}","accounts":[{}]}}"#,
-        hex(ix.program_id.as_ref()),
-        hex(&ix.data),
-        accounts.join(",")
-    )
-}
-
-fn emit(name: &str, instructions: Vec<Instruction>) -> String {
-    let encoded: Vec<String> = instructions.iter().map(ix_json).collect();
-    format!(
-        r#"{{"name":"{}","instructions":[{}]}}"#,
-        name,
-        encoded.join(",")
-    )
-}
-
-fn offset(n: i8) -> NonZeroI8 {
-    NonZeroI8::new(n).unwrap()
-}
 
 fn main() {
     let id = spl_token_2022_interface::id();
@@ -121,7 +66,10 @@ fn main() {
     let vectors: Vec<String> = vec![
         emit(
             "initialize_mint",
-            vec![ct::initialize_mint(&id, &mint, Some(authority), true, Some(auditor_pubkey)).unwrap()],
+            vec![
+                ct::initialize_mint(&id, &mint, Some(authority), true, Some(auditor_pubkey))
+                    .unwrap(),
+            ],
         ),
         emit(
             "initialize_mint_no_optionals",
@@ -205,12 +153,29 @@ fn main() {
         ),
         emit(
             "deposit",
-            vec![ct::deposit(&id, &token_account, &mint, AMOUNT, DECIMALS, &authority, &[]).unwrap()],
+            vec![ct::deposit(
+                &id,
+                &token_account,
+                &mint,
+                AMOUNT,
+                DECIMALS,
+                &authority,
+                &[],
+            )
+            .unwrap()],
         ),
         emit(
             "deposit_multisig",
-            vec![ct::deposit(&id, &token_account, &mint, AMOUNT, DECIMALS, &authority, &multisig)
-                .unwrap()],
+            vec![ct::deposit(
+                &id,
+                &token_account,
+                &mint,
+                AMOUNT,
+                DECIMALS,
+                &authority,
+                &multisig,
+            )
+            .unwrap()],
         ),
         emit(
             "withdraw_offset",
@@ -318,11 +283,15 @@ fn main() {
         ),
         emit(
             "enable_non_confidential_credits",
-            vec![ct::enable_non_confidential_credits(&id, &token_account, &authority, &[]).unwrap()],
+            vec![
+                ct::enable_non_confidential_credits(&id, &token_account, &authority, &[]).unwrap(),
+            ],
         ),
         emit(
             "disable_non_confidential_credits",
-            vec![ct::disable_non_confidential_credits(&id, &token_account, &authority, &[]).unwrap()],
+            vec![
+                ct::disable_non_confidential_credits(&id, &token_account, &authority, &[]).unwrap(),
+            ],
         ),
         emit(
             "transfer_with_fee_offset",
@@ -377,14 +346,16 @@ fn main() {
         ),
         emit(
             "configure_account_with_registry_no_payer",
-            vec![ct::configure_account_with_registry(&id, &token_account, &mint, &addr(REGISTRY), None)
-                .unwrap()],
+            vec![ct::configure_account_with_registry(
+                &id,
+                &token_account,
+                &mint,
+                &addr(REGISTRY),
+                None,
+            )
+            .unwrap()],
         ),
     ];
 
-    println!(
-        r#"{{"program_id":"{}","builders":[{}]}}"#,
-        hex(id.as_ref()),
-        vectors.join(",")
-    );
+    print_vectors(&id, vectors);
 }
