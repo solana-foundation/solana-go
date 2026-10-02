@@ -186,10 +186,10 @@ func (obj TransferFeeExtension) MarshalWithEncoder(encoder *ag_binary.Encoder) (
 	}
 	switch obj.SubInstruction {
 	case TransferFee_InitializeTransferFeeConfig:
-		if err = writeOptionalPubkey(encoder, obj.TransferFeeConfigAuthority); err != nil {
+		if err = writeCOptionPubkey(encoder, obj.TransferFeeConfigAuthority); err != nil {
 			return err
 		}
-		if err = writeOptionalPubkey(encoder, obj.WithdrawWithheldAuthority); err != nil {
+		if err = writeCOptionPubkey(encoder, obj.WithdrawWithheldAuthority); err != nil {
 			return err
 		}
 		err = encoder.WriteUint16(obj.TransferFeeBasisPoints, binary.LittleEndian)
@@ -235,11 +235,11 @@ func (obj *TransferFeeExtension) UnmarshalWithDecoder(decoder *ag_binary.Decoder
 	}
 	switch obj.SubInstruction {
 	case TransferFee_InitializeTransferFeeConfig:
-		obj.TransferFeeConfigAuthority, err = readOptionalPubkey(decoder)
+		obj.TransferFeeConfigAuthority, err = readCOptionPubkey(decoder)
 		if err != nil {
 			return err
 		}
-		obj.WithdrawWithheldAuthority, err = readOptionalPubkey(decoder)
+		obj.WithdrawWithheldAuthority, err = readCOptionPubkey(decoder)
 		if err != nil {
 			return err
 		}
@@ -427,4 +427,33 @@ func NewSetTransferFeeInstruction(
 		inst.Signers = append(inst.Signers, ag_solanago.Meta(signer).SIGNER())
 	}
 	return inst
+}
+
+// writeCOptionPubkey encodes a COption<Pubkey> as the token program packs it
+// in instruction data: 1 and the 32-byte key, or 0 alone.
+func writeCOptionPubkey(encoder *ag_binary.Encoder, pk *ag_solanago.PublicKey) error {
+	if pk == nil {
+		return encoder.WriteBool(false)
+	}
+	if err := encoder.WriteBool(true); err != nil {
+		return err
+	}
+	return encoder.WriteBytes(pk[:], false)
+}
+
+// readCOptionPubkey decodes a COption<Pubkey> written by writeCOptionPubkey.
+func readCOptionPubkey(decoder *ag_binary.Decoder) (*ag_solanago.PublicKey, error) {
+	ok, err := decoder.ReadBool()
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, nil
+	}
+	v, err := decoder.ReadNBytes(32)
+	if err != nil {
+		return nil, err
+	}
+	pk := ag_solanago.PublicKeyFromBytes(v)
+	return &pk, nil
 }

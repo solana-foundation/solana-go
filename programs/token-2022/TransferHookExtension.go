@@ -105,35 +105,29 @@ func (inst *TransferHookExtension) EncodeToTree(parent ag_treeout.Branches) {
 		})
 }
 
+// writeOptionalPubkey encodes an OptionalNonZeroPubkey (MaybeNull<Address>),
+// the form extension instructions use: always 32 bytes, all zeros meaning
+// none.
 func writeOptionalPubkey(encoder *ag_binary.Encoder, pk *ag_solanago.PublicKey) error {
 	if pk == nil {
-		if err := encoder.WriteBool(false); err != nil {
-			return err
-		}
 		empty := ag_solanago.PublicKey{}
 		return encoder.WriteBytes(empty[:], false)
-	}
-	if err := encoder.WriteBool(true); err != nil {
-		return err
 	}
 	return encoder.WriteBytes(pk[:], false)
 }
 
+// readOptionalPubkey decodes an OptionalNonZeroPubkey written by
+// writeOptionalPubkey, returning nil for all zeros.
 func readOptionalPubkey(decoder *ag_binary.Decoder) (*ag_solanago.PublicKey, error) {
-	ok, err := decoder.ReadBool()
+	v, err := decoder.ReadNBytes(32)
 	if err != nil {
 		return nil, err
 	}
-	if ok {
-		v, err := decoder.ReadNBytes(32)
-		if err != nil {
-			return nil, err
-		}
-		pk := ag_solanago.PublicKeyFromBytes(v)
-		return &pk, nil
+	pk := ag_solanago.PublicKeyFromBytes(v)
+	if pk.IsZero() {
+		return nil, nil
 	}
-	_, _ = decoder.ReadNBytes(32)
-	return nil, nil
+	return &pk, nil
 }
 
 func (obj TransferHookExtension) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {

@@ -48,13 +48,23 @@ func u16LE(v uint16) []byte {
 	return b
 }
 
-// optionalPubkeyBytes encodes a COption<Pubkey> for instruction data:
-// 1 byte discriminator + 32 bytes.
+// optionalPubkeyBytes encodes a COption<Pubkey> as the token program packs it
+// in instruction data (pack_pubkey_option): 1 and the 32-byte key, or 0
+// alone.
 func optionalPubkeyBytes(pk *ag_solanago.PublicKey) []byte {
 	if pk == nil {
-		return concat([]byte{0}, repeatByte(0, 32))
+		return []byte{0}
 	}
 	return concat([]byte{1}, pk[:])
+}
+
+// maybeNullPubkeyBytes encodes a MaybeNull<Address> (formerly
+// OptionalNonZeroPubkey): always 32 bytes, all zeros meaning none.
+func maybeNullPubkeyBytes(pk *ag_solanago.PublicKey) []byte {
+	if pk == nil {
+		return repeatByte(0, 32)
+	}
+	return pk[:]
 }
 
 // ===================================================================
