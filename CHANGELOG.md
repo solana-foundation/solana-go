@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.0](https://github.com/solana-foundation/solana-go/compare/v1.24.1...v1.25.0) (2026-10-06)
+
+
+### Features
+
+* **confidential extensions:** add instruction builders for ConfidentialTransferFeeExtension and ConfidentialMintBurnExtension ([#504](https://github.com/solana-foundation/solana-go/issues/504)) ([d2b813e](https://github.com/solana-foundation/solana-go/commit/d2b813e5f52a141a6c5a32dd6933821c74d883de))
+
 ## [1.24.1](https://github.com/solana-foundation/solana-go/compare/v1.24.0...v1.24.1) (2026-09-25)
 
 
