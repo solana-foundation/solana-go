@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.26.0](https://github.com/solana-foundation/solana-go/compare/v1.25.0...v1.26.0) (2026-10-09)
+
+
+### Features
+
+* **token-2022:** add ConfidentialMintBurn and ConfidentialTransferFee client API ([#511](https://github.com/solana-foundation/solana-go/issues/511)) ([4ab4b22](https://github.com/solana-foundation/solana-go/commit/4ab4b22e9aa1ac67da59a5c1d03a3b2efff80693))
+
 ## [1.25.0](https://github.com/solana-foundation/solana-go/compare/v1.24.1...v1.25.0) (2026-10-06)
 
 
