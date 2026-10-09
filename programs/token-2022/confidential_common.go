@@ -4,6 +4,10 @@ import (
 	"fmt"
 
 	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/token-2022/zkencryption"
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/confidential"
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
+	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
 	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
 )
@@ -126,4 +130,52 @@ func rejectSubInstructionData(extension string, rawData []byte) error {
 		return fmt.Errorf("token2022: %s sub-instruction takes no data, got %d bytes", extension, len(rawData))
 	}
 	return nil
+}
+
+// availableBalanceInfo is the available balance of a confidential transfer
+// account that a Withdraw, Transfer, or Burn spends from.
+type availableBalanceInfo struct {
+	availableBalance            encryption.ElGamalCiphertext
+	decryptableAvailableBalance encryption.AeCiphertext
+}
+
+func newAvailableBalanceInfo(s *ConfidentialTransferAccountState) availableBalanceInfo {
+	return availableBalanceInfo{
+		availableBalance:            encryption.ElGamalCiphertext(s.AvailableBalance),
+		decryptableAvailableBalance: encryption.AeCiphertext(s.DecryptableAvailableBalance),
+	}
+}
+
+// proveReencryption encrypts amount, which ct encrypts under kp, afresh under
+// newPubkey and proves the two ciphertexts encrypt the same amount.
+func proveReencryption(
+	kp *encryption.ElGamalKeypair,
+	newPubkey encryption.ElGamalPubkey,
+	ct encryption.ElGamalCiphertext,
+	amount uint64,
+) (*proofdata.CiphertextCiphertextEqualityProofData, error) {
+	newOpening, err := encryption.NewPedersenOpening()
+	if err != nil {
+		return nil, err
+	}
+	newCiphertext, err := newPubkey.EncryptWith(amount, newOpening)
+	if err != nil {
+		return nil, err
+	}
+	return proofdata.NewCiphertextCiphertextEqualityProofData(kp, newPubkey, ct, newCiphertext, newOpening, amount)
+}
+
+// decryptableBalanceAfterDeduction decrypts an available balance, subtracts the
+// amount, and encrypts the remainder afresh under the same AE key.
+func (i availableBalanceInfo) decryptableBalanceAfterDeduction(
+	amount uint64, aesKey zkencryption.AeKey,
+) (encryption.AeCiphertext, error) {
+	balance, err := encryption.AeDecrypt(aesKey, i.decryptableAvailableBalance)
+	if err != nil {
+		return encryption.AeCiphertext{}, err
+	}
+	if amount > balance {
+		return encryption.AeCiphertext{}, confidential.ErrNotEnoughFunds
+	}
+	return encryption.AeEncrypt(aesKey, balance-amount)
 }

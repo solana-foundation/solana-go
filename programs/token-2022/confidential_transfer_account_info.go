@@ -94,16 +94,12 @@ func (i ApplyPendingBalanceAccountInfo) NewDecryptableAvailableBalance(
 
 // WithdrawAccountInfo is the account state a confidential Withdraw instruction is built from.
 type WithdrawAccountInfo struct {
-	availableBalance            encryption.ElGamalCiphertext
-	decryptableAvailableBalance encryption.AeCiphertext
+	availableBalanceInfo
 }
 
 // NewWithdrawAccountInfo extracts the state a Withdraw instruction needs from a confidential transfer account.
 func NewWithdrawAccountInfo(s *ConfidentialTransferAccountState) WithdrawAccountInfo {
-	return WithdrawAccountInfo{
-		availableBalance:            encryption.ElGamalCiphertext(s.AvailableBalance),
-		decryptableAvailableBalance: encryption.AeCiphertext(s.DecryptableAvailableBalance),
-	}
+	return WithdrawAccountInfo{availableBalanceInfo: newAvailableBalanceInfo(s)}
 }
 
 // GenerateProofData builds the proofs the Withdraw instruction carries.
@@ -122,23 +118,19 @@ func (i WithdrawAccountInfo) GenerateProofData(
 func (i WithdrawAccountInfo) NewDecryptableAvailableBalance(
 	amount uint64, aesKey zkencryption.AeKey,
 ) (encryption.AeCiphertext, error) {
-	return decryptableBalanceAfterSpend(aesKey, i.decryptableAvailableBalance, amount)
+	return i.decryptableBalanceAfterDeduction(amount, aesKey)
 }
 
 // --- Transfer ---
 
 // TransferAccountInfo is the account state a confidential Transfer or TransferWithFee instruction is built from.
 type TransferAccountInfo struct {
-	availableBalance            encryption.ElGamalCiphertext
-	decryptableAvailableBalance encryption.AeCiphertext
+	availableBalanceInfo
 }
 
 // NewTransferAccountInfo extracts the TransferInfo state from a confidential transfer account.
 func NewTransferAccountInfo(s *ConfidentialTransferAccountState) TransferAccountInfo {
-	return TransferAccountInfo{
-		availableBalance:            encryption.ElGamalCiphertext(s.AvailableBalance),
-		decryptableAvailableBalance: encryption.AeCiphertext(s.DecryptableAvailableBalance),
-	}
+	return TransferAccountInfo{availableBalanceInfo: newAvailableBalanceInfo(s)}
 }
 
 // GenerateSplitTransferProofData builds the three proofs a confidential transfer requires.
@@ -174,22 +166,7 @@ func (i TransferAccountInfo) GenerateSplitTransferWithFeeProofData(
 func (i TransferAccountInfo) NewDecryptableAvailableBalance(
 	amount uint64, aesKey zkencryption.AeKey,
 ) (encryption.AeCiphertext, error) {
-	return decryptableBalanceAfterSpend(aesKey, i.decryptableAvailableBalance, amount)
-}
-
-// decryptableBalanceAfterSpend decrypts an available balance, subtracts the
-// amount spent, and encrypts the remainder afresh under the same AE key.
-func decryptableBalanceAfterSpend(
-	aesKey zkencryption.AeKey, ct encryption.AeCiphertext, amount uint64,
-) (encryption.AeCiphertext, error) {
-	balance, err := encryption.AeDecrypt(aesKey, ct)
-	if err != nil {
-		return encryption.AeCiphertext{}, err
-	}
-	if amount > balance {
-		return encryption.AeCiphertext{}, confidential.ErrNotEnoughFunds
-	}
-	return encryption.AeEncrypt(aesKey, balance-amount)
+	return i.decryptableBalanceAfterDeduction(amount, aesKey)
 }
 
 // --- EmptyAccount ---

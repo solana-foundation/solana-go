@@ -7,7 +7,7 @@ import (
 	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
 )
 
-// MintProofData is the proof data of a confidential Mint instruction carries.
+// MintProofData is the proof data a confidential Mint instruction carries.
 type MintProofData struct {
 	// SupplyEqualityProofData proves the new supply ciphertext matches a commitment
 	// to the new supply amount.

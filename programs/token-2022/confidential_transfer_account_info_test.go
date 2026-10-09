@@ -229,22 +229,3 @@ func makeAccountState(
 		PendingBalanceCreditCounter: creditCounter,
 	}, kp, aesKey
 }
-
-// genKeyPair returns a fresh random ElGamal keypair.
-func genKeyPair(t *testing.T) *encryption.ElGamalKeypair {
-	t.Helper()
-	kp, err := encryption.NewElGamalKeypair()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return kp
-}
-
-func verifyAll(t *testing.T, proofs map[string]proofdata.ProofData) {
-	t.Helper()
-	for name, proof := range proofs {
-		if err := proof.Verify(); err != nil {
-			t.Fatalf("%s proof rejected: %v", name, err)
-		}
-	}
-}
