@@ -4,9 +4,9 @@ import (
 	"encoding"
 	"testing"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/zkprogram"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/proofdata"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/zkprogram"
 )
 
 func TestConfidentialMintBurnDataRoundTrip(t *testing.T) {

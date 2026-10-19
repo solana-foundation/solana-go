@@ -3,13 +3,13 @@ package token2022
 import (
 	"fmt"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/programs/token-2022/zkencryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/confidential"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/encryption"
-	"github.com/gagliardetto/solana-go/programs/zk-elgamal-proof/proofdata"
-	"github.com/gagliardetto/solana-go/text/format"
 	"github.com/gagliardetto/treeout"
+	"github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/programs/token-2022/zkencryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/confidential"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/encryption"
+	"github.com/solana-foundation/solana-go/v2/programs/zk-elgamal-proof/proofdata"
+	"github.com/solana-foundation/solana-go/v2/text/format"
 )
 
 // The name each confidential extension carries into errors and tree labels.

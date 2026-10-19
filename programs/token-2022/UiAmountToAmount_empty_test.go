@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	ag_solanago "github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/text"
+	ag_solanago "github.com/solana-foundation/solana-go/v2"
+	"github.com/solana-foundation/solana-go/v2/text"
 	"github.com/stretchr/testify/require"
 )
 
