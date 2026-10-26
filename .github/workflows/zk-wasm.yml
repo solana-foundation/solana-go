@@ -7,6 +7,9 @@ on:
   pull_request:
     paths: ["programs/zk-elgamal-proof/**"]
 
+permissions:
+  contents: read
+
 jobs:
   verify-blob:
     runs-on: ubuntu-latest

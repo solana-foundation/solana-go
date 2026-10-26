@@ -19,6 +19,9 @@ on:
       - "programs/token-2022/testdata/confidential_transfer_fee_rust_parity.json"
       - ".github/workflows/parity-vectors.yml"
 
+permissions:
+  contents: read
+
 jobs:
   verify-vectors:
     runs-on: ubuntu-latest

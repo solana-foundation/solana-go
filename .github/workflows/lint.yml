@@ -14,6 +14,9 @@ on:
       - ".golangci.yml"
       - ".github/workflows/lint.yml"
 name: lint
+permissions:
+  contents: read
+
 jobs:
   golangci-lint:
     runs-on: ubuntu-latest
