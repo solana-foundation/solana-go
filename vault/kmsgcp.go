@@ -26,6 +26,7 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudkms/v1"
+	"google.golang.org/api/option"
 )
 
 ///
@@ -102,7 +103,7 @@ func NewKMSGCPManager(keyPath string) (*KMSGCPManager, error) {
 		return nil, err
 	}
 
-	kmsService, err := cloudkms.New(client)
+	kmsService, err := cloudkms.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return nil, err
 	}
