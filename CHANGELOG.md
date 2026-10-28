@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.26.0](https://github.com/solana-foundation/solana-go/compare/v1.25.0...v1.26.0) (2026-10-28)
+
+
+### Features
+
+* **token-2022:** add ConfidentialMintBurn and ConfidentialTransferFee client API ([#511](https://github.com/solana-foundation/solana-go/issues/511)) ([4ab4b22](https://github.com/solana-foundation/solana-go/commit/4ab4b22e9aa1ac67da59a5c1d03a3b2efff80693))
+
+
+### Bug Fixes
+
+* reject oversized element counts in ExtendLookupTable and VoteStateUpdate instruction decoding ([#513](https://github.com/solana-foundation/solana-go/issues/513)) ([b44dbce](https://github.com/solana-foundation/solana-go/commit/b44dbce00a3f330e9b1efde39b95c99943dcde76))
+* restrict workflow token permissions and bump x/net, x/crypto ([#516](https://github.com/solana-foundation/solana-go/issues/516)) ([6a5fcd3](https://github.com/solana-foundation/solana-go/commit/6a5fcd33fbaa2636d50887b8e8993f4e2ef8e1a8))
+* **rpc:** preserve numeric precision in jsonParsed instruction info ([#488](https://github.com/solana-foundation/solana-go/issues/488)) ([36f0813](https://github.com/solana-foundation/solana-go/commit/36f0813fd794539e1d696f384dc8c0915d647350))
+
 ## [1.25.0](https://github.com/solana-foundation/solana-go/compare/v1.24.1...v1.25.0) (2026-10-06)
 
 
