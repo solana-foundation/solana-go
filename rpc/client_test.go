@@ -142,6 +142,66 @@ func TestClient_GetAccountInfoWithOpts(t *testing.T) {
 	)
 }
 
+func TestClient_GetAccountInfo_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs5eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	out, err := client.GetAccountInfo(context.Background(), pubKey)
+	require.NoError(t, err)
+	require.NotNil(t, out)
+	assert.Equal(t, uint64(83986105), out.RPCContext.Context.Slot)
+	assert.Nil(t, out.Value)
+}
+
+func TestClient_GetAccountInfoWithOpts_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs5eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	out, err := client.GetAccountInfoWithOpts(
+		context.Background(),
+		pubKey,
+		&GetAccountInfoOpts{},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, out)
+	assert.Equal(t, uint64(83986105), out.RPCContext.Context.Slot)
+	assert.Nil(t, out.Value)
+}
+
+func TestClient_GetAccountDataInto_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	var data struct{}
+	err := client.GetAccountDataInto(context.Background(), pubKey, &data)
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestClient_GetAccountDataBorshInto_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	var data struct{}
+	err := client.GetAccountDataBorshInto(context.Background(), pubKey, &data)
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
 // mustAnyToJSON marshals the provided variable
 // to JSON bytes.
 func mustAnyToJSON(raw any) []byte {
