@@ -263,7 +263,7 @@ Compared to legacy/v0 transactions:
 | max transaction size | 1232 bytes | 4096 bytes |
 | compute budget | `ComputeBudget` program instructions | inline `TransactionConfig` in the message header |
 | address lookup tables | v0 only | not supported |
-| max signatures / addresses / instructions | bounded by the 1232-byte size (indices are u8) | 12 / 64 / 64 (enforced by `Sanitize`) |
+| max signatures / addresses / instructions | bounded by the 1232-byte size (indices are u8) | 12 / 64 / 64 by default (cluster policy, see [V1 policy limits](#v1-policy-limits)); at most 255 addresses / instructions on the wire |
 | wire layout | `sigs (compact-u16 len) \|\| message` | `0x81 \|\| message \|\| sigs (fixed, no len)` |
 
 The Go API stays the same; you opt in with `solana.TransactionV1Config`
@@ -356,6 +356,43 @@ out, err := client.GetTransaction(ctx, sig, &rpc.GetTransactionOpts{
 	MaxSupportedTransactionVersion: &rpc.MaxSupportedTransactionVersion1,
 })
 ```
+
+### V1 policy limits
+
+The 12 / 64 / 64 limits are cluster policy, not wire-format rules, and the
+cluster can change them behind a feature gate: SIMD-0596 proposes 96
+addresses for v1. `Sanitize` and `NewTransaction` apply
+`solana.DefaultV1Limits()`. Once the target cluster has activated different
+limits, pass the same `solana.V1Limits` when building and when validating:
+
+```go
+limits := solana.DefaultV1Limits()
+limits.MaxAddresses = 96 // only after the target cluster activated the feature
+
+tx, err := solana.NewTransaction(instructions, recent.Value.Blockhash,
+	solana.TransactionPayer(sender.PublicKey()),
+	solana.TransactionV1Config(config),
+	solana.TransactionV1Limits(limits), // NewTransaction checks against these
+)
+if err != nil {
+	panic(err)
+}
+
+// The limits are not stored in the transaction: tx.Sanitize() keeps using
+// the defaults, so validate a received transaction with the same limits.
+received, err := solana.TransactionFromBase64(b64)
+if err != nil {
+	panic(err)
+}
+if err := received.SanitizeWithV1Limits(limits); err != nil {
+	panic(err)
+}
+```
+
+Whatever the limits are, a v1 message still has at most 255 addresses and 255
+instructions (the wire format stores both counts in one byte), and every other
+structural check still applies. A raised limit does not make a cluster accept
+the transaction before that cluster has activated the feature.
 
 Things to keep in mind:
 

@@ -28,12 +28,61 @@ func IsSanitizeError(err error) bool {
 // Account indices are encoded as u8, so the limit is 256.
 const maxAccountKeys = 256
 
+// V1Limits holds the SIMD-0385 runtime policy limits that Sanitize applies to
+// v1 messages: the maximum number of required signatures, account addresses,
+// and instructions. Legacy and v0 messages ignore them.
+//
+// These are cluster policy rather than wire-format rules, so they can change
+// behind a feature gate. SIMD-0596 (Draft) would raise MaxAddresses to 96 for
+// v1 only, and solana-sdk #1007 moved these checks out of the Rust parsers into
+// the runtime. Callers that track the cluster's limits can pass their own
+// values to SanitizeWithV1Limits; everyone else should use DefaultV1Limits.
+// Raising a limit does not make a cluster accept the message: use a raised
+// limit only after the target cluster has activated the matching feature.
+//
+// The limits never relax the wire format. A v1 message carries at most 255
+// addresses and 255 instructions however large a limit is, and every other
+// structural check still applies. Neither the limits nor Sanitize compare the
+// serialized size with MaxTransactionSizeV1; the cluster enforces that.
+//
+// Each field is an ordinary maximum count. The zero value rejects every v1
+// message, and so does a zero MaxSignatures or MaxAddresses alone, because
+// every v1 message has a fee payer. A zero MaxInstructions still accepts a
+// message with no instructions.
+type V1Limits struct {
+	// MaxSignatures is the maximum number of required signatures.
+	MaxSignatures int
+	// MaxAddresses is the maximum number of account addresses.
+	MaxAddresses int
+	// MaxInstructions is the maximum number of instructions.
+	MaxInstructions int
+}
+
+// DefaultV1Limits returns the SIMD-0385 limits: MaxSignaturesV1,
+// MaxAddressesV1, and MaxInstructionsV1. Sanitize uses these.
+func DefaultV1Limits() V1Limits {
+	return V1Limits{
+		MaxSignatures:   MaxSignaturesV1,
+		MaxAddresses:    MaxAddressesV1,
+		MaxInstructions: MaxInstructionsV1,
+	}
+}
+
 // Sanitize validates the structural integrity of a Message.
+// V1 messages are checked against DefaultV1Limits.
 // Ported from solana-sdk/message legacy.rs, v0/mod.rs sanitize() and v1 validate().
 func (m *Message) Sanitize() error {
+	return m.SanitizeWithV1Limits(DefaultV1Limits())
+}
+
+// SanitizeWithV1Limits is Sanitize with caller-supplied v1 policy limits.
+// The limits apply only to v1 messages; every other v1 check (wire-format
+// counts, duplicate addresses, heap size, address table lookups, header and
+// index bounds) and all legacy and v0 checks are unchanged.
+func (m *Message) SanitizeWithV1Limits(limits V1Limits) error {
 	switch m.version {
 	case MessageVersionV1:
-		return m.sanitizeV1()
+		return m.sanitizeV1(limits)
 	case MessageVersionV0:
 		return m.sanitizeV0()
 	default:
@@ -115,21 +164,30 @@ func (m *Message) sanitizeV0() error {
 	return m.sanitizeInstructions(numStaticKeys-1, totalKeys-1, "exceeds static keys (max %d)")
 }
 
-// sanitizeV1 validates a V1 (SIMD-0385) message.
+// sanitizeV1 validates a V1 (SIMD-0385) message against the given policy limits.
 // Ported from solana-sdk message/src/versions/v1/message.rs validate() (+ #699 heap bounds).
-func (m *Message) sanitizeV1() error {
+func (m *Message) sanitizeV1(limits V1Limits) error {
 	if len(m.AddressTableLookups) > 0 {
 		return newSanitizeError("v1 messages do not support address table lookups (got %d)", len(m.AddressTableLookups))
 	}
-	if int(m.Header.NumRequiredSignatures) > MaxSignaturesV1 {
-		return newSanitizeError("too many signatures: required_signatures(%d) > max %d", m.Header.NumRequiredSignatures, MaxSignaturesV1)
+	if int(m.Header.NumRequiredSignatures) > limits.MaxSignatures {
+		return newSanitizeError("too many signatures: required_signatures(%d) > max %d", m.Header.NumRequiredSignatures, limits.MaxSignatures)
 	}
-	if len(m.Instructions) > MaxInstructionsV1 {
-		return newSanitizeError("too many instructions: %d > max %d", len(m.Instructions), MaxInstructionsV1)
+	if len(m.Instructions) > limits.MaxInstructions {
+		return newSanitizeError("too many instructions: %d > max %d", len(m.Instructions), limits.MaxInstructions)
 	}
 	numKeys := len(m.AccountKeys)
-	if numKeys > MaxAddressesV1 {
-		return newSanitizeError("too many addresses: %d > max %d", numKeys, MaxAddressesV1)
+	if numKeys > limits.MaxAddresses {
+		return newSanitizeError("too many addresses: %d > max %d", numKeys, limits.MaxAddresses)
+	}
+	// The wire format stores both counts in one byte whatever the policy
+	// limits are. These run after the policy checks, so the default limits
+	// keep reporting the policy error first.
+	if len(m.Instructions) > maxV1WireCount {
+		return newSanitizeError("too many instructions: %d > wire limit %d", len(m.Instructions), maxV1WireCount)
+	}
+	if numKeys > maxV1WireCount {
+		return newSanitizeError("too many addresses: %d > wire limit %d", numKeys, maxV1WireCount)
 	}
 	if err := m.sanitizeHeader(numKeys, "account_keys"); err != nil {
 		return err
@@ -150,11 +208,11 @@ func (m *Message) sanitizeV1() error {
 		return newSanitizeError("message has no account keys")
 	}
 	for i, ci := range m.Instructions {
-		if len(ci.Accounts) > 255 {
-			return newSanitizeError("instruction %d: too many accounts (%d), max 255", i, len(ci.Accounts))
+		if len(ci.Accounts) > maxV1WireCount {
+			return newSanitizeError("instruction %d: too many accounts (%d), max %d", i, len(ci.Accounts), maxV1WireCount)
 		}
-		if len(ci.Data) > 65535 {
-			return newSanitizeError("instruction %d: data too large (%d bytes), max 65535", i, len(ci.Data))
+		if len(ci.Data) > maxV1InstructionDataLen {
+			return newSanitizeError("instruction %d: data too large (%d bytes), max %d", i, len(ci.Data), maxV1InstructionDataLen)
 		}
 	}
 	return m.sanitizeInstructions(numKeys-1, numKeys-1, "out of bounds (max %d)")
@@ -178,9 +236,16 @@ func (m *Message) HasDuplicates() bool {
 
 // Sanitize validates the structural integrity of a Transaction.
 // It checks that the signature count matches the message header and
-// that the message itself is valid.
+// that the message itself is valid. V1 messages are checked against
+// DefaultV1Limits.
 // Ported from solana-sdk/transaction: lib.rs and versioned/mod.rs sanitize().
 func (tx *Transaction) Sanitize() error {
+	return tx.SanitizeWithV1Limits(DefaultV1Limits())
+}
+
+// SanitizeWithV1Limits is Sanitize with caller-supplied v1 policy limits.
+// See Message.SanitizeWithV1Limits.
+func (tx *Transaction) SanitizeWithV1Limits(limits V1Limits) error {
 	numSigs := len(tx.Signatures)
 	numRequired := int(tx.Message.Header.NumRequiredSignatures)
 	numStaticKeys := len(tx.Message.AccountKeys)
@@ -199,7 +264,7 @@ func (tx *Transaction) Sanitize() error {
 		return newSanitizeError("more signatures (%d) than static account keys (%d)", numSigs, numStaticKeys)
 	}
 
-	return tx.Message.Sanitize()
+	return tx.Message.SanitizeWithV1Limits(limits)
 }
 
 // VerifyWithResults verifies each signature independently and returns

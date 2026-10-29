@@ -34,13 +34,27 @@ import (
 const messageVersionV1Prefix byte = messageVersionPrefix | 1
 
 const (
+	// maxV1WireCount is the largest address, instruction, or per-instruction
+	// account count the V1 wire format can encode: each is a single byte.
+	// Unlike the policy limits in V1Limits, it never changes.
+	maxV1WireCount = 255
+	// maxV1InstructionDataLen is the largest instruction data length the V1
+	// wire format can encode (a u16).
+	maxV1InstructionDataLen = 65535
+)
+
+const (
 	// MaxTransactionSizeV1 is the V1 size cap, signatures included (enforced by the cluster).
 	MaxTransactionSizeV1 = 4096
-	// MaxAddressesV1 is the maximum number of addresses in a V1 message.
+	// MaxAddressesV1 is the default (SIMD-0385) policy limit on the number of
+	// addresses in a V1 message, used by Sanitize and DefaultV1Limits. The
+	// cluster can change it behind a feature gate; see V1Limits.
 	MaxAddressesV1 = 64
-	// MaxInstructionsV1 is the maximum number of instructions in a V1 message.
+	// MaxInstructionsV1 is the default (SIMD-0385) policy limit on the number
+	// of instructions in a V1 message; see V1Limits.
 	MaxInstructionsV1 = 64
-	// MaxSignaturesV1 is the maximum number of signatures in a V1 transaction.
+	// MaxSignaturesV1 is the default (SIMD-0385) policy limit on the number of
+	// signatures in a V1 transaction; see V1Limits.
 	MaxSignaturesV1 = 12
 	// MinHeapSizeV1 is the minimum (and default) requested heap size.
 	MinHeapSizeV1 uint32 = 32 * 1024
@@ -205,25 +219,25 @@ func (mx *Message) MarshalV1() ([]byte, error) {
 	if len(mx.AddressTableLookups) > 0 {
 		return nil, fmt.Errorf("v1 messages do not support address table lookups (got %d)", len(mx.AddressTableLookups))
 	}
-	if len(mx.AccountKeys) > 255 {
-		return nil, fmt.Errorf("v1 message: too many account keys (%d), max 255", len(mx.AccountKeys))
+	if len(mx.AccountKeys) > maxV1WireCount {
+		return nil, fmt.Errorf("v1 message: too many account keys (%d), max %d", len(mx.AccountKeys), maxV1WireCount)
 	}
-	if len(mx.Instructions) > 255 {
-		return nil, fmt.Errorf("v1 message: too many instructions (%d), max 255", len(mx.Instructions))
+	if len(mx.Instructions) > maxV1WireCount {
+		return nil, fmt.Errorf("v1 message: too many instructions (%d), max %d", len(mx.Instructions), maxV1WireCount)
 	}
 	for i := range mx.Instructions {
 		ix := &mx.Instructions[i]
-		if ix.ProgramIDIndex > 255 {
+		if ix.ProgramIDIndex > maxV1WireCount {
 			return nil, fmt.Errorf("v1 message: instruction %d: program_id_index %d does not fit in a byte", i, ix.ProgramIDIndex)
 		}
-		if len(ix.Accounts) > 255 {
-			return nil, fmt.Errorf("v1 message: instruction %d: too many accounts (%d), max 255", i, len(ix.Accounts))
+		if len(ix.Accounts) > maxV1WireCount {
+			return nil, fmt.Errorf("v1 message: instruction %d: too many accounts (%d), max %d", i, len(ix.Accounts), maxV1WireCount)
 		}
-		if len(ix.Data) > 65535 {
-			return nil, fmt.Errorf("v1 message: instruction %d: data too large (%d bytes), max 65535", i, len(ix.Data))
+		if len(ix.Data) > maxV1InstructionDataLen {
+			return nil, fmt.Errorf("v1 message: instruction %d: data too large (%d bytes), max %d", i, len(ix.Data), maxV1InstructionDataLen)
 		}
 		for j, idx := range ix.Accounts {
-			if idx > 255 {
+			if idx > maxV1WireCount {
 				return nil, fmt.Errorf("v1 message: instruction %d: account index %d (%d) does not fit in a byte", i, j, idx)
 			}
 		}
