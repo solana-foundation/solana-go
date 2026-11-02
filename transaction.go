@@ -180,6 +180,7 @@ type transactionOptions struct {
 	addressTables map[PublicKey]PublicKeySlice // [tablePubkey]addresses
 	version       MessageVersion               // requested message version; zero value = auto (legacy, or v0 if lookups are used)
 	config        TransactionConfig            // v1 only
+	v1Limits      *V1Limits                    // v1 only; nil = DefaultV1Limits
 }
 
 type transactionOptionFunc func(opts *transactionOptions)
@@ -208,6 +209,17 @@ func TransactionV1Config(config TransactionConfig) TransactionOption {
 		opts.config = config
 		opts.version = MessageVersionV1
 	})
+}
+
+// TransactionV1Limits sets the v1 policy limits NewTransaction checks a v1
+// message against (default DefaultV1Limits). It does not select v1 by itself
+// and has no effect on legacy or v0 messages.
+//
+// The limits are not recorded in the transaction. Validate it later with
+// Transaction.SanitizeWithV1Limits and the same limits; Transaction.Sanitize
+// keeps using DefaultV1Limits.
+func TransactionV1Limits(limits V1Limits) TransactionOption {
+	return transactionOptionFunc(func(opts *transactionOptions) { opts.v1Limits = &limits })
 }
 
 var debugNewTransaction = false
@@ -581,7 +593,11 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		message.version = MessageVersionV1
 		message.TransactionConfig = options.config
 		// Fail early on the SIMD-0385 structural limits.
-		if err := message.sanitizeV1(); err != nil {
+		limits := DefaultV1Limits()
+		if options.v1Limits != nil {
+			limits = *options.v1Limits
+		}
+		if err := message.sanitizeV1(limits); err != nil {
 			return nil, fmt.Errorf("v1 transaction: %w", err)
 		}
 	}
