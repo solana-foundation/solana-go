@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/rpc"
 	json "github.com/goccy/go-json"
 	"github.com/spf13/cobra"
 )
@@ -37,6 +38,9 @@ var getAccountCmd = &cobra.Command{
 		resp, err := client.GetAccountInfo(ctx, solana.MustPublicKeyFromBase58(args[0]))
 		if err != nil {
 			return err
+		}
+		if resp == nil || resp.Value == nil {
+			return rpc.ErrNotFound
 		}
 
 		acct := resp.Value
