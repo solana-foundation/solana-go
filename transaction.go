@@ -373,7 +373,7 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 	}
 
 	// Sort. Prioritizing first by signer, then by writable
-	slices.SortStableFunc(accounts, func(a, b *AccountMeta) int {
+	compareAccounts := func(a, b *AccountMeta) int {
 		if a.less(b) {
 			return -1
 		}
@@ -381,7 +381,8 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 			return 1
 		}
 		return 0
-	})
+	}
+	slices.SortStableFunc(accounts, compareAccounts)
 
 	// Hint the map only above a threshold: for small txs, an empty map is
 	// cheaper than a single pre-allocated bucket (~640B for PublicKey keys).
@@ -401,6 +402,9 @@ func NewTransaction(instructions []Instruction, recentBlockHash Hash, opts ...Tr
 		uniqAccounts = append(uniqAccounts, acc)
 		uniqAccountsMap[acc.PublicKey] = uint64(len(uniqAccounts) - 1)
 	}
+	// Merging can turn a read-only signer into a writable one. The header only
+	// counts read-only signers, so they have to stay after the writable ones.
+	slices.SortStableFunc(uniqAccounts, compareAccounts)
 
 	if debugNewTransaction {
 		zlog.Debug("unique account sorted", zap.Int("account_count", len(uniqAccounts)))

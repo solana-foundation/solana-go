@@ -525,6 +525,42 @@ func TestNewTransaction_DuplicateAccountKeys(t *testing.T) {
 	assert.Equal(t, uint8(1), tx.Message.Header.NumRequiredSignatures)
 }
 
+// A key that is a read-only signer in one instruction and a writable non-signer
+// in another is a writable signer, like CompiledKeys in solana-sdk's message crate.
+// It has to sit before the read-only signers: the header only counts them, so
+// the message treats the last NumReadonlySignedAccounts signers as read-only.
+func TestNewTransaction_MergedWritableSignerOrder(t *testing.T) {
+	payer := PublicKey{0xff}
+	readonlySigner := PublicKey{0x01}
+	both := PublicKey{0x02} // sorts after readonlySigner
+	programID := newUniqueKey()
+
+	tx, err := NewTransaction([]Instruction{
+		newTestInstruction(programID, []*AccountMeta{
+			{PublicKey: readonlySigner, IsSigner: true},
+		}, []byte{0x01}),
+		newTestInstruction(programID, []*AccountMeta{
+			{PublicKey: both, IsSigner: true},
+		}, []byte{0x02}),
+		newTestInstruction(programID, []*AccountMeta{
+			{PublicKey: both, IsWritable: true},
+		}, []byte{0x03}),
+	}, Hash{}, TransactionPayer(payer))
+	require.NoError(t, err)
+
+	assert.Equal(t, PublicKeySlice{payer, both, readonlySigner, programID}, PublicKeySlice(tx.Message.AccountKeys))
+	assert.Equal(t, uint8(3), tx.Message.Header.NumRequiredSignatures)
+	assert.Equal(t, uint8(1), tx.Message.Header.NumReadonlySignedAccounts)
+
+	writable, err := tx.Message.IsWritable(both)
+	require.NoError(t, err)
+	assert.True(t, writable, "key is writable in an instruction")
+
+	writable, err = tx.Message.IsWritable(readonlySigner)
+	require.NoError(t, err)
+	assert.False(t, writable, "key is read-only in every instruction")
+}
+
 // Ported from solana-sdk/transaction/src/lib.rs: test_transaction_correct_key.
 // Tests that signing with the correct key produces verifiable signatures.
 func TestTransaction_SignAndVerify(t *testing.T) {
