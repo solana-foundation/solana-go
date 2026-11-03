@@ -214,6 +214,62 @@ func TestOfficialVector_TransferFee_WithdrawFromMint(t *testing.T) {
 	ag_require.Equal(t, expected, data)
 }
 
+func TestOfficialVector_TransferFee_WithdrawFromAccounts(t *testing.T) {
+	mint, destination, authority := pubkeyOf(1), pubkeyOf(2), pubkeyOf(3)
+	signer1, signer2 := pubkeyOf(4), pubkeyOf(5)
+	source1, source2, source3 := pubkeyOf(6), pubkeyOf(7), pubkeyOf(8)
+
+	// Data and account order follow withdraw_withheld_tokens_from_accounts in
+	// solana-program/token-2022 interface/src/extension/transfer_fee/instruction.rs.
+	t.Run("single owner", func(t *testing.T) {
+		built := NewWithdrawWithheldTokensFromAccountsInstruction(
+			mint, destination, authority, nil, source1, source2, source3,
+		).Build()
+		data, err := built.Data()
+		ag_require.NoError(t, err)
+		ag_require.Equal(t, []byte{26, 3, 3}, data)
+
+		ag_require.Equal(t, ag_solanago.AccountMetaSlice{
+			ag_solanago.Meta(mint),
+			ag_solanago.Meta(destination).WRITE(),
+			ag_solanago.Meta(authority).SIGNER(),
+			ag_solanago.Meta(source1).WRITE(),
+			ag_solanago.Meta(source2).WRITE(),
+			ag_solanago.Meta(source3).WRITE(),
+		}, ag_solanago.AccountMetaSlice(built.Accounts()))
+	})
+
+	t.Run("multisig owner keeps signers before sources", func(t *testing.T) {
+		built := NewWithdrawWithheldTokensFromAccountsInstruction(
+			mint, destination, authority, []ag_solanago.PublicKey{signer1, signer2}, source1, source2,
+		).Build()
+		data, err := built.Data()
+		ag_require.NoError(t, err)
+		ag_require.Equal(t, []byte{26, 3, 2}, data)
+
+		accounts := ag_solanago.AccountMetaSlice(built.Accounts())
+		ag_require.Equal(t, ag_solanago.AccountMetaSlice{
+			ag_solanago.Meta(mint),
+			ag_solanago.Meta(destination).WRITE(),
+			ag_solanago.Meta(authority),
+			ag_solanago.Meta(signer1).SIGNER(),
+			ag_solanago.Meta(signer2).SIGNER(),
+			ag_solanago.Meta(source1).WRITE(),
+			ag_solanago.Meta(source2).WRITE(),
+		}, accounts)
+
+		decoded, err := DecodeInstruction(accounts, data)
+		ag_require.NoError(t, err)
+		ext := decoded.Impl.(*TransferFeeExtension)
+		ag_require.Len(t, ext.Signers, 2)
+		ag_require.Equal(t, accounts, ag_solanago.AccountMetaSlice(decoded.Accounts()))
+
+		reencoded, err := decoded.Data()
+		ag_require.NoError(t, err)
+		ag_require.Equal(t, data, reencoded)
+	})
+}
+
 func TestOfficialVector_TransferFee_HarvestToMint(t *testing.T) {
 	inst := NewHarvestWithheldTokensToMintInstruction(pubkeyOf(1))
 	built := inst.Build()
