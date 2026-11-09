@@ -371,8 +371,31 @@ func (inst *Instruction) TextEncode(encoder *ag_text.Encoder, option *ag_text.Op
 	return encoder.Encode(inst.Impl, option)
 }
 
+// UnmarshalWithDecoder decodes an instruction. The p-token instructions
+// (WithdrawExcessLamports, UnwrapLamports, Batch) have IDs that
+// InstructionImplDef cannot index, so they are decoded through
+// pTokenInstructionMap. This also lets Batch decode them as sub-instructions,
+// as p-token runs them there.
 func (inst *Instruction) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
-	return inst.BaseVariant.UnmarshalBinaryVariant(decoder, InstructionImplDef)
+	head, err := decoder.Peek(1)
+	if err != nil {
+		return err
+	}
+	discriminator := head[0]
+	newImpl, ok := pTokenInstructionMap[discriminator]
+	if !ok {
+		return inst.BaseVariant.UnmarshalBinaryVariant(decoder, InstructionImplDef)
+	}
+	if _, err := decoder.ReadUint8(); err != nil {
+		return err
+	}
+	impl := newImpl()
+	if err := decoder.Decode(impl); err != nil {
+		return fmt.Errorf("unable to decode %T: %w", impl, err)
+	}
+	inst.TypeID = ag_binary.TypeIDFromUint8(discriminator)
+	inst.Impl = impl
+	return nil
 }
 
 func (inst Instruction) MarshalWithEncoder(encoder *ag_binary.Encoder) error {

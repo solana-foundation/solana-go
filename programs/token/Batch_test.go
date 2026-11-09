@@ -176,3 +176,92 @@ func TestBatch_DecodeRejectsTruncatedAccountList(t *testing.T) {
 	ag_require.Error(t, err)
 	ag_require.Contains(t, err.Error(), "expects 3 accounts")
 }
+
+// p-token runs WithdrawExcessLamports and UnwrapLamports inside a batch, so a
+// batch holding them must decode, and re-encode to the same bytes.
+func TestBatch_DecodesPTokenSubInstructions(t *testing.T) {
+	src := ag_solanago.NewWallet().PublicKey()
+	dst := ag_solanago.NewWallet().PublicKey()
+	owner := ag_solanago.NewWallet().PublicKey()
+	native := ag_solanago.NewWallet().PublicKey()
+
+	transfer := NewTransferInstruction(7, src, dst, owner, nil).Build()
+	unwrap := NewUnwrapLamportsInstructionBuilder().
+		SetAmount(42).
+		SetSourceAccount(native).
+		SetDestinationAccount(dst).
+		SetAuthorityAccount(owner).
+		Build()
+	withdraw := NewWithdrawExcessLamportsInstructionBuilder().
+		SetSourceAccount(src).
+		SetDestinationAccount(dst).
+		SetAuthorityAccount(owner).
+		Build()
+
+	batch, err := NewBatchInstruction(transfer, unwrap, withdraw).ValidateAndBuild()
+	ag_require.NoError(t, err)
+	data, err := batch.Data()
+	ag_require.NoError(t, err)
+
+	decoded, err := DecodeInstruction(batch.Accounts(), data)
+	ag_require.NoError(t, err)
+	got, ok := decoded.Impl.(*Batch)
+	ag_require.True(t, ok, "got %T", decoded.Impl)
+	ag_require.Len(t, got.Instructions, 3)
+	ag_require.Equal(t, Instruction_Transfer, got.Instructions[0].TypeID.Uint8())
+	ag_require.Equal(t, Instruction_UnwrapLamports, got.Instructions[1].TypeID.Uint8())
+	ag_require.Equal(t, Instruction_WithdrawExcessLamports, got.Instructions[2].TypeID.Uint8())
+
+	gotUnwrap, ok := got.Instructions[1].Impl.(*UnwrapLamports)
+	ag_require.True(t, ok, "got %T", got.Instructions[1].Impl)
+	ag_require.NotNil(t, gotUnwrap.Amount)
+	ag_require.Equal(t, uint64(42), *gotUnwrap.Amount)
+	ag_require.Equal(t, native, gotUnwrap.GetSourceAccount().PublicKey)
+	ag_require.Equal(t, owner, gotUnwrap.GetAuthorityAccount().PublicKey)
+
+	gotWithdraw, ok := got.Instructions[2].Impl.(*WithdrawExcessLamports)
+	ag_require.True(t, ok, "got %T", got.Instructions[2].Impl)
+	ag_require.Equal(t, src, gotWithdraw.GetSourceAccount().PublicKey)
+	ag_require.Equal(t, dst, gotWithdraw.GetDestinationAccount().PublicKey)
+
+	again, err := decoded.Data()
+	ag_require.NoError(t, err)
+	ag_require.Equal(t, data, again)
+}
+
+// The p-token instructions decode through the binary decoder too, not only
+// through DecodeInstruction.
+func TestInstruction_UnmarshalPTokenInstructions(t *testing.T) {
+	key := func() ag_solanago.PublicKey { return ag_solanago.NewWallet().PublicKey() }
+	cases := map[string]*Instruction{
+		"UnwrapLamports": NewUnwrapLamportsInstructionBuilder().
+			SetSourceAccount(key()).SetDestinationAccount(key()).SetAuthorityAccount(key()).Build(),
+		"WithdrawExcessLamports": NewWithdrawExcessLamportsInstructionBuilder().
+			SetSourceAccount(key()).SetDestinationAccount(key()).SetAuthorityAccount(key()).Build(),
+		"Batch": NewBatchInstruction(NewTransferInstruction(1, key(), key(), key(), nil).Build()).Build(),
+	}
+	for name, ix := range cases {
+		t.Run(name, func(t *testing.T) {
+			data, err := ix.Data()
+			ag_require.NoError(t, err)
+
+			var got Instruction
+			ag_require.NoError(t, ag_binary.NewBinDecoder(data).Decode(&got))
+			ag_require.Equal(t, ix.TypeID, got.TypeID)
+			ag_require.IsType(t, ix.Impl, got.Impl)
+		})
+	}
+}
+
+// p-token does not run a batch inside a batch, so decoding one must fail.
+func TestBatch_DecodeRejectsNestedBatch(t *testing.T) {
+	key := func() ag_solanago.PublicKey { return ag_solanago.NewWallet().PublicKey() }
+	inner := NewBatchInstruction(NewTransferInstruction(1, key(), key(), key(), nil).Build()).Build()
+	outer := NewBatchInstruction(inner).Build() // Build skips Validate, which rejects this
+	data, err := outer.Data()
+	ag_require.NoError(t, err)
+
+	_, err = DecodeInstruction(outer.Accounts(), data)
+	ag_require.Error(t, err)
+	ag_require.Contains(t, err.Error(), "nested batches are not supported")
+}

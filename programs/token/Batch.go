@@ -202,6 +202,10 @@ func (obj *Batch) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
 		if err != nil {
 			return err
 		}
+		// p-token does not run a Batch inside a Batch.
+		if data[0] == Instruction_Batch {
+			return fmt.Errorf("batch sub-instruction %d is itself a Batch; nested batches are not supported", len(obj.Instructions))
+		}
 		ix := new(Instruction)
 		if err = ag_binary.NewBinDecoder(data).Decode(ix); err != nil {
 			return fmt.Errorf("unable to decode batch sub-instruction: %w", err)
