@@ -31,7 +31,10 @@ import (
 //   - byte 0: number of accounts for this sub-instruction
 //   - byte 1: length of instruction data for this sub-instruction
 //
-// This instruction is only available in the p-token (Pinocchio) implementation.
+// This instruction is only available in the p-token (Pinocchio) implementation
+// of the Token program. Under SIMD-0266, p-token replaces the program at
+// TokenProgramID in place, so build it against the default ProgramID; there is
+// no separate p-token program address.
 type Batch struct {
 	Instructions []*Instruction
 

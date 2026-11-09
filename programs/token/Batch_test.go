@@ -64,6 +64,13 @@ func TestEncodeDecode_Batch(t *testing.T) {
 		ag_require.Equal(t, uint8(45), Instruction_UnwrapLamports)
 		ag_require.Equal(t, uint8(255), Instruction_Batch)
 	})
+
+	t.Run("Batch_TargetsTokenProgramID", func(t *testing.T) {
+		// SIMD-0266 replaces the program at TokenProgramID in place, so p-token
+		// instructions must target it rather than a separate address.
+		ix := NewBatchInstruction(newFixtureInstruction(2, 8)).Build()
+		ag_require.Equal(t, ag_solanago.TokenProgramID, ix.ProgramID())
+	})
 }
 
 func TestBatch_MarshalWithEncoder_Limits(t *testing.T) {
