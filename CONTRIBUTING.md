@@ -172,6 +172,7 @@ go test -race ./... -count=1
 
 ## Reporting Issues
 
+- Do not report security vulnerabilities in public issues or pull requests; see [SECURITY.md](SECURITY.md)
 - Use GitHub Issues for bug reports and feature requests
 - Include Go version, OS, and a minimal reproducer when reporting bugs
 - Check existing issues before opening a new one
