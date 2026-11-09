@@ -1306,19 +1306,58 @@ func TestResolveLookupsWith_ResolveInstructionAccounts(t *testing.T) {
 	require.Equal(t, want, got)
 }
 
-// ResolveLookupsWith does not validate its input. When it is given fewer
-// accounts than the message has lookups, the static/looked-up split is
-// impossible: the lookup-dependent methods must return an error, not panic.
-func TestResolveLookupsWith_TooFewLoadedAccounts(t *testing.T) {
-	msg := Message{
-		Header:      MessageHeader{NumRequiredSignatures: 1},
-		AccountKeys: PublicKeySlice{newUniqueKey()},
-		AddressTableLookups: []MessageAddressTableLookup{
-			{AccountKey: newUniqueKey(), WritableIndexes: []uint8{0, 1}, ReadonlyIndexes: []uint8{2}},
-		},
+// ResolveLookupsWith must reject accounts that do not match the message
+// lookups, and leave the message unchanged. The combined key count cannot
+// detect this later: with 4 static keys, 4 lookup accounts needed and only 2
+// supplied, the 2 last static keys would pass as looked-up accounts.
+func TestResolveLookupsWith_CountMismatch(t *testing.T) {
+	f := newLookupFixtureV0() // the message needs 2 writable and 2 readonly accounts
+	extra := newUniqueKey()
+
+	cases := []struct {
+		name     string
+		writable PublicKeySlice
+		readonly PublicKeySlice
+	}{
+		{"half of the accounts", f.writable, nil},
+		{"no accounts", nil, nil},
+		{"one writable missing", f.writable[:1], f.readonly},
+		{"one readonly missing", f.writable, f.readonly[:1]},
+		{"one writable too many", append(append(PublicKeySlice{}, f.writable...), extra), f.readonly},
+		{"right total, wrong split", append(append(PublicKeySlice{}, f.writable...), f.readonly[0]), f.readonly[1:]},
 	}
-	msg.version = MessageVersionV0
-	require.NoError(t, msg.ResolveLookupsWith(PublicKeySlice{newUniqueKey()}, nil))
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			msg := f.message()
+			err := msg.ResolveLookupsWith(tc.writable, tc.readonly)
+			require.Error(t, err)
+			require.NotErrorIs(t, err, ErrAlreadyResolved)
+
+			// The message is unchanged and can still be resolved correctly.
+			require.False(t, msg.IsResolved())
+			require.Equal(t, f.static, msg.AccountKeys)
+			require.NoError(t, msg.ResolveLookupsWith(f.writable, f.readonly))
+			metas, err := msg.AccountMetaList()
+			require.NoError(t, err)
+			require.Equal(t, f.wantMetas(), metas)
+		})
+	}
+}
+
+// The lookups can still change after resolving. When that leaves fewer
+// account keys than lookups, the lookup-dependent methods must return an
+// error instead of panicking.
+func TestResolveLookupsWith_LookupsChangedAfterResolve(t *testing.T) {
+	f := newLookupFixtureV0()
+
+	msg := f.message()
+	require.NoError(t, msg.ResolveLookupsWith(f.writable, f.readonly))
+
+	// 8 account keys, but now 4 + 10 lookups.
+	msg.AddAddressTableLookup(MessageAddressTableLookup{
+		AccountKey:      newUniqueKey(),
+		WritableIndexes: []uint8{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+	})
 
 	_, err := msg.AccountMetaList()
 	require.Error(t, err)
@@ -1327,6 +1366,22 @@ func TestResolveLookupsWith_TooFewLoadedAccounts(t *testing.T) {
 	_, err = msg.GetAddressTableLookupAccounts()
 	require.Error(t, err)
 	require.NotErrorIs(t, err, ErrAddressTablesNotSet)
+}
+
+// ResolveLookupsWith must not write into the spare capacity of the caller's
+// slices.
+func TestResolveLookupsWith_DoesNotWriteIntoCallerSlices(t *testing.T) {
+	f := newLookupFixtureV0()
+	sentinels := PublicKeySlice{newUniqueKey(), newUniqueKey()}
+	backing := append(append(PublicKeySlice{}, f.writable...), sentinels...)
+	writable := backing[:len(f.writable)] // the spare capacity holds the sentinels
+
+	msg := f.message()
+	require.NoError(t, msg.ResolveLookupsWith(writable, f.readonly))
+
+	require.Equal(t, sentinels, backing[len(f.writable):])
+	want := append(append(append(PublicKeySlice{}, f.static...), f.writable...), f.readonly...)
+	require.Equal(t, want, msg.AccountKeys)
 }
 
 // Ported from v0/mod.rs: test_is_maybe_writable.

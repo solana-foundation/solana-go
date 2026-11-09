@@ -612,11 +612,24 @@ var ErrAlreadyResolved = fmt.Errorf("lookups already resolved")
 
 // ResolveLookupsWith resolves the address table lookups with the provided writable and readonly accounts,
 // assuming that the order of the accounts is correct.
+// It needs exactly `NumWritableLookups()` writable and `NumLookups() - NumWritableLookups()`
+// readonly accounts, such as the `loadedAddresses` of a getTransaction response;
+// otherwise it returns an error and leaves the message unchanged.
 func (mx *Message) ResolveLookupsWith(writable, readonly PublicKeySlice) (err error) {
 	if mx.resolved {
 		return ErrAlreadyResolved
 	}
-	mx.AccountKeys = append(mx.AccountKeys, append(writable, readonly...)...)
+	numWritable := mx.NumWritableLookups()
+	numReadonly := mx.NumLookups() - numWritable
+	if len(writable) != numWritable || len(readonly) != numReadonly {
+		return fmt.Errorf(
+			"lookup accounts do not match the message lookups: got %d writable and %d readonly, want %d writable and %d readonly",
+			len(writable), len(readonly), numWritable, numReadonly,
+		)
+	}
+	// Append each list on its own: append(writable, readonly...) could write
+	// into the spare capacity of the caller's writable slice.
+	mx.AccountKeys = append(append(mx.AccountKeys, writable...), readonly...)
 	mx.resolved = true
 	return nil
 }
@@ -822,8 +835,9 @@ func (m *Message) checkPreconditions() error {
 	if m.resolved {
 		// ResolveLookups or ResolveLookupsWith already appended the looked-up
 		// accounts to AccountKeys, so the address tables are not needed (#324).
-		// ResolveLookupsWith does not validate its input, so make sure the
-		// static/looked-up split is still possible.
+		// The lookups can still change after resolving (for example with
+		// AddAddressTableLookup), so make sure the static/looked-up split is
+		// still possible.
 		if m.numStaticAccounts() < 0 {
 			return fmt.Errorf("resolved message has %d account keys, fewer than its %d address table lookups",
 				len(m.AccountKeys), m.AddressTableLookups.NumLookups())
