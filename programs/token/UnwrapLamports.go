@@ -30,7 +30,10 @@ import (
 // If Amount is nil, all lamports (the full token balance) are unwrapped.
 // If Amount is set, only the specified amount is unwrapped.
 //
-// This instruction is only available in the p-token (Pinocchio) implementation.
+// This instruction is only available in the p-token (Pinocchio) implementation
+// of the Token program. Under SIMD-0266, p-token replaces the program at
+// TokenProgramID in place, so build it against the default ProgramID; there is
+// no separate p-token program address.
 type UnwrapLamports struct {
 	// The amount of lamports to unwrap (optional; nil means unwrap all).
 	Amount *uint64

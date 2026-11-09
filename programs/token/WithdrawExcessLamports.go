@@ -27,7 +27,10 @@ import (
 // Withdraw excess lamports from a token account, mint account, or multisig account.
 // The excess lamports are the amount above the rent-exempt minimum balance.
 //
-// This instruction is only available in the p-token (Pinocchio) implementation.
+// This instruction is only available in the p-token (Pinocchio) implementation
+// of the Token program. Under SIMD-0266, p-token replaces the program at
+// TokenProgramID in place, so build it against the default ProgramID; there is
+// no separate p-token program address.
 type WithdrawExcessLamports struct {
 	// [0] = [WRITE] source
 	// ··········· The source account (token account, mint, or multisig).
