@@ -1151,6 +1151,184 @@ func TestIsWritable_WithResolvedLookups(t *testing.T) {
 	}
 }
 
+// lookupFixtureV0 describes a v0 message with two static signers (one
+// writable, one readonly), two static non-signers (one writable, one
+// readonly) and two address lookup tables that each contribute one writable
+// and one readonly account. Every key is random, so no assertion can pass by
+// accident on zero values.
+type lookupFixtureV0 struct {
+	static         PublicKeySlice // writable signer, readonly signer, writable, readonly
+	tableA, tableB PublicKey
+	tableAKeys     PublicKeySlice
+	tableBKeys     PublicKeySlice
+	writable       PublicKeySlice // loaded writable accounts, in runtime order
+	readonly       PublicKeySlice // loaded readonly accounts, in runtime order
+}
+
+func newLookupFixtureV0() lookupFixtureV0 {
+	f := lookupFixtureV0{
+		static:     PublicKeySlice{newUniqueKey(), newUniqueKey(), newUniqueKey(), newUniqueKey()},
+		tableA:     newUniqueKey(),
+		tableB:     newUniqueKey(),
+		tableAKeys: PublicKeySlice{newUniqueKey(), newUniqueKey()},
+		tableBKeys: PublicKeySlice{newUniqueKey(), newUniqueKey()},
+	}
+	// Writable lookups of all tables come first, then readonly lookups,
+	// each group in table order (see message() below for the indexes).
+	f.writable = PublicKeySlice{f.tableAKeys[0], f.tableBKeys[1]}
+	f.readonly = PublicKeySlice{f.tableAKeys[1], f.tableBKeys[0]}
+	return f
+}
+
+// message returns a fresh, unresolved message for the fixture.
+func (f lookupFixtureV0) message() *Message {
+	msg := &Message{
+		Header: MessageHeader{
+			NumRequiredSignatures:       2,
+			NumReadonlySignedAccounts:   1,
+			NumReadonlyUnsignedAccounts: 1,
+		},
+		AccountKeys: append(PublicKeySlice{}, f.static...),
+		AddressTableLookups: []MessageAddressTableLookup{
+			{AccountKey: f.tableA, WritableIndexes: []uint8{0}, ReadonlyIndexes: []uint8{1}},
+			{AccountKey: f.tableB, WritableIndexes: []uint8{1}, ReadonlyIndexes: []uint8{0}},
+		},
+		Instructions: []CompiledInstruction{
+			{ProgramIDIndex: 3, Accounts: []uint16{0, 4, 5, 6, 7, 2}, Data: Base58{0xAA, 0xBB}},
+		},
+	}
+	msg.version = MessageVersionV0
+	return msg
+}
+
+func (f lookupFixtureV0) tables() map[PublicKey]PublicKeySlice {
+	return map[PublicKey]PublicKeySlice{
+		f.tableA: append(PublicKeySlice{}, f.tableAKeys...),
+		f.tableB: append(PublicKeySlice{}, f.tableBKeys...),
+	}
+}
+
+func (f lookupFixtureV0) wantMetas() AccountMetaSlice {
+	return AccountMetaSlice{
+		{PublicKey: f.static[0], IsSigner: true, IsWritable: true},
+		{PublicKey: f.static[1], IsSigner: true},
+		{PublicKey: f.static[2], IsWritable: true},
+		{PublicKey: f.static[3]},
+		{PublicKey: f.writable[0], IsWritable: true},
+		{PublicKey: f.writable[1], IsWritable: true},
+		{PublicKey: f.readonly[0]},
+		{PublicKey: f.readonly[1]},
+	}
+}
+
+// Regression test for #324: after ResolveLookupsWith, a v0 message with
+// lookups must not report ErrAddressTablesNotSet.
+func TestResolveLookupsWith_AccountMetaListWithLookups(t *testing.T) {
+	f := newLookupFixtureV0()
+
+	msg := f.message()
+	require.NoError(t, msg.ResolveLookupsWith(f.writable, f.readonly))
+
+	got, err := msg.AccountMetaList()
+	require.NoError(t, err)
+	require.Equal(t, f.wantMetas(), got)
+
+	// Resolving through the address tables must give the same list.
+	viaTables := f.message()
+	require.NoError(t, viaTables.SetAddressTables(f.tables()))
+	require.NoError(t, viaTables.ResolveLookups())
+	gotTables, err := viaTables.AccountMetaList()
+	require.NoError(t, err)
+	require.Equal(t, gotTables, got)
+}
+
+func TestResolveLookupsWith_KeyQueriesWithLookups(t *testing.T) {
+	f := newLookupFixtureV0()
+
+	msg := f.message()
+	require.NoError(t, msg.ResolveLookupsWith(f.writable, f.readonly))
+
+	for i, meta := range f.wantMetas() {
+		writable, err := msg.IsWritable(meta.PublicKey)
+		require.NoError(t, err, "IsWritable(key %d)", i)
+		assert.Equal(t, meta.IsWritable, writable, "IsWritable(key %d)", i)
+
+		index, err := msg.GetAccountIndex(meta.PublicKey)
+		require.NoError(t, err, "GetAccountIndex(key %d)", i)
+		assert.Equal(t, uint16(i), index, "GetAccountIndex(key %d)", i)
+
+		has, err := msg.HasAccount(meta.PublicKey)
+		require.NoError(t, err, "HasAccount(key %d)", i)
+		assert.True(t, has, "HasAccount(key %d)", i)
+	}
+
+	writable, err := msg.Writable()
+	require.NoError(t, err)
+	require.Equal(t, PublicKeySlice{f.static[0], f.static[2], f.writable[0], f.writable[1]}, writable)
+}
+
+func TestResolveLookupsWith_GetAddressTableLookupAccounts(t *testing.T) {
+	f := newLookupFixtureV0()
+	want := append(append(PublicKeySlice{}, f.writable...), f.readonly...)
+
+	msg := f.message()
+	require.NoError(t, msg.ResolveLookupsWith(f.writable, f.readonly))
+
+	loaded, err := msg.GetAddressTableLookupAccounts()
+	require.NoError(t, err)
+	require.Equal(t, want, loaded)
+
+	// The result must not alias the message's account keys.
+	loaded[0] = newUniqueKey()
+	require.Equal(t, f.writable[0], msg.AccountKeys[len(f.static)])
+
+	// A message resolved through the address tables returns the same accounts.
+	viaTables := f.message()
+	require.NoError(t, viaTables.SetAddressTables(f.tables()))
+	require.NoError(t, viaTables.ResolveLookups())
+	loadedTables, err := viaTables.GetAddressTableLookupAccounts()
+	require.NoError(t, err)
+	require.Equal(t, want, loadedTables)
+}
+
+func TestResolveLookupsWith_ResolveInstructionAccounts(t *testing.T) {
+	f := newLookupFixtureV0()
+
+	msg := f.message()
+	require.NoError(t, msg.ResolveLookupsWith(f.writable, f.readonly))
+
+	ix := msg.Instructions[0]
+	got, err := ix.ResolveInstructionAccounts(msg)
+	require.NoError(t, err)
+
+	metas := f.wantMetas()
+	want := []*AccountMeta{metas[0], metas[4], metas[5], metas[6], metas[7], metas[2]}
+	require.Equal(t, want, got)
+}
+
+// ResolveLookupsWith does not validate its input. When it is given fewer
+// accounts than the message has lookups, the static/looked-up split is
+// impossible: the lookup-dependent methods must return an error, not panic.
+func TestResolveLookupsWith_TooFewLoadedAccounts(t *testing.T) {
+	msg := Message{
+		Header:      MessageHeader{NumRequiredSignatures: 1},
+		AccountKeys: PublicKeySlice{newUniqueKey()},
+		AddressTableLookups: []MessageAddressTableLookup{
+			{AccountKey: newUniqueKey(), WritableIndexes: []uint8{0, 1}, ReadonlyIndexes: []uint8{2}},
+		},
+	}
+	msg.version = MessageVersionV0
+	require.NoError(t, msg.ResolveLookupsWith(PublicKeySlice{newUniqueKey()}, nil))
+
+	_, err := msg.AccountMetaList()
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ErrAddressTablesNotSet)
+
+	_, err = msg.GetAddressTableLookupAccounts()
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ErrAddressTablesNotSet)
+}
+
 // Ported from v0/mod.rs: test_is_maybe_writable.
 // Tests writability including lookup accounts using header-based logic.
 func TestIsWritable_V0_HeaderLayout(t *testing.T) {
