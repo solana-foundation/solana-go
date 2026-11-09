@@ -45,7 +45,7 @@ If the report is out of scope, a maintainer will comment as such and then close 
 
 ### 2. Triage
 
-Within the draft security advisory, discuss and determine the severity of the issue and which module lines and versions are affected. The `v2` branch contains everything on `main`, so most issues affect both. Record the affected packages and exported functions or methods in the advisory: the Go vulnerability database lists them so that `govulncheck` only flags applications that actually call the vulnerable code. If necessary, the Solana Foundation security team may add other GitHub users to the advisory to assist. If it is determined that this is not a critical issue then the advisory should be closed and if more follow-up is required a normal public GitHub issue should be created.
+Within the draft security advisory, discuss and determine the severity of the issue and which module lines and versions are affected. The `v2` branch contains everything on `main`, so most issues affect both. Record the affected packages and exported functions or methods in the advisory: the Go vulnerability database lists them so that `govulncheck` only flags applications that actually call the vulnerable code. If necessary, the Solana Foundation security team may add other GitHub users to the advisory to assist. If the report turns out not to be a security vulnerability, close the advisory and, if more follow-up is required, open a normal public GitHub issue. A confirmed vulnerability of any severity stays in the private advisory through the fix, patch and release steps below.
 
 If the root cause is in a dependency rather than in solana-go, report it to that project (for the Go standard library and `golang.org/x` modules, follow the [Go security policy](https://go.dev/doc/security/policy)) and ship the solana-go side as a dependency upgrade.
 
@@ -65,12 +65,16 @@ Do not push the fix, or any commit or tag that reveals it, to this repository or
 
 ### 4. Ship the patch
 
-Once the fix is accepted, a member of the Solana Foundation security team should export it for each affected line with `git format-patch`, post the patches to an unlisted [GitHub Gist](https://gist.github.com), and privately send them to as many vulnerable applications as possible, with these instructions for applying them through a [`replace`](https://go.dev/ref/mod#go-mod-file-replace) directive:
+Once the fix is accepted, a member of the Solana Foundation security team should export it with `git format-patch` for the latest release of each affected line, check that each patch applies, builds and passes the tests on that release, and name that release with the patch. Within a major version, newer releases keep the public API, so an application on an older release can usually build against the patched one. When an important application cannot, prepare and test a separate patch for its release.
+
+Share the patches privately with as many vulnerable applications as possible, only through channels that control who can read them: add the application maintainers as collaborators on the draft security advisory, or send the patches encrypted to known maintainer contacts. Do not post them anywhere that anyone with the link can read, such as a secret (unlisted) GitHub Gist, before the public disclosure in step 5.
+
+Send these instructions with each patch. They build the application against the patched release through a [`replace`](https://go.dev/ref/mod#go-mod-file-replace) directive:
 
 ```sh
-# Check out the exact solana-go version the application uses, then apply the patch
+# Check out the release named with the patch, then apply the patch
 git clone https://github.com/solana-foundation/solana-go.git ../solana-go-patched
-git -C ../solana-go-patched checkout vX.Y.Z   # the version in your go.mod
+git -C ../solana-go-patched checkout vX.Y.Z   # the release named with the patch
 git -C ../solana-go-patched apply /path/to/fix.patch
 
 # Build the application against the patched copy
