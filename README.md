@@ -31,6 +31,7 @@ More contracts to come.
   - [Address Lookup Tables](#address-lookup-tables)
   - [V1 Transactions (SIMD-0385)](#v1-transactions-simd-0385)
   - [Parse/decode an instruction from a transaction](#parsedecode-an-instruction-from-a-transaction)
+  - [Inspect all instructions of a confirmed transaction](#inspect-all-instructions-of-a-confirmed-transaction)
   - [Borsh encoding/decoding](#borsh-encodingdecoding)
   - [ZSTD account data encoding](#zstd-account-data-encoding)
   - [Working with rate-limited RPC providers](#working-with-rate-limited-rpc-providers)
@@ -521,6 +522,61 @@ func decodeSystemTransfer(tx *solana.Transaction) {
 }
 
 ```
+
+## Inspect all instructions of a confirmed transaction
+
+The `introspection` package resolves every instruction of a confirmed transaction, top-level and inner (CPI), to its program, accounts and data, in the order an explorer shows them. The accounts loaded from address lookup tables come from the transaction meta, so no lookup table has to be fetched. Legacy, v0 and v1 transactions are supported, fetched with the json or base64 encoding (base58 only for legacy and v0, which is all the RPC serves it for; jsonParsed is not supported).
+
+For example, find every Token `SyncNative`, whether top-level or emitted by a CPI:
+
+```go
+package main
+
+import (
+  "context"
+  "fmt"
+
+  "github.com/gagliardetto/solana-go"
+  "github.com/gagliardetto/solana-go/introspection"
+  "github.com/gagliardetto/solana-go/programs/token"
+  "github.com/gagliardetto/solana-go/rpc"
+)
+
+func main() {
+  client := rpc.New(rpc.MainNetBeta_RPC)
+  sig := solana.MustSignatureFromBase58("3wMPKe86EK4zZEuD6GycPoi3CvWrPBvvwzdLcrLv6JW2FNSq89Re1jhPbSvnw9H54aAMkkeU5F72k21mgAjYwqgB")
+
+  res, err := client.GetTransaction(context.TODO(), sig, &rpc.GetTransactionOpts{
+    Encoding:                       solana.EncodingBase64,
+    MaxSupportedTransactionVersion: &rpc.MaxSupportedTransactionVersion1,
+  })
+  if err != nil {
+    panic(err)
+  }
+
+  ixs, err := introspection.WalkGetTransactionResult(res)
+  if err != nil {
+    panic(err)
+  }
+  for _, ix := range ixs {
+    if !ix.ProgID.Equals(token.ProgramID) {
+      continue
+    }
+    inst, err := token.DecodeInstruction(ix.AccountValues, ix.DataBytes)
+    if err != nil {
+      panic(err)
+    }
+    if _, ok := inst.Impl.(*token.SyncNative); ok {
+      fmt.Println("SyncNative at", ix.Trace) // SyncNative at outer[1]
+    }
+  }
+}
+```
+
+Each result is an `*introspection.Instruction`: a `solana.Instruction` (`ProgID`, `AccountValues`, `DataBytes`) with a `Trace` that gives its position, `outer[i]` or `inner[i/j]` with the CPI stack height. `ix.Decode()` decodes it with the decoder registered for its program.
+
+- `introspection.WalkTransactionWithMeta` walks the transactions of `getBlock` and `blockSubscribe`, and `introspection.WalkTransactionForAddress` those of `getTransactionsForAddress`.
+- `introspection.Walk(&tx.Message, meta)` walks an already decoded transaction. `AccountMetas`, `OuterInstructions` and `InnerInstructions` are the steps it is made of.
 
 ## Borsh encoding/decoding
 
