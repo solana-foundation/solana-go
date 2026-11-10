@@ -202,6 +202,11 @@ func TestResolveLookupsWith_MultipleTables(t *testing.T) {
 	msg := Message{}
 	msg.version = MessageVersionV0
 	msg.AccountKeys = staticKeys
+	// Two tables: 2 writable and 1 readonly lookups, matching the accounts below.
+	msg.AddressTableLookups = []MessageAddressTableLookup{
+		{AccountKey: newUniqueKey(), WritableIndexes: []uint8{0}, ReadonlyIndexes: []uint8{1}},
+		{AccountKey: newUniqueKey(), WritableIndexes: []uint8{0}},
+	}
 
 	err := msg.ResolveLookupsWith(writable, readonly)
 	require.NoError(t, err)

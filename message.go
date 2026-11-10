@@ -546,11 +546,21 @@ func (mx *Message) UnmarshalBase64(b64 string) error {
 // GetAddressTableLookupAccounts associates the lookups with the accounts
 // in the actual address tables, and returns the accounts.
 // NOTE: you need to call `SetAddressTables` before calling this method,
-// so that the lookups can be associated with the accounts in the address tables.
+// so that the lookups can be associated with the accounts in the address tables,
+// unless the lookups were already resolved (`ResolveLookups` or `ResolveLookupsWith`):
+// then it returns a copy of the looked-up accounts appended to `AccountKeys`.
 func (mx *Message) GetAddressTableLookupAccounts() (PublicKeySlice, error) {
 	err := mx.checkPreconditions()
 	if err != nil {
 		return nil, err
+	}
+	if mx.resolved {
+		// The looked-up accounts were already appended to AccountKeys by
+		// ResolveLookups or ResolveLookupsWith; ResolveLookupsWith never sets
+		// address tables, so return a copy of those accounts instead of
+		// looking them up again.
+		loaded := mx.AccountKeys[mx.numStaticAccounts():]
+		return append(make(PublicKeySlice, 0, len(loaded)), loaded...), nil
 	}
 	numWritable := mx.AddressTableLookups.NumWritableLookups()
 	numTotal := mx.AddressTableLookups.NumLookups()
@@ -602,11 +612,24 @@ var ErrAlreadyResolved = fmt.Errorf("lookups already resolved")
 
 // ResolveLookupsWith resolves the address table lookups with the provided writable and readonly accounts,
 // assuming that the order of the accounts is correct.
+// It needs exactly `NumWritableLookups()` writable and `NumLookups() - NumWritableLookups()`
+// readonly accounts, such as the `loadedAddresses` of a getTransaction response;
+// otherwise it returns an error and leaves the message unchanged.
 func (mx *Message) ResolveLookupsWith(writable, readonly PublicKeySlice) (err error) {
 	if mx.resolved {
 		return ErrAlreadyResolved
 	}
-	mx.AccountKeys = append(mx.AccountKeys, append(writable, readonly...)...)
+	numWritable := mx.NumWritableLookups()
+	numReadonly := mx.NumLookups() - numWritable
+	if len(writable) != numWritable || len(readonly) != numReadonly {
+		return fmt.Errorf(
+			"lookup accounts do not match the message lookups: got %d writable and %d readonly, want %d writable and %d readonly",
+			len(writable), len(readonly), numWritable, numReadonly,
+		)
+	}
+	// Append each list on its own: append(writable, readonly...) could write
+	// into the spare capacity of the caller's writable slice.
+	mx.AccountKeys = append(append(mx.AccountKeys, writable...), readonly...)
 	mx.resolved = true
 	return nil
 }
@@ -806,7 +829,22 @@ func (m *Message) checkPreconditions() error {
 	// Surface a typed error here so callers can detect this with
 	// errors.Is(err, ErrAddressTablesNotSet) and follow the recovery
 	// guidance the error wraps (see #280).
-	if m.IsVersioned() && m.AddressTableLookups.NumLookups() > 0 && len(m.addressTables) == 0 {
+	if !m.IsVersioned() || m.AddressTableLookups.NumLookups() == 0 {
+		return nil
+	}
+	if m.resolved {
+		// ResolveLookups or ResolveLookupsWith already appended the looked-up
+		// accounts to AccountKeys, so the address tables are not needed (#324).
+		// The lookups can still change after resolving (for example with
+		// AddAddressTableLookup), so make sure the static/looked-up split is
+		// still possible.
+		if m.numStaticAccounts() < 0 {
+			return fmt.Errorf("resolved message has %d account keys, fewer than its %d address table lookups",
+				len(m.AccountKeys), m.AddressTableLookups.NumLookups())
+		}
+		return nil
+	}
+	if len(m.addressTables) == 0 {
 		return ErrAddressTablesNotSet
 	}
 
