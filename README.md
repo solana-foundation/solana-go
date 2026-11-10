@@ -28,6 +28,7 @@ More contracts to come.
   - [Installation](#installation)
   - [Pretty-Print transactions/instructions](#pretty-print-transactionsinstructions)
   - [SendAndConfirmTransaction](#sendandconfirmtransaction)
+    - [Durable nonce transactions](#durable-nonce-transactions)
   - [Address Lookup Tables](#address-lookup-tables)
   - [V1 Transactions (SIMD-0385)](#v1-transactions-simd-0385)
   - [Parse/decode an instruction from a transaction](#parsedecode-an-instruction-from-a-transaction)
@@ -133,23 +134,66 @@ fmt.Println(tx.String())
 
 ## SendAndConfirmTransaction
 
-You can wait for a transaction confirmation using the `github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction` package tools (for a complete example: [see here](#transfer-sol-from-one-wallet-to-another-wallet))
+The `github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction` package sends a transaction and waits until it reaches a commitment level, or until it can no longer land (for a complete example: [see here](#transfer-sol-from-one-wallet-to-another-wallet)). It is built on the `confirmation` package, a port of `@solana/transaction-confirmation` from the [Solana Kit](https://github.com/anza-xyz/kit).
+
+A transaction that uses a recent blockhash expires once the block height passes the `LastValidBlockHeight` that `GetLatestBlockhash` returns with the blockhash:
 
 ```go
-// Send transaction, and wait for confirmation:
-sig, err := confirm.SendAndConfirmTransaction(
-  context.TODO(),
-  rpcClient,
-  wsClient,
-  tx,
-)
+recent, err := rpcClient.GetLatestBlockhash(ctx, rpc.CommitmentConfirmed)
 if err != nil {
   panic(err)
 }
-spew.Dump(sig)
+// Build the transaction with recent.Value.Blockhash and sign it, then:
+sig, err := confirm.SendAndConfirmTransactionWithBlockhashLifetime(
+  ctx,
+  rpcClient,
+  wsClient,
+  tx,
+  recent.Value.LastValidBlockHeight,
+  rpc.CommitmentConfirmed,
+  rpc.TransactionOpts{},
+)
+var txErr *confirmation.TransactionError
+switch {
+case err == nil:
+  fmt.Println("confirmed:", sig)
+case errors.Is(err, confirmation.ErrBlockHeightExceeded):
+  // The blockhash expired before the transaction landed. At the confirmed or
+  // finalized commitment it can no longer land, so it is safe to sign it
+  // again with a new blockhash.
+case errors.As(err, &txErr):
+  // The transaction landed, but it failed. txErr.Err holds the reason.
+default:
+  panic(err)
+}
 ```
 
-The above command will send the transaction, and wait for its confirmation.
+When the commitment is below finalized and `PreflightCommitment` is empty, the transaction is simulated at the same commitment, as in the Kit. `RequestAndConfirmAirdrop` requests an airdrop on a test cluster and waits until it lands.
+
+To wait for a transaction that you sent yourself, use the waiters of the `confirmation` package, such as `confirmation.WaitForRecentTransactionConfirmation`. One `ws.Client` can serve any number of confirmations at the same time. `SendAndConfirmTransaction` is still there, but it only waits at the finalized commitment and does not know when the transaction expires.
+
+### Durable nonce transactions
+
+A transaction that uses a durable nonce starts with an `AdvanceNonceAccount` instruction, and its recent blockhash is the nonce. It stays valid until the nonce advances:
+
+```go
+sig, err := confirm.SendAndConfirmDurableNonceTransaction(
+  ctx,
+  rpcClient,
+  wsClient,
+  tx,
+  rpc.CommitmentConfirmed,
+  rpc.TransactionOpts{},
+)
+switch {
+case errors.Is(err, confirmation.ErrInvalidNonce):
+  // The nonce advanced without this transaction, so it can no longer land.
+case errors.Is(err, confirmation.ErrNonceAccountNotFound):
+  // The nonce account does not exist.
+}
+```
+
+A durable nonce transaction advances the nonce even when it fails, so before it reports an invalid nonce, `SendAndConfirmDurableNonceTransaction` checks whether the transaction itself landed.
 
 ## Address Lookup Tables
 
@@ -937,14 +981,12 @@ import (
   "context"
   "fmt"
   "os"
-  "time"
 
   "github.com/davecgh/go-spew/spew"
   "github.com/gagliardetto/solana-go"
   "github.com/gagliardetto/solana-go/programs/system"
   "github.com/gagliardetto/solana-go/rpc"
   confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
-  "github.com/gagliardetto/solana-go/rpc/jsonrpc"
   "github.com/gagliardetto/solana-go/rpc/ws"
   "github.com/gagliardetto/solana-go/text"
 )
@@ -974,22 +1016,24 @@ func main() {
   amount := uint64(3333)
 
   if true {
-    // Airdrop 1 sol to the account so it will have something to transfer:
-    out, err := rpcClient.RequestAirdrop(
+    // Airdrop 1 sol to the account so it will have something to transfer,
+    // and wait until the airdrop is confirmed:
+    out, err := confirm.RequestAndConfirmAirdrop(
       context.TODO(),
+      rpcClient,
+      wsClient,
       accountFrom.PublicKey(),
       solana.LAMPORTS_PER_SOL*1,
-      rpc.CommitmentFinalized,
+      rpc.CommitmentConfirmed,
     )
     if err != nil {
       panic(err)
     }
     fmt.Println("airdrop transaction signature:", out)
-    time.Sleep(time.Second * 5)
   }
   //---------------
 
-  recent, err := rpcClient.GetLatestBlockhash(context.TODO(), rpc.CommitmentFinalized)
+  recent, err := rpcClient.GetLatestBlockhash(context.TODO(), rpc.CommitmentConfirmed)
   if err != nil {
     panic(err)
   }
@@ -1024,12 +1068,16 @@ func main() {
   // Pretty print the transaction:
   tx.EncodeTree(text.NewTreeEncoder(os.Stdout, "Transfer SOL"))
 
-  // Send transaction, and wait for confirmation:
-  sig, err := confirm.SendAndConfirmTransaction(
+  // Send the transaction, and wait until it is confirmed or its blockhash
+  // expires:
+  sig, err := confirm.SendAndConfirmTransactionWithBlockhashLifetime(
     context.TODO(),
     rpcClient,
     wsClient,
     tx,
+    recent.Value.LastValidBlockHeight,
+    rpc.CommitmentConfirmed,
+    rpc.TransactionOpts{},
   )
   if err != nil {
     panic(err)
@@ -1040,8 +1088,7 @@ func main() {
   // sig, err := rpcClient.SendTransactionWithOpts(
   //   context.TODO(),
   //   tx,
-  //   false,
-  //   rpc.CommitmentFinalized,
+  //   rpc.TransactionOpts{PreflightCommitment: rpc.CommitmentConfirmed},
   // )
   // if err != nil {
   //   panic(err)
