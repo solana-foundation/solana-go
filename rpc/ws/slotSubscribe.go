@@ -47,18 +47,20 @@ type SlotSubscription struct {
 	sub *Subscription
 }
 
+// Recv returns the next notification. After the subscription closes, it
+// returns the buffered notifications first, and then the close error.
 func (sw *SlotSubscription) Recv(ctx context.Context) (*SlotResult, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case d, ok := <-sw.sub.stream:
-		if !ok {
-			return nil, ErrSubscriptionClosed
-		}
-		return d.(*SlotResult), nil
-	case err := <-sw.sub.err:
+	d, err := sw.sub.recv(ctx)
+	if err != nil {
 		return nil, err
 	}
+	return d.(*SlotResult), nil
+}
+
+// WaitSubscribed blocks until the server confirms the subscription. See
+// Subscription.WaitSubscribed.
+func (sw *SlotSubscription) WaitSubscribed(ctx context.Context) error {
+	return sw.sub.WaitSubscribed(ctx)
 }
 
 func (sw *SlotSubscription) Err() <-chan error {

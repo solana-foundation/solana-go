@@ -109,18 +109,20 @@ type LogSubscription struct {
 	sub *Subscription
 }
 
+// Recv returns the next notification. After the subscription closes, it
+// returns the buffered notifications first, and then the close error.
 func (sw *LogSubscription) Recv(ctx context.Context) (*LogResult, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case d, ok := <-sw.sub.stream:
-		if !ok {
-			return nil, ErrSubscriptionClosed
-		}
-		return d.(*LogResult), nil
-	case err := <-sw.sub.err:
+	d, err := sw.sub.recv(ctx)
+	if err != nil {
 		return nil, err
 	}
+	return d.(*LogResult), nil
+}
+
+// WaitSubscribed blocks until the server confirms the subscription. See
+// Subscription.WaitSubscribed.
+func (sw *LogSubscription) WaitSubscribed(ctx context.Context) error {
+	return sw.sub.WaitSubscribed(ctx)
 }
 
 func (sw *LogSubscription) Err() <-chan error {

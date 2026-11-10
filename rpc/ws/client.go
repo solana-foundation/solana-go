@@ -38,15 +38,27 @@ var ErrSubscriptionClosed = errors.New("subscription closed")
 type result any
 
 type Client struct {
-	rpcURL                  string
-	conn                    *websocket.Conn
-	connCtx                 context.Context
-	connCtxCancel           context.CancelFunc
-	wg                      sync.WaitGroup
-	lock                    sync.RWMutex
+	rpcURL        string
+	conn          *websocket.Conn
+	connCtx       context.Context
+	connCtxCancel context.CancelFunc
+	wg            sync.WaitGroup
+	lock          sync.RWMutex
+	// subscriptionByRequestID holds every open subscription, confirmed or
+	// not, by the id of its subscribe request.
 	subscriptionByRequestID map[uint64]*Subscription
-	subscriptionByWSSubID   map[uint64]*Subscription
-	shortID                 bool
+	// subscriptionByWSSubID holds the confirmed subscriptions by server
+	// subscription id. Validators such as Agave give identical subscriptions
+	// the same id, so one id can serve several subscriptions.
+	subscriptionByWSSubID map[uint64]map[*Subscription]struct{}
+	// abandonedRequests holds the unsubscribe method of each subscription
+	// that closed before the server confirmed it, by request id. The late
+	// confirmation is answered with an unsubscribe.
+	abandonedRequests map[uint64]string
+	// readerDone is set once the read loop has exited. No subscription can be
+	// confirmed after that, so subscribe fails.
+	readerDone bool
+	shortID    bool
 }
 
 const (
@@ -71,7 +83,8 @@ func ConnectWithOptions(ctx context.Context, rpcEndpoint string, opt *Options) (
 	c = &Client{
 		rpcURL:                  rpcEndpoint,
 		subscriptionByRequestID: map[uint64]*Subscription{},
-		subscriptionByWSSubID:   map[uint64]*Subscription{},
+		subscriptionByWSSubID:   map[uint64]map[*Subscription]struct{}{},
+		abandonedRequests:       map[uint64]string{},
 	}
 
 	dialer := &websocket.Dialer{
@@ -214,7 +227,7 @@ func (c *Client) handleMessage(message []byte) {
 		// instead of registering a subscription whose result never arrives,
 		// which would otherwise leave Recv blocked forever.
 		if rpcErr, hasErr := getRPCErrorWithOk(message); hasErr {
-			c.closeSubscription(requestID, rpcErr)
+			c.rejectSubscription(requestID, rpcErr)
 			return
 		}
 		subID, _ := getUint64WithOk(message, "result")
@@ -237,7 +250,19 @@ func (c *Client) handleNewSubscriptionMessage(requestID, subID uint64) {
 		)
 	}
 
-	callBack, found := c.subscriptionByRequestID[requestID]
+	if method, abandoned := c.abandonedRequests[requestID]; abandoned {
+		// The subscription closed before this confirmation arrived. Release
+		// the server side, unless another subscription shares the id.
+		delete(c.abandonedRequests, requestID)
+		if len(c.subscriptionByWSSubID[subID]) == 0 {
+			if err := c.unsubscribe(subID, method); err != nil {
+				zlog.Warn("unable to send rpc unsubscribe call", zap.Error(err))
+			}
+		}
+		return
+	}
+
+	sub, found := c.subscriptionByRequestID[requestID]
 	if !found {
 		zlog.Error("cannot find websocket message handler for a new stream.... this should not happen",
 			zap.Uint64("request_id", requestID),
@@ -245,14 +270,48 @@ func (c *Client) handleNewSubscriptionMessage(requestID, subID uint64) {
 		)
 		return
 	}
-	callBack.subID = subID
-	c.subscriptionByWSSubID[subID] = callBack
+
+	if _, stale := sub.staleIDs[subID]; stale {
+		// The server joined this subscription to an existing one, and an
+		// unsubscribe written after the subscribe request has removed that
+		// one since. Subscribe again.
+		c.resubscribe(sub)
+		return
+	}
+
+	if !sub.markSubscribed(subID) {
+		return
+	}
+	sub.staleIDs = nil
+	holders := c.subscriptionByWSSubID[subID]
+	if holders == nil {
+		holders = map[*Subscription]struct{}{}
+		c.subscriptionByWSSubID[subID] = holders
+	}
+	holders[sub] = struct{}{}
 
 	zlog.Debug("registered ws subscription",
 		zap.Uint64("subscription_id", subID),
 		zap.Uint64("request_id", requestID),
 		zap.Int("subscription_count", len(c.subscriptionByWSSubID)),
 	)
+}
+
+// resubscribe sends the subscribe request of sub again under a new request id.
+// It must be called with c.lock held, and sub must not be confirmed yet.
+func (c *Client) resubscribe(sub *Subscription) {
+	delete(c.subscriptionByRequestID, sub.req.ID)
+	sub.req = sub.req.withNewID(c.shortID)
+	sub.staleIDs = nil
+	c.subscriptionByRequestID[sub.req.ID] = sub
+
+	data, err := sub.req.encode()
+	if err == nil {
+		err = c.write(data)
+	}
+	if err != nil {
+		c.closeSubscriptionLocked(sub, fmt.Errorf("unable to write request: %w", err), true)
+	}
 }
 
 func (c *Client) handleSubscriptionMessage(subID uint64, message []byte) {
@@ -263,17 +322,28 @@ func (c *Client) handleSubscriptionMessage(subID uint64, message []byte) {
 	}
 
 	c.lock.RLock()
-	sub, found := c.subscriptionByWSSubID[subID]
+	holders := make([]*Subscription, 0, len(c.subscriptionByWSSubID[subID]))
+	for sub := range c.subscriptionByWSSubID[subID] {
+		holders = append(holders, sub)
+	}
 	c.lock.RUnlock()
-	if !found {
+	if len(holders) == 0 {
 		zlog.Warn("unable to find subscription for ws message", zap.Uint64("subscription_id", subID))
 		return
 	}
 
-	// Decode the message using the subscription-provided decoderFunc.
+	for _, sub := range holders {
+		c.deliver(sub, subID, message)
+	}
+}
+
+// deliver decodes message for sub and queues the result. Each subscription
+// decodes its own copy, so subscriptions that share a server id never share a
+// result value.
+func (c *Client) deliver(sub *Subscription, subID uint64, message []byte) {
 	result, err := sub.decoderFunc(message)
 	if err != nil {
-		c.closeSubscription(sub.req.ID, fmt.Errorf("unable to decode client response: %w", err))
+		c.closeSubscriptionPtr(sub, fmt.Errorf("unable to decode client response: %w", err))
 		return
 	}
 
@@ -281,9 +351,9 @@ func (c *Client) handleSubscriptionMessage(subID uint64, message []byte) {
 	// we  will no read any other message
 	if len(sub.stream) >= cap(sub.stream) {
 		zlog.Warn("closing ws client subscription... not consuming fast enough",
-			zap.Uint64("request_id", sub.req.ID),
+			zap.Uint64("subscription_id", subID),
 		)
-		c.closeSubscription(sub.req.ID, fmt.Errorf("reached channel max capacity %d", len(sub.stream)))
+		c.closeSubscriptionPtr(sub, fmt.Errorf("reached channel max capacity %d", len(sub.stream)))
 		return
 	}
 
@@ -294,64 +364,94 @@ func (c *Client) handleSubscriptionMessage(subID uint64, message []byte) {
 	sub.mu.Unlock()
 }
 
+// closeAllSubscription closes every subscription with err. It runs when the
+// read loop exits, so it also marks the client as unable to confirm new
+// subscriptions.
 func (c *Client) closeAllSubscription(err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	c.readerDone = true
 	for _, sub := range c.subscriptionByRequestID {
-		sub.mu.Lock()
-		if !sub.closed {
-			select {
-			case sub.err <- err:
-			default:
-			}
-			sub.closed = true
-			close(sub.stream)
-			close(sub.err)
-		}
-		sub.mu.Unlock()
+		sub.close(err)
 	}
 
 	c.subscriptionByRequestID = map[uint64]*Subscription{}
-	c.subscriptionByWSSubID = map[uint64]*Subscription{}
+	c.subscriptionByWSSubID = map[uint64]map[*Subscription]struct{}{}
+	c.abandonedRequests = map[uint64]string{}
 }
 
+// closeSubscription closes the subscription whose subscribe request has the
+// id reqID, if it is still open.
 func (c *Client) closeSubscription(reqID uint64, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	sub, found := c.subscriptionByRequestID[reqID]
-	if !found {
+	if sub, found := c.subscriptionByRequestID[reqID]; found {
+		c.closeSubscriptionLocked(sub, err, false)
+	}
+}
+
+// closeSubscriptionPtr closes sub if it is still open.
+func (c *Client) closeSubscriptionPtr(sub *Subscription, err error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.closeSubscriptionLocked(sub, err, false)
+}
+
+// rejectSubscription handles an error reply to the request with the id reqID.
+// For a subscribe request it closes the subscription with err. The server
+// registered nothing, so nothing is unsubscribed.
+func (c *Client) rejectSubscription(reqID uint64, err error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	delete(c.abandonedRequests, reqID)
+	if sub, found := c.subscriptionByRequestID[reqID]; found {
+		c.closeSubscriptionLocked(sub, err, true)
+	}
+}
+
+// closeSubscriptionLocked closes sub with err. It must be called with c.lock
+// held. The server side is unsubscribed when the last subscription that shares
+// its id closes. A subscription that is not confirmed yet leaves a tombstone,
+// so its confirmation can be answered with an unsubscribe, unless rejected
+// reports that the server will never confirm it.
+func (c *Client) closeSubscriptionLocked(sub *Subscription, err error, rejected bool) {
+	if c.subscriptionByRequestID[sub.req.ID] != sub {
+		return // already closed
+	}
+	delete(c.subscriptionByRequestID, sub.req.ID)
+	sub.close(err)
+
+	if !sub.acked {
+		if !rejected {
+			if c.abandonedRequests == nil {
+				c.abandonedRequests = map[uint64]string{}
+			}
+			c.abandonedRequests[sub.req.ID] = sub.unsubscribeMethod
+		}
 		return
 	}
 
-	sub.mu.Lock()
-	if !sub.closed {
-		select {
-		case sub.err <- err:
-		default:
-		}
-		sub.closed = true
-		close(sub.stream)
-		close(sub.err)
+	holders := c.subscriptionByWSSubID[sub.subID]
+	delete(holders, sub)
+	if len(holders) > 0 {
+		return
 	}
-	sub.mu.Unlock()
-
-	// subID stays 0 when the subscription request itself failed (e.g. the
-	// server returned an error response); there is nothing to unsubscribe in
-	// that case, so don't send a bogus unsubscribe for subID 0.
-	if sub.subID != 0 {
-		if e := c.unsubscribe(sub.subID, sub.unsubscribeMethod); e != nil {
-			zlog.Warn("unable to send rpc unsubscribe call",
-				zap.Error(e),
-			)
-		}
-	}
-
-	delete(c.subscriptionByRequestID, sub.req.ID)
 	delete(c.subscriptionByWSSubID, sub.subID)
+	if e := c.unsubscribe(sub.subID, sub.unsubscribeMethod); e != nil {
+		zlog.Warn("unable to send rpc unsubscribe call",
+			zap.Error(e),
+		)
+	}
 }
 
+// unsubscribe writes an unsubscribe request for the server id subID. It must
+// be called with c.lock held. Subscriptions still waiting for their
+// confirmation remember subID: if the server confirms one of them under that
+// id, the unsubscribe has already removed it, and it subscribes again.
 func (c *Client) unsubscribe(subID uint64, method string) error {
 	req := newRequest([]any{subID}, method, nil, c.shortID)
 	data, err := req.encode()
@@ -359,12 +459,25 @@ func (c *Client) unsubscribe(subID uint64, method string) error {
 		return fmt.Errorf("unable to encode unsubscription message for subID %d and method %s", subID, method)
 	}
 
-	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	err = c.conn.WriteMessage(websocket.TextMessage, data)
-	if err != nil {
+	if err := c.write(data); err != nil {
 		return fmt.Errorf("unable to send unsubscription message for subID %d and method %s", subID, method)
 	}
+	for _, pending := range c.subscriptionByRequestID {
+		if pending.acked {
+			continue
+		}
+		if pending.staleIDs == nil {
+			pending.staleIDs = map[uint64]struct{}{}
+		}
+		pending.staleIDs[subID] = struct{}{}
+	}
 	return nil
+}
+
+// write sends one text message. It must be called with c.lock held.
+func (c *Client) write(data []byte) error {
+	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	return c.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 func (c *Client) subscribe(
@@ -377,16 +490,25 @@ func (c *Client) subscribe(
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	if c.readerDone {
+		// Nothing reads the connection any more, so the server's
+		// confirmation and notifications would never arrive.
+		return nil, fmt.Errorf("subscribe: connection is closed: %w", ErrSubscriptionClosed)
+	}
+
 	req := newRequest(params, subscriptionMethod, conf, c.shortID)
 	data, err := req.encode()
 	if err != nil {
 		return nil, fmt.Errorf("subscribe: unable to encode subsciption request: %w", err)
 	}
 
-	sub := newSubscription(
+	// closeFunc works on the subscription itself, because a resend changes
+	// the request id.
+	var sub *Subscription
+	sub = newSubscription(
 		req,
 		func(err error) {
-			c.closeSubscription(req.ID, err)
+			c.closeSubscriptionPtr(sub, err)
 		},
 		unsubscribeMethod,
 		decoderFunc,
@@ -396,9 +518,7 @@ func (c *Client) subscribe(
 	zlog.Info("added new subscription to websocket client", zap.Int("count", len(c.subscriptionByRequestID)))
 
 	zlog.Debug("writing data to conn", zap.String("data", string(data)))
-	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	err = c.conn.WriteMessage(websocket.TextMessage, data)
-	if err != nil {
+	if err := c.write(data); err != nil {
 		delete(c.subscriptionByRequestID, req.ID)
 		return nil, fmt.Errorf("unable to write request: %w", err)
 	}

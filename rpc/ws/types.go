@@ -39,18 +39,28 @@ func newRequest(params []any, method string, configuration map[string]any, short
 	if params != nil && configuration != nil {
 		params = append(params, configuration)
 	}
-	var ID uint64
-	if !shortID {
-		ID = rand.Uint64N(maxJSONSafeInteger + 1)
-	} else {
-		ID = uint64(rand.Uint32N(1 << 31))
-	}
 	return &request{
 		Version: "2.0",
 		Method:  method,
 		Params:  params,
-		ID:      ID,
+		ID:      newRequestID(shortID),
 	}
+}
+
+// newRequestID returns a random request id that fits in a JSON number, or in
+// 31 bits when shortID is set.
+func newRequestID(shortID bool) uint64 {
+	if shortID {
+		return uint64(rand.Uint32N(1 << 31))
+	}
+	return rand.Uint64N(maxJSONSafeInteger + 1)
+}
+
+// withNewID returns a copy of the request under a new request id.
+func (c *request) withNewID(shortID bool) *request {
+	cp := *c
+	cp.ID = newRequestID(shortID)
+	return &cp
 }
 
 func (c *request) encode() ([]byte, error) {
