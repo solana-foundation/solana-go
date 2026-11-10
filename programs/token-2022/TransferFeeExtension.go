@@ -36,6 +36,11 @@ type TransferFeeExtension struct {
 	Decimals *uint8  `bin:"-"`
 	Fee      *uint64 `bin:"-"`
 
+	// For WithdrawWithheldTokensFromAccounts: the number of source accounts.
+	NumTokenAccounts uint8 `bin:"-"`
+
+	// For WithdrawWithheldTokensFromAccounts the source accounts follow the
+	// authority in Accounts; GetAccounts places Signers between the two.
 	Accounts ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 	Signers  ag_solanago.AccountMetaSlice `bin:"-" borsh_skip:"true"`
 }
@@ -49,7 +54,12 @@ func (obj *TransferFeeExtension) SetAccounts(accounts []*ag_solanago.AccountMeta
 	case TransferFee_WithdrawWithheldTokensFromMint:
 		obj.Accounts, obj.Signers = ag_solanago.AccountMetaSlice(accounts).SplitFrom(3)
 	case TransferFee_WithdrawWithheldTokensFromAccounts:
-		obj.Accounts, obj.Signers = ag_solanago.AccountMetaSlice(accounts).SplitFrom(3)
+		// The last NumTokenAccounts accounts are the sources; whatever sits
+		// between them and the authority is a multisig signer.
+		head, rest := ag_solanago.AccountMetaSlice(accounts).SplitFrom(3)
+		numSigners := max(len(rest)-int(obj.NumTokenAccounts), 0)
+		obj.Accounts = append(head, rest[numSigners:]...)
+		obj.Signers = rest[:numSigners]
 	case TransferFee_HarvestWithheldTokensToMint:
 		obj.Accounts = ag_solanago.AccountMetaSlice(accounts)
 	case TransferFee_SetTransferFee:
@@ -61,6 +71,13 @@ func (obj *TransferFeeExtension) SetAccounts(accounts []*ag_solanago.AccountMeta
 }
 
 func (slice TransferFeeExtension) GetAccounts() (accounts []*ag_solanago.AccountMeta) {
+	if slice.SubInstruction == TransferFee_WithdrawWithheldTokensFromAccounts && len(slice.Accounts) > 3 {
+		// The program reads mint, destination, authority, signers, sources.
+		accounts = append(accounts, slice.Accounts[:3]...)
+		accounts = append(accounts, slice.Signers...)
+		accounts = append(accounts, slice.Accounts[3:]...)
+		return
+	}
 	accounts = append(accounts, slice.Accounts...)
 	accounts = append(accounts, slice.Signers...)
 	return
@@ -213,6 +230,11 @@ func (obj TransferFeeExtension) MarshalWithEncoder(encoder *ag_binary.Encoder) (
 		if err != nil {
 			return err
 		}
+	case TransferFee_WithdrawWithheldTokensFromAccounts:
+		err = encoder.WriteUint8(obj.NumTokenAccounts)
+		if err != nil {
+			return err
+		}
 	case TransferFee_SetTransferFee:
 		err = encoder.WriteUint16(obj.TransferFeeBasisPoints, binary.LittleEndian)
 		if err != nil {
@@ -222,8 +244,8 @@ func (obj TransferFeeExtension) MarshalWithEncoder(encoder *ag_binary.Encoder) (
 		if err != nil {
 			return err
 		}
-		// WithdrawWithheldTokensFromMint, WithdrawWithheldTokensFromAccounts,
-		// HarvestWithheldTokensToMint have no additional data
+		// WithdrawWithheldTokensFromMint, HarvestWithheldTokensToMint have no
+		// additional data
 	}
 	return nil
 }
@@ -267,6 +289,11 @@ func (obj *TransferFeeExtension) UnmarshalWithDecoder(decoder *ag_binary.Decoder
 			return err
 		}
 		obj.Fee = &fee
+	case TransferFee_WithdrawWithheldTokensFromAccounts:
+		obj.NumTokenAccounts, err = decoder.ReadUint8()
+		if err != nil {
+			return err
+		}
 	case TransferFee_SetTransferFee:
 		obj.TransferFeeBasisPoints, err = decoder.ReadUint16(binary.LittleEndian)
 		if err != nil {
@@ -367,9 +394,10 @@ func NewWithdrawWithheldTokensFromAccountsInstruction(
 	sourceAccounts ...ag_solanago.PublicKey,
 ) *TransferFeeExtension {
 	inst := &TransferFeeExtension{
-		SubInstruction: TransferFee_WithdrawWithheldTokensFromAccounts,
-		Accounts:       make(ag_solanago.AccountMetaSlice, 3+len(sourceAccounts)),
-		Signers:        make(ag_solanago.AccountMetaSlice, 0),
+		SubInstruction:   TransferFee_WithdrawWithheldTokensFromAccounts,
+		NumTokenAccounts: uint8(len(sourceAccounts)),
+		Accounts:         make(ag_solanago.AccountMetaSlice, 3+len(sourceAccounts)),
+		Signers:          make(ag_solanago.AccountMetaSlice, 0),
 	}
 	inst.Accounts[0] = ag_solanago.Meta(mint)
 	inst.Accounts[1] = ag_solanago.Meta(destination).WRITE()
