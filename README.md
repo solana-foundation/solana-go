@@ -168,7 +168,7 @@ default:
 }
 ```
 
-Any other error, including a canceled context, means that the outcome is unknown: check the signature status before you sign the transaction again. Before it reports an expired blockhash, the helper reads the signature status until it is conclusive, because the transaction can still land in the block at which the expiry is seen.
+Any other error, including a canceled context, means that the outcome is unknown: check the signature status before you sign the transaction again. Before it reports an expired blockhash or an advanced nonce, the helper reads the signature status until it is conclusive, because the transaction can still land in the block at which the expiry is seen. A transaction that the recent status cache does not know is looked up in the transaction history as well, so a durable nonce transaction that is resent long after it landed is still recognized.
 
 When the commitment is below finalized and `PreflightCommitment` is empty, the transaction is simulated at the same commitment, as in the Kit. `RequestAndConfirmAirdrop` requests an airdrop on a test cluster and waits until it lands.
 

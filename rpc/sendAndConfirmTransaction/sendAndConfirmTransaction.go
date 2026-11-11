@@ -416,7 +416,10 @@ const (
 //     a later bank misses the transaction.
 //   - Missing from a bank at least as recent as the end of the lifetime, and
 //     later than any bank that showed the transaction: err, because the
-//     transaction can no longer land.
+//     transaction can no longer land. The recent status cache only covers the
+//     last minute or so of blocks, and a durable nonce transaction can be
+//     resent long after it landed, so a miss in that cache only counts after
+//     a search of the transaction history misses the transaction too.
 //   - maxUnusableStatuses failed reads, or reads of older banks, in a row: an
 //     error that wraps the last problem but not ended, because the outcome is
 //     unknown.
@@ -437,10 +440,14 @@ func recheckSignature(
 	// A status that misses the transaction only counts if its bank is at
 	// least this recent.
 	minSlot := lifetimeEndSlot(err)
+	// The recent status cache answers first. Once it misses the transaction,
+	// the next read searches the transaction history, and only a miss there
+	// is conclusive.
+	searchHistory := false
 	unusable := 0
 	var problem error
 	for {
-		status, slot, statusErr := readSignatureStatus(ctx, rpcClient, signature)
+		status, slot, statusErr := readSignatureStatus(ctx, rpcClient, signature, searchHistory)
 		switch {
 		case statusErr != nil:
 			if ctxErr := ctx.Err(); ctxErr != nil {
@@ -457,10 +464,15 @@ func recheckSignature(
 			// transaction shows that its fork was dropped.
 			unusable = 0
 			minSlot = max(minSlot, slot+1)
-		case slot >= minSlot:
-			return err
-		default:
+		case slot < minSlot:
 			unusable, problem = unusable+1, fmt.Errorf("the status is from slot %d, before slot %d", slot, minSlot)
+		case !searchHistory:
+			// The recent status cache misses the transaction. It may have
+			// landed before the cache's window, so search the history next.
+			searchHistory = true
+			continue
+		default:
+			return err
 		}
 		if unusable >= maxUnusableStatuses {
 			return fmt.Errorf("sendandconfirmtransaction: the status of transaction %s is unknown after its lifetime ended (%s): %w",
@@ -475,9 +487,11 @@ func recheckSignature(
 }
 
 // readSignatureStatus returns the status of signature, nil if the node does
-// not know it, and the slot of the bank that the status was read from.
-func readSignatureStatus(ctx context.Context, rpcClient *rpc.Client, signature solana.Signature) (*rpc.SignatureStatusesResult, uint64, error) {
-	out, err := rpcClient.GetSignatureStatuses(ctx, false, signature)
+// not know it, and the slot of the bank that the status was read from. With
+// searchHistory, the node also searches its transaction history, which holds
+// signatures that have left the recent status cache.
+func readSignatureStatus(ctx context.Context, rpcClient *rpc.Client, signature solana.Signature, searchHistory bool) (*rpc.SignatureStatusesResult, uint64, error) {
+	out, err := rpcClient.GetSignatureStatuses(ctx, searchHistory, signature)
 	if err != nil {
 		return nil, 0, err
 	}

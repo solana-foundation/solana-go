@@ -232,6 +232,38 @@ func TestSubscribe_ResendsWhenConfirmedIDWasUnsubscribed(t *testing.T) {
 	require.Equal(t, uint64(104), recvSlot(t, second))
 }
 
+// A server that numbers ids per method gives a pending subscription of
+// another kind the id that was just unsubscribed. That subscription is live,
+// so it must be confirmed as it is, not sent again.
+func TestSubscribe_UnsubscribeMarksOnlySubscriptionsOfTheSameKindStale(t *testing.T) {
+	m := newMockWSServer(t)
+	defer m.stop()
+	c := connectClient(t, m)
+	defer c.Close()
+
+	slots := confirmedSubscription(t, c, m, 7)
+	requireDelivered(t, m, 7, 100, slots)
+	roots, err := c.RootSubscribe()
+	require.NoError(t, err)
+	rootReq := m.nextRequest(t)
+	require.Equal(t, "rootSubscribe", rootReq.Method)
+
+	// The slot subscription is unsubscribed while the root subscription
+	// waits for its confirmation, which then arrives with the same id.
+	slots.Unsubscribe()
+	requireUnsubscribe(t, m.nextRequest(t), 7)
+	m.ack(t, rootReq.ID, 7)
+
+	// No resend: the root notification for id 7 is delivered right away.
+	m.send(t, `{"jsonrpc":"2.0","method":"rootNotification","params":{"subscription":7,"result":42}}`)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	root, err := roots.Recv(ctx)
+	require.NoError(t, err)
+	require.Equal(t, RootResult(42), *root)
+	requireNextIsSubscribe(t, c, m)
+}
+
 func TestAbandonedSubscription_LateConfirmationIsUnsubscribed(t *testing.T) {
 	m := newMockWSServer(t)
 	defer m.stop()

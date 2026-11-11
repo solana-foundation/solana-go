@@ -479,7 +479,10 @@ func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 			// reads is the expected number of status reads, when it does not
 			// depend on timing.
 			reads int
-			check func(t *testing.T, err, ended error)
+			// history lists the reads, counted from 0, that must search the
+			// transaction history. All other reads must not.
+			history []int
+			check   func(t *testing.T, err, ended error)
 		}{
 			{
 				name:      "resolves when the transaction landed at the commitment",
@@ -495,11 +498,38 @@ func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 				check:     func(t *testing.T, err, _ error) { require.NoError(t, err) },
 			},
 			{
+				// A miss in the recent status cache is only conclusive once the
+				// transaction history misses the transaction too.
 				name:      "returns the lifetime error when the transaction is unknown",
 				status:    signatureStatus("null"),
 				signature: blockOnContext,
-				reads:     1,
+				reads:     2,
+				history:   []int{1},
 				check:     requireEnded,
+			},
+			{
+				// A durable nonce transaction can be resent long after it
+				// landed, when its status has left the recent status cache.
+				name: "resolves when only the transaction history knows the transaction",
+				status: replies(
+					statusReply{slot: 500, status: "null"},
+					statusReply{slot: 500, status: finalizedStatus},
+				),
+				signature: blockOnContext,
+				reads:     2,
+				history:   []int{1},
+				check:     func(t *testing.T, err, _ error) { require.NoError(t, err) },
+			},
+			{
+				name: "returns the transaction error when only the transaction history knows the failed transaction",
+				status: replies(
+					statusReply{slot: 500, status: "null"},
+					statusReply{slot: 500, status: `{"slot":1,"confirmations":null,"err":{"InstructionError":[0,"InvalidAccountData"]},"confirmationStatus":"finalized"}`},
+				),
+				signature: blockOnContext,
+				reads:     2,
+				history:   []int{1},
+				check:     func(t *testing.T, err, _ error) { require.ErrorIs(t, err, confirmation.ErrTransactionFailed) },
 			},
 			{
 				name:      "returns the transaction error when it landed and failed",
@@ -546,10 +576,12 @@ func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 				status: replies(
 					statusReply{slot: 10, status: confirmedStatus},
 					statusReply{slot: 10, status: "null"}, // not later than the bank that showed it
+					statusReply{slot: 11, status: "null"}, // the cache misses it: search the history
 					statusReply{slot: 11, status: "null"},
 				),
 				signature: blockOnContext,
-				reads:     3,
+				reads:     4,
+				history:   []int{3},
 				check:     requireEnded,
 			},
 			{
@@ -557,10 +589,12 @@ func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 				status: replies(
 					statusReply{slot: 99, status: "null"},
 					statusReply{slot: 100, status: "null"},
+					statusReply{slot: 100, status: "null"},
 				),
 				signature: blockOnContext,
 				endedSlot: 100,
-				reads:     2,
+				reads:     3,
+				history:   []int{2},
 				check:     requireEnded,
 			},
 			{
@@ -584,9 +618,15 @@ func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 
 					tt.check(t, err, ended)
 					reads := f.callParams("getSignatureStatuses")
-					require.Equal(t, []any{[]solana.Signature{testSignature}}, reads[0])
 					if tt.reads > 0 {
 						require.Len(t, reads, tt.reads)
+					}
+					for i, params := range reads {
+						want := []any{[]solana.Signature{testSignature}}
+						if slices.Contains(tt.history, i) {
+							want = append(want, rpc.M{"searchTransactionHistory": true})
+						}
+						require.Equal(t, want, params, "read %d", i)
 					}
 				})
 			})

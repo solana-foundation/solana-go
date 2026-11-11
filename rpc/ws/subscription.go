@@ -55,8 +55,9 @@ type Subscription struct {
 	acked bool
 	// closeErr is the error the subscription was closed with. Guarded by mu.
 	closeErr error
-	// staleIDs holds the server ids that were unsubscribed while this
-	// subscription waited for its confirmation. Guarded by the client lock.
+	// staleIDs holds the server ids of subscriptions of the same kind that
+	// were unsubscribed while this subscription waited for its confirmation.
+	// Guarded by the client lock.
 	staleIDs map[uint64]struct{}
 }
 
