@@ -61,17 +61,16 @@ func pick(signatureResult, lifetimeResult <-chan error) error {
 	}
 }
 
-// firstOf runs fns concurrently and returns the first result. It then cancels
-// the others and waits for them. Kit: safeRace.
-func firstOf(ctx context.Context, fns ...func(context.Context) error) error {
+// firstOf runs a and b concurrently and returns the first result. It then
+// cancels the other one and waits for it. Kit: safeRace.
+func firstOf(ctx context.Context, a, b func(context.Context) error) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	results := make(chan error, len(fns))
+	results := make(chan error, 2)
 	var wg sync.WaitGroup
-	for _, fn := range fns {
-		wg.Go(func() { results <- fn(ctx) })
-	}
+	wg.Go(func() { results <- a(ctx) })
+	wg.Go(func() { results <- b(ctx) })
 	err := <-results
 	cancel()
 	wg.Wait()

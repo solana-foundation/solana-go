@@ -20,13 +20,17 @@ func epochInfo(absoluteSlot, blockHeight uint64) rpcHandler {
 		absoluteSlot, blockHeight))
 }
 
-// startBlockHeight runs the block height strategy and returns its slot
-// subscription.
-func (h *harness) startBlockHeight(t *testing.T, lastValidBlockHeight uint64, commitment rpc.CommitmentType) (context.CancelFunc, <-chan error, subscribeRequest) {
+// testLastValidBlockHeight is the limit of the tests that use
+// startBlockHeight, as in kit's tests.
+const testLastValidBlockHeight = 100
+
+// startBlockHeight runs the block height strategy with the last valid block
+// height testLastValidBlockHeight and returns its slot subscription.
+func (h *harness) startBlockHeight(t *testing.T, commitment rpc.CommitmentType) (context.CancelFunc, <-chan error, subscribeRequest) {
 	t.Helper()
 	strategy := NewBlockHeightExceedance(h.rpcClient, h.wsClient)
 	cancel, done := run(t, func(ctx context.Context) error {
-		return strategy(ctx, lastValidBlockHeight, commitment)
+		return strategy(ctx, testLastValidBlockHeight, commitment)
 	})
 	sub := h.validator.nextSubscribe(t)
 	require.Equal(t, "slotSubscribe", sub.Method)
@@ -50,7 +54,7 @@ func TestBlockHeight_ExceededWhenCalled(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.on("getEpochInfo", epochInfo(101, 101))
 
-	_, done, sub := h.startBlockHeight(t, 100, "")
+	_, done, sub := h.startBlockHeight(t, "")
 
 	requireExceeded(t, requireResult(t, done), 101, 100)
 	h.events.waitFor(t, fmt.Sprintf("unsubscribe slotUnsubscribe [%d]", sub.SubID))
@@ -60,7 +64,7 @@ func TestBlockHeight_PendsAtLastValidBlockHeight(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.on("getEpochInfo", epochInfo(100, 100))
 
-	cancel, done, _ := h.startBlockHeight(t, 100, "")
+	cancel, done, _ := h.startBlockHeight(t, "")
 
 	requireCanceled(t, cancel, done)
 }
@@ -70,7 +74,7 @@ func TestBlockHeight_ExceededAtEstimatedSlot(t *testing.T) {
 	// 100 slots were skipped, so slot 201 is expected to be block 101.
 	h.rpc.queue("getEpochInfo", epochInfo(198, 98), epochInfo(201, 101))
 
-	_, done, sub := h.startBlockHeight(t, 100, "")
+	_, done, sub := h.startBlockHeight(t, "")
 	for slot := uint64(199); slot <= 201; slot++ {
 		h.slot(t, sub, slot)
 	}
@@ -83,7 +87,7 @@ func TestBlockHeight_PendsBeforeEstimatedSlot(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.on("getEpochInfo", epochInfo(198, 98))
 
-	cancel, done, sub := h.startBlockHeight(t, 100, "")
+	cancel, done, sub := h.startBlockHeight(t, "")
 	h.slot(t, sub, 199)
 	h.slot(t, sub, 200)
 
@@ -97,7 +101,7 @@ func TestBlockHeight_ExceededAfterRecalibration(t *testing.T) {
 	// height is only exceeded at slot 202.
 	h.rpc.queue("getEpochInfo", epochInfo(198, 98), epochInfo(201, 100), epochInfo(202, 101))
 
-	_, done, sub := h.startBlockHeight(t, 100, "")
+	_, done, sub := h.startBlockHeight(t, "")
 	for slot := uint64(199); slot <= 202; slot++ {
 		h.slot(t, sub, slot)
 	}
@@ -110,7 +114,7 @@ func TestBlockHeight_PendsWhenSkippedSlotsGrew(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.queue("getEpochInfo", epochInfo(198, 98), epochInfo(201, 100))
 
-	cancel, done, sub := h.startBlockHeight(t, 100, "")
+	cancel, done, sub := h.startBlockHeight(t, "")
 	for slot := uint64(199); slot <= 201; slot++ {
 		h.slot(t, sub, slot)
 	}
@@ -137,7 +141,7 @@ func TestBlockHeight_PassesCommitment(t *testing.T) {
 			h := newHarness(t)
 			h.rpc.on("getEpochInfo", epochInfo(100, 100))
 
-			cancel, done, _ := h.startBlockHeight(t, 100, tt.commitment)
+			cancel, done, _ := h.startBlockHeight(t, tt.commitment)
 			h.events.waitFor(t, "rpc getEpochInfo")
 
 			require.Equal(t, []any{rpc.M{"commitment": tt.want}}, h.rpc.callParams("getEpochInfo")[0])
@@ -159,7 +163,7 @@ func TestBlockHeight_CancelStopsEpochInfoRequest(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.on("getEpochInfo", blockUntilCanceled(h.events, "getEpochInfo"))
 
-	cancel, done, _ := h.startBlockHeight(t, 100, "")
+	cancel, done, _ := h.startBlockHeight(t, "")
 	h.events.waitFor(t, "rpc getEpochInfo")
 
 	requireCanceled(t, cancel, done)
@@ -170,7 +174,7 @@ func TestBlockHeight_CancelUnsubscribes(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.on("getEpochInfo", epochInfo(100, 100))
 
-	cancel, done, sub := h.startBlockHeight(t, 100, "")
+	cancel, done, sub := h.startBlockHeight(t, "")
 
 	requireCanceled(t, cancel, done)
 	h.events.waitFor(t, fmt.Sprintf("unsubscribe slotUnsubscribe [%d]", sub.SubID))
@@ -180,7 +184,7 @@ func TestBlockHeight_EpochInfoError(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.on("getEpochInfo", failWith(errors.New("o no")))
 
-	_, done, sub := h.startBlockHeight(t, 100, "")
+	_, done, sub := h.startBlockHeight(t, "")
 
 	require.ErrorContains(t, requireResult(t, done), "o no")
 	h.events.waitFor(t, fmt.Sprintf("unsubscribe slotUnsubscribe [%d]", sub.SubID))
@@ -218,7 +222,7 @@ func TestBlockHeight_CanceledWhileReadingEpochInfo(t *testing.T) {
 		return `{"absoluteSlot":101,"blockHeight":101}`, nil
 	})
 
-	cancel, done, _ := h.startBlockHeight(t, 100, "")
+	cancel, done, _ := h.startBlockHeight(t, "")
 	h.events.waitFor(t, "rpc getEpochInfo")
 	cancel()
 	close(release)
@@ -230,7 +234,7 @@ func TestBlockHeight_CanceledWhileFollowingSlots(t *testing.T) {
 	h := newHarness(t)
 	h.rpc.on("getEpochInfo", epochInfo(100, 100))
 
-	cancel, done, sub := h.startBlockHeight(t, 100, "")
+	cancel, done, sub := h.startBlockHeight(t, "")
 	requirePending(t, done)
 	cancel()
 	h.slot(t, sub, 101)

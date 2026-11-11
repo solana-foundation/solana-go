@@ -449,6 +449,7 @@ func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 				status:    signatureStatus(`{"slot":1,"confirmations":null,"err":{"InstructionError":[0,"InvalidAccountData"]},"confirmationStatus":"finalized"}`),
 				signature: blockOnContext,
 				check: func(t *testing.T, err error) {
+					require.ErrorIs(t, err, confirmation.ErrTransactionFailed)
 					var txErr *confirmation.TransactionError
 					require.ErrorAs(t, err, &txErr)
 					require.Equal(t, testSignature, txErr.Signature)

@@ -75,8 +75,11 @@
 //   - ErrBlockHeightExceeded, as *BlockHeightExceededError
 //   - ErrInvalidNonce, as *InvalidNonceError
 //   - ErrNonceAccountNotFound, as *NonceAccountNotFoundError
+//   - ErrTransactionFailed, as *TransactionError: the transaction landed,
+//     but it failed
 //   - ErrFeePayerSignatureMissing
-//   - *TransactionError: the transaction landed, but it failed
 //
-// When ctx is canceled, every function returns ctx.Err().
+// When ctx is canceled, every function returns ctx.Err(). Returning can take
+// up to 10 seconds when the WebSocket connection stalls, because the
+// unsubscribe requests are written without a context.
 package confirmation

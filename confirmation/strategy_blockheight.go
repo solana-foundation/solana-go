@@ -115,32 +115,23 @@ func blockHeightExceedance(
 	}
 
 	currentBlockHeight := position.blockHeight
-	if currentBlockHeight <= lastValidBlockHeight {
-		for exceeded := false; !exceeded; {
-			notification, err := slots.sub.Recv(innerCtx)
-			if err != nil {
-				return err
-			}
-			if notification == nil {
-				return ws.ErrSubscriptionClosed
-			}
-			if !position.estimateExceeds(notification.Slot, lastValidBlockHeight) {
-				continue
-			}
-			// Check the block height before deciding.
-			rechecked, err := getEpochPosition(innerCtx, rpcClient, commitment)
-			if err != nil {
-				return err
-			}
-			currentBlockHeight = rechecked.blockHeight
-			if currentBlockHeight > lastValidBlockHeight {
-				exceeded = true
-			} else {
-				// Blocks were skipped since the last check, so the
-				// difference between slot and block height grew.
-				position = rechecked
-			}
+	for currentBlockHeight <= lastValidBlockHeight {
+		notification, err := slots.sub.Recv(innerCtx)
+		if err != nil {
+			return err
 		}
+		if !position.estimateExceeds(notification.Slot, lastValidBlockHeight) {
+			continue
+		}
+		// Check the block height before deciding. If it is still valid,
+		// blocks were skipped since the last check, so the difference
+		// between slot and block height grew, and the new position
+		// recalibrates the estimate.
+		position, err = getEpochPosition(innerCtx, rpcClient, commitment)
+		if err != nil {
+			return err
+		}
+		currentBlockHeight = position.blockHeight
 	}
 	// Report cancellation over the expiry (kit #3353).
 	if err := ctx.Err(); err != nil {

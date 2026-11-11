@@ -38,6 +38,11 @@ var (
 	// *NonceAccountNotFoundError. Kit: SOLANA_ERROR__NONCE_ACCOUNT_NOT_FOUND.
 	ErrNonceAccountNotFound = errors.New("nonce account not found")
 
+	// ErrTransactionFailed reports that the transaction landed, but it
+	// failed. The error returned is a *TransactionError, which holds the
+	// reason. Kit: the SOLANA_ERROR__TRANSACTION_ERROR__* codes.
+	ErrTransactionFailed = errors.New("transaction failed")
+
 	// ErrFeePayerSignatureMissing reports that the transaction has no
 	// signature of its fee payer, so there is no signature to wait for.
 	// Kit: SOLANA_ERROR__TRANSACTION__FEE_PAYER_SIGNATURE_MISSING.
@@ -121,3 +126,6 @@ func (e *TransactionError) Error() string {
 	}
 	return fmt.Sprintf("transaction %s failed: %s", e.Signature, reason)
 }
+
+// Unwrap returns ErrTransactionFailed.
+func (e *TransactionError) Unwrap() error { return ErrTransactionFailed }

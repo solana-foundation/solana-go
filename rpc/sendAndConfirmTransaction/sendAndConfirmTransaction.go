@@ -255,7 +255,7 @@ func sendAndConfirmWithBlockhashLifetime(
 	signatureConfirmation confirmation.RecentSignatureConfirmationFunc,
 	blockHeightExceedance confirmation.BlockHeightExceedanceFunc,
 ) (solana.Signature, error) {
-	commitment, err := checkSendable(transaction, commitment)
+	commitment, err := prepareSend(transaction, commitment)
 	if err != nil {
 		return solana.Signature{}, err
 	}
@@ -285,7 +285,7 @@ func sendAndConfirmDurableNonce(
 	signatureConfirmation confirmation.RecentSignatureConfirmationFunc,
 	nonceInvalidation confirmation.NonceInvalidationFunc,
 ) (solana.Signature, error) {
-	commitment, err := checkSendable(transaction, commitment)
+	commitment, err := prepareSend(transaction, commitment)
 	if err != nil {
 		return solana.Signature{}, err
 	}
@@ -337,10 +337,10 @@ func requestAndConfirmAirdrop(
 	return signature, err
 }
 
-// checkSendable checks what can be checked before sending: the transaction
-// must be signed by its fee payer, and the commitment must be known. It
-// returns the commitment to wait for.
-func checkSendable(transaction *solana.Transaction, commitment rpc.CommitmentType) (rpc.CommitmentType, error) {
+// prepareSend checks what can be checked before sending: the transaction must
+// be signed by its fee payer, and the commitment must be known. It returns the
+// commitment to wait for.
+func prepareSend(transaction *solana.Transaction, commitment rpc.CommitmentType) (rpc.CommitmentType, error) {
 	if transaction == nil {
 		return "", errors.New("sendandconfirmtransaction: transaction is nil")
 	}
@@ -351,7 +351,9 @@ func checkSendable(transaction *solana.Transaction, commitment rpc.CommitmentTyp
 }
 
 // normalizeCommitment returns the commitment to wait for. Empty means
-// finalized, the default of the RPC server.
+// finalized, the default of the RPC server. It follows the same rules as the
+// confirmation package, which validates the commitment again, so keep the two
+// in sync.
 func normalizeCommitment(commitment rpc.CommitmentType) (rpc.CommitmentType, error) {
 	switch commitment {
 	case "":

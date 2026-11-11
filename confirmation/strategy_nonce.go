@@ -85,9 +85,6 @@ func nonceInvalidation(
 				if err != nil {
 					return err
 				}
-				if res == nil {
-					return ws.ErrSubscriptionClosed
-				}
 				var data []byte
 				if res.Value != nil {
 					data = res.Value.Data.GetBinary()

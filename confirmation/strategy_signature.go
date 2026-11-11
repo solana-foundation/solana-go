@@ -73,9 +73,6 @@ func recentSignatureConfirmation(
 				if err != nil {
 					return err
 				}
-				if res == nil {
-					return ws.ErrSubscriptionClosed
-				}
 				if res.ReceivedSignature {
 					continue
 				}

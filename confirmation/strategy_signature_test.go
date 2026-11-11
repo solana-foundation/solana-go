@@ -2,6 +2,7 @@ package confirmation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -40,6 +41,7 @@ func (h *harness) signatureNotification(t *testing.T, sub subscribeRequest, valu
 
 func requireTransactionError(t *testing.T, err error, want any) {
 	t.Helper()
+	require.ErrorIs(t, err, ErrTransactionFailed)
 	var txErr *TransactionError
 	require.ErrorAs(t, err, &txErr)
 	require.Equal(t, testSignature, txErr.Signature)
@@ -189,7 +191,7 @@ func TestSignature_IgnoresReceivedNotification(t *testing.T) {
 
 func TestSignature_StatusRequestError(t *testing.T) {
 	h := newHarness(t)
-	h.rpc.on("getSignatureStatuses", failWith(fmt.Errorf("o no")))
+	h.rpc.on("getSignatureStatuses", failWith(errors.New("o no")))
 
 	_, done := h.startSignature(t, "")
 

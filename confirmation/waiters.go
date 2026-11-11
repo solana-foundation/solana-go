@@ -33,8 +33,12 @@ type RecentTransactionConfig struct {
 	// the transaction, as returned by getLatestBlockhash.
 	LastValidBlockHeight uint64
 
+	// RecentSignatureConfirmation waits for the signature, usually
+	// NewRecentSignatureConfirmation(rpcClient, wsClient).
 	RecentSignatureConfirmation RecentSignatureConfirmationFunc
-	BlockHeightExceedance       BlockHeightExceedanceFunc
+	// BlockHeightExceedance reports the expiry of the blockhash, usually
+	// NewBlockHeightExceedance(rpcClient, wsClient).
+	BlockHeightExceedance BlockHeightExceedanceFunc
 }
 
 // DurableNonceTransactionConfig configures
@@ -46,8 +50,12 @@ type DurableNonceTransactionConfig struct {
 	// AdvanceNonceAccount instruction, and its recent blockhash is the nonce.
 	Transaction *solana.Transaction
 
+	// RecentSignatureConfirmation waits for the signature, usually
+	// NewRecentSignatureConfirmation(rpcClient, wsClient).
 	RecentSignatureConfirmation RecentSignatureConfirmationFunc
-	NonceInvalidation           NonceInvalidationFunc
+	// NonceInvalidation reports that the nonce advanced, usually
+	// NewNonceInvalidation(rpcClient, wsClient).
+	NonceInvalidation NonceInvalidationFunc
 }
 
 // RecentTransactionUntilTimeoutConfig configures
@@ -58,8 +66,11 @@ type RecentTransactionUntilTimeoutConfig struct {
 	// Signature identifies the transaction.
 	Signature solana.Signature
 
+	// RecentSignatureConfirmation waits for the signature, usually
+	// NewRecentSignatureConfirmation(rpcClient, wsClient).
 	RecentSignatureConfirmation RecentSignatureConfirmationFunc
-	Timeout                     TimeoutFunc
+	// Timeout ends the wait, usually Timeout.
+	Timeout TimeoutFunc
 }
 
 var errNilStrategy = errors.New("confirmation: every strategy func of the config must be set")
