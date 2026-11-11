@@ -97,6 +97,36 @@ func signatureStatus(status string) func(context.Context, []any) (string, error)
 	}
 }
 
+// statusReply is one answer to getSignatureStatuses: status, or null when the
+// node does not know the signature, read from the bank at slot, or err.
+type statusReply struct {
+	slot   uint64
+	status string
+	err    error
+}
+
+// replies answers getSignatureStatuses with rs in order, and then with the
+// last one.
+func replies(rs ...statusReply) func(context.Context, []any) (string, error) {
+	var mu sync.Mutex
+	next := 0
+	return func(context.Context, []any) (string, error) {
+		mu.Lock()
+		r := rs[min(next, len(rs)-1)]
+		next++
+		mu.Unlock()
+		if r.err != nil {
+			return "", r.err
+		}
+		return fmt.Sprintf(`{"context":{"slot":%d},"value":[%s]}`, r.slot, r.status), nil
+	}
+}
+
+const (
+	confirmedStatus = `{"slot":9,"confirmations":3,"err":null,"confirmationStatus":"confirmed"}`
+	finalizedStatus = `{"slot":9,"confirmations":null,"err":null,"confirmationStatus":"finalized"}`
+)
+
 func transfer() solana.Instruction {
 	return system.NewTransferInstruction(1, testPayer, testRecipient).Build()
 }
@@ -176,8 +206,10 @@ type lifetime struct {
 	name string
 	tx   func(t *testing.T) *solana.Transaction
 	send func(ctx context.Context, rpcClient *rpc.Client, tx *solana.Transaction, commitment rpc.CommitmentType, opts rpc.TransactionOpts, s *strategies) (solana.Signature, error)
-	// ended is the error of the lifetime strategy when the lifetime ended.
-	ended error
+	// ended is the error of the lifetime strategy when the lifetime ended,
+	// with no slot, and endedAt the same error seen at slot.
+	ended   error
+	endedAt func(slot uint64) error
 	// endedSentinel is the sentinel that ended wraps.
 	endedSentinel error
 	// input is what the lifetime strategy receives at the confirmed commitment.
@@ -185,6 +217,12 @@ type lifetime struct {
 }
 
 func lifetimes() []lifetime {
+	expiredAt := func(slot uint64) error {
+		return &confirmation.BlockHeightExceededError{CurrentBlockHeight: 151, LastValidBlockHeight: 150, Slot: slot}
+	}
+	advancedAt := func(slot uint64) error {
+		return &confirmation.InvalidNonceError{NonceAccount: testNonceAccount, Expected: testNonce, Actual: testBlockhash, Slot: slot}
+	}
 	return []lifetime{
 		{
 			name: "blockhash",
@@ -192,7 +230,8 @@ func lifetimes() []lifetime {
 			send: func(ctx context.Context, rpcClient *rpc.Client, tx *solana.Transaction, commitment rpc.CommitmentType, opts rpc.TransactionOpts, s *strategies) (solana.Signature, error) {
 				return sendAndConfirmWithBlockhashLifetime(ctx, rpcClient, tx, 150, commitment, opts, s.signatureFunc(), s.blockHeightFunc())
 			},
-			ended:         &confirmation.BlockHeightExceededError{CurrentBlockHeight: 151, LastValidBlockHeight: 150},
+			ended:         expiredAt(0),
+			endedAt:       expiredAt,
 			endedSentinel: confirmation.ErrBlockHeightExceeded,
 			input:         "block height 150 confirmed",
 		},
@@ -202,7 +241,8 @@ func lifetimes() []lifetime {
 			send: func(ctx context.Context, rpcClient *rpc.Client, tx *solana.Transaction, commitment rpc.CommitmentType, opts rpc.TransactionOpts, s *strategies) (solana.Signature, error) {
 				return sendAndConfirmDurableNonce(ctx, rpcClient, tx, commitment, opts, s.signatureFunc(), s.nonceFunc())
 			},
-			ended:         &confirmation.InvalidNonceError{NonceAccount: testNonceAccount, Expected: testNonce, Actual: testBlockhash},
+			ended:         advancedAt(0),
+			endedAt:       advancedAt,
 			endedSentinel: confirmation.ErrInvalidNonce,
 			input:         fmt.Sprintf("nonce %s %s confirmed", testNonceAccount, testNonce),
 		},
@@ -410,45 +450,63 @@ func TestSend_ValidatesBeforeSending(t *testing.T) {
 }
 
 // The lifetime can end with the transaction itself, so the signature status
-// decides (kit #1234). These cases run for both lifetimes.
+// decides (kit #1234). These cases run for both lifetimes, waiting for the
+// finalized commitment.
 func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 	signatureLater := func(context.Context) error {
 		time.Sleep(time.Second)
 		return nil
 	}
+	rpcFailure := errors.New("RPC connection failed")
 	for _, lt := range lifetimes() {
+		requireEnded := func(t *testing.T, err, ended error) {
+			require.ErrorIs(t, err, lt.endedSentinel)
+			require.Equal(t, ended, err)
+		}
+		requireUnknown := func(t *testing.T, err, _ error) {
+			// The transaction may have landed, so the error must not say
+			// that the lifetime ended.
+			require.NotErrorIs(t, err, lt.endedSentinel)
+			require.ErrorContains(t, err, "is unknown")
+		}
 		for _, tt := range []struct {
 			name      string
 			status    func(context.Context, []any) (string, error)
 			signature func(context.Context) error
-			check     func(t *testing.T, err error)
+			// endedSlot is the slot at which the lifetime strategy saw the
+			// lifetime end.
+			endedSlot uint64
+			// reads is the expected number of status reads, when it does not
+			// depend on timing.
+			reads int
+			check func(t *testing.T, err, ended error)
 		}{
 			{
 				name:      "resolves when the transaction landed at the commitment",
-				status:    signatureStatus(`{"slot":1,"confirmations":null,"err":null,"confirmationStatus":"finalized"}`),
+				status:    signatureStatus(finalizedStatus),
 				signature: blockOnContext,
-				check:     func(t *testing.T, err error) { require.NoError(t, err) },
+				reads:     1,
+				check:     func(t *testing.T, err, _ error) { require.NoError(t, err) },
 			},
 			{
 				name:      "keeps waiting when the transaction landed below the commitment",
-				status:    signatureStatus(`{"slot":1,"confirmations":3,"err":null,"confirmationStatus":"confirmed"}`),
+				status:    signatureStatus(confirmedStatus),
 				signature: signatureLater,
-				check:     func(t *testing.T, err error) { require.NoError(t, err) },
+				check:     func(t *testing.T, err, _ error) { require.NoError(t, err) },
 			},
 			{
 				name:      "returns the lifetime error when the transaction is unknown",
 				status:    signatureStatus("null"),
 				signature: blockOnContext,
-				check: func(t *testing.T, err error) {
-					require.ErrorIs(t, err, lt.endedSentinel)
-					require.Equal(t, lt.ended, err)
-				},
+				reads:     1,
+				check:     requireEnded,
 			},
 			{
 				name:      "returns the transaction error when it landed and failed",
 				status:    signatureStatus(`{"slot":1,"confirmations":null,"err":{"InstructionError":[0,"InvalidAccountData"]},"confirmationStatus":"finalized"}`),
 				signature: blockOnContext,
-				check: func(t *testing.T, err error) {
+				reads:     1,
+				check: func(t *testing.T, err, _ error) {
 					require.ErrorIs(t, err, confirmation.ErrTransactionFailed)
 					var txErr *confirmation.TransactionError
 					require.ErrorAs(t, err, &txErr)
@@ -457,31 +515,79 @@ func TestSend_RechecksSignatureWhenLifetimeEnds(t *testing.T) {
 				},
 			},
 			{
-				name: "returns the lifetime error when the status request fails",
-				status: func(context.Context, []any) (string, error) {
-					return "", errors.New("RPC connection failed")
-				},
+				// Kit reports the end of the lifetime here, but a failed read
+				// cannot show that the transaction did not land.
+				name:      "reports an unknown outcome when the status reads keep failing",
+				status:    replies(statusReply{err: rpcFailure}),
 				signature: blockOnContext,
-				check:     func(t *testing.T, err error) { require.Equal(t, lt.ended, err) },
+				reads:     maxUnusableStatuses,
+				check: func(t *testing.T, err, ended error) {
+					requireUnknown(t, err, ended)
+					require.ErrorIs(t, err, rpcFailure)
+				},
 			},
 			{
 				name:      "keeps waiting when the transaction failed below the commitment",
 				status:    signatureStatus(`{"slot":1,"confirmations":0,"err":{"InstructionError":[0,"InvalidAccountData"]},"confirmationStatus":"processed"}`),
 				signature: signatureLater,
-				check:     func(t *testing.T, err error) { require.NoError(t, err) },
+				check:     func(t *testing.T, err, _ error) { require.NoError(t, err) },
+			},
+			{
+				name:      "retries a failed status read",
+				status:    replies(statusReply{err: rpcFailure}, statusReply{slot: 1, status: finalizedStatus}),
+				signature: blockOnContext,
+				reads:     2,
+				check:     func(t *testing.T, err, _ error) { require.NoError(t, err) },
+			},
+			{
+				// The signature notification never comes for a dropped fork,
+				// so only the status reads can end the wait.
+				name: "returns the lifetime error once a later bank misses a transaction below the commitment",
+				status: replies(
+					statusReply{slot: 10, status: confirmedStatus},
+					statusReply{slot: 10, status: "null"}, // not later than the bank that showed it
+					statusReply{slot: 11, status: "null"},
+				),
+				signature: blockOnContext,
+				reads:     3,
+				check:     requireEnded,
+			},
+			{
+				name: "waits for a bank as recent as the end of the lifetime",
+				status: replies(
+					statusReply{slot: 99, status: "null"},
+					statusReply{slot: 100, status: "null"},
+				),
+				signature: blockOnContext,
+				endedSlot: 100,
+				reads:     2,
+				check:     requireEnded,
+			},
+			{
+				name:      "reports an unknown outcome when the node stays behind the end of the lifetime",
+				status:    replies(statusReply{slot: 99, status: "null"}),
+				signature: blockOnContext,
+				endedSlot: 100,
+				reads:     maxUnusableStatuses,
+				check:     requireUnknown,
 			},
 		} {
 			t.Run(lt.name+"/"+tt.name, func(t *testing.T) {
 				synctest.Test(t, func(t *testing.T) {
 					f := newFakeRPC()
 					f.on("getSignatureStatuses", tt.status)
-					s := &strategies{signature: tt.signature, lifetime: func(context.Context) error { return lt.ended }}
+					ended := lt.endedAt(tt.endedSlot)
+					s := &strategies{signature: tt.signature, lifetime: func(context.Context) error { return ended }}
 
 					_, err := lt.send(context.Background(), rpc.NewWithCustomRPCClient(f), lt.tx(t), rpc.CommitmentFinalized,
 						rpc.TransactionOpts{}, s)
 
-					tt.check(t, err)
-					require.Equal(t, []any{[]solana.Signature{testSignature}}, f.callParams("getSignatureStatuses")[0])
+					tt.check(t, err, ended)
+					reads := f.callParams("getSignatureStatuses")
+					require.Equal(t, []any{[]solana.Signature{testSignature}}, reads[0])
+					if tt.reads > 0 {
+						require.Len(t, reads, tt.reads)
+					}
 				})
 			})
 		}

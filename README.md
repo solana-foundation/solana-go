@@ -168,6 +168,8 @@ default:
 }
 ```
 
+Any other error, including a canceled context, means that the outcome is unknown: check the signature status before you sign the transaction again. Before it reports an expired blockhash, the helper reads the signature status until it is conclusive, because the transaction can still land in the block at which the expiry is seen.
+
 When the commitment is below finalized and `PreflightCommitment` is empty, the transaction is simulated at the same commitment, as in the Kit. `RequestAndConfirmAirdrop` requests an airdrop on a test cluster and waits until it lands.
 
 To wait for a transaction that you sent yourself, use the waiters of the `confirmation` package, such as `confirmation.WaitForRecentTransactionConfirmation`. One `ws.Client` can serve any number of confirmations at the same time. `SendAndConfirmTransaction` is still there, but it only waits at the finalized commitment and does not know when the transaction expires.

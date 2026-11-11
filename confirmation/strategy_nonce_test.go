@@ -55,12 +55,14 @@ func (h *harness) accountNotification(t *testing.T, sub subscribeRequest, data [
 		stdjson.RawMessage(`{"context":{"slot":5},"value":`+accountJSON(data)+`}`))
 }
 
-func requireInvalidNonce(t *testing.T, err error, actual solana.Hash) {
+// requireInvalidNonce asserts the error and the slot it came from: account
+// notifications of these tests are at slot 5, account reads at slot 1.
+func requireInvalidNonce(t *testing.T, err error, actual solana.Hash, slot uint64) {
 	t.Helper()
 	require.ErrorIs(t, err, ErrInvalidNonce)
 	var invalid *InvalidNonceError
 	require.ErrorAs(t, err, &invalid)
-	require.Equal(t, InvalidNonceError{NonceAccount: testNonceAccount, Expected: testNonce, Actual: actual}, *invalid)
+	require.Equal(t, InvalidNonceError{NonceAccount: testNonceAccount, Expected: testNonce, Actual: actual, Slot: slot}, *invalid)
 }
 
 func TestNonce_CancelStopsAccountInfoRequest(t *testing.T) {
@@ -157,7 +159,7 @@ func TestNonce_InvalidWhenReadNonceDiffers(t *testing.T) {
 
 	_, done := h.startNonce(t, "")
 
-	requireInvalidNonce(t, requireResult(t, done), otherNonce)
+	requireInvalidNonce(t, requireResult(t, done), otherNonce, 1)
 }
 
 func TestNonce_PendsWhileNotifiedNonceMatches(t *testing.T) {
@@ -171,7 +173,7 @@ func TestNonce_PendsWhileNotifiedNonceMatches(t *testing.T) {
 	h.accountNotification(t, sub, nonceAccountData(otherNonce))
 
 	// Only the second notification ends the wait.
-	requireInvalidNonce(t, requireResult(t, done), otherNonce)
+	requireInvalidNonce(t, requireResult(t, done), otherNonce, 5)
 }
 
 func TestNonce_InvalidWhenNotifiedNonceDiffers(t *testing.T) {
@@ -182,7 +184,7 @@ func TestNonce_InvalidWhenNotifiedNonceDiffers(t *testing.T) {
 	sub := h.validator.nextSubscribe(t)
 	h.accountNotification(t, sub, nonceAccountData(otherNonce))
 
-	requireInvalidNonce(t, requireResult(t, done), otherNonce)
+	requireInvalidNonce(t, requireResult(t, done), otherNonce, 5)
 }
 
 func TestNonce_ShortDataIsInvalid(t *testing.T) {
@@ -192,7 +194,7 @@ func TestNonce_ShortDataIsInvalid(t *testing.T) {
 
 		_, done := h.startNonce(t, "")
 
-		requireInvalidNonce(t, requireResult(t, done), solana.Hash{})
+		requireInvalidNonce(t, requireResult(t, done), solana.Hash{}, 1)
 	})
 	t.Run("closed account notification", func(t *testing.T) {
 		h := newHarness(t)
@@ -202,7 +204,7 @@ func TestNonce_ShortDataIsInvalid(t *testing.T) {
 		sub := h.validator.nextSubscribe(t)
 		h.accountNotification(t, sub, nil)
 
-		requireInvalidNonce(t, requireResult(t, done), solana.Hash{})
+		requireInvalidNonce(t, requireResult(t, done), solana.Hash{}, 5)
 	})
 }
 

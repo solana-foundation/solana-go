@@ -75,8 +75,8 @@ func nonceInvalidation(
 		return err
 	}
 
-	invalid := func(actual solana.Hash) error {
-		return &InvalidNonceError{NonceAccount: nonceAccount, Expected: expected, Actual: actual}
+	invalid := func(actual solana.Hash, slot uint64) error {
+		return &InvalidNonceError{NonceAccount: nonceAccount, Expected: expected, Actual: actual, Slot: slot}
 	}
 	return firstOf(ctx,
 		func(ctx context.Context) error {
@@ -90,10 +90,10 @@ func nonceInvalidation(
 					data = res.Value.Data.GetBinary()
 				}
 				if len(data) < nonceValueOffset+nonceValueLength {
-					return invalid(solana.Hash{})
+					return invalid(solana.Hash{}, res.Context.Slot)
 				}
 				if actual := solana.HashFromBytes(data[nonceValueOffset : nonceValueOffset+nonceValueLength]); actual != expected {
-					return invalid(actual)
+					return invalid(actual, res.Context.Slot)
 				}
 			}
 		},
@@ -114,10 +114,10 @@ func nonceInvalidation(
 			}
 			data := out.GetBinary()
 			if len(data) < nonceValueLength {
-				return invalid(solana.Hash{})
+				return invalid(solana.Hash{}, out.Context.Slot)
 			}
 			if actual := solana.HashFromBytes(data[:nonceValueLength]); actual != expected {
-				return invalid(actual)
+				return invalid(actual, out.Context.Slot)
 			}
 			return waitDone(ctx)
 		},

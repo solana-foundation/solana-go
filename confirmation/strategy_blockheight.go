@@ -140,5 +140,6 @@ func blockHeightExceedance(
 	return &BlockHeightExceededError{
 		CurrentBlockHeight:   currentBlockHeight,
 		LastValidBlockHeight: lastValidBlockHeight,
+		Slot:                 position.absoluteSlot,
 	}
 }

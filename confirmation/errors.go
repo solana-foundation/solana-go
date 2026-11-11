@@ -67,6 +67,10 @@ type BlockHeightExceededError struct {
 	CurrentBlockHeight uint64
 	// LastValidBlockHeight is the last valid block height of the blockhash.
 	LastValidBlockHeight uint64
+	// Slot is the slot of the bank that showed CurrentBlockHeight. A later
+	// check of the signature status is only conclusive if it reads a bank at
+	// least this recent. It is 0 when unknown.
+	Slot uint64
 }
 
 func (e *BlockHeightExceededError) Error() string {
@@ -87,6 +91,10 @@ type InvalidNonceError struct {
 	// data is too short to hold a nonce, for example after the account was
 	// closed.
 	Actual solana.Hash
+	// Slot is the slot at which the account held Actual. A later check of the
+	// signature status is only conclusive if it reads a bank at least this
+	// recent. It is 0 when unknown.
+	Slot uint64
 }
 
 func (e *InvalidNonceError) Error() string {

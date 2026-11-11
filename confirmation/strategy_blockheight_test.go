@@ -42,12 +42,12 @@ func (h *harness) slot(t *testing.T, sub subscribeRequest, slot uint64) {
 	h.validator.notify(t, "slotNotification", sub.SubID, map[string]uint64{"parent": slot - 1, "root": 0, "slot": slot})
 }
 
-func requireExceeded(t *testing.T, err error, current, lastValid uint64) {
+func requireExceeded(t *testing.T, err error, current, lastValid, slot uint64) {
 	t.Helper()
 	require.ErrorIs(t, err, ErrBlockHeightExceeded)
 	var exceeded *BlockHeightExceededError
 	require.ErrorAs(t, err, &exceeded)
-	require.Equal(t, BlockHeightExceededError{CurrentBlockHeight: current, LastValidBlockHeight: lastValid}, *exceeded)
+	require.Equal(t, BlockHeightExceededError{CurrentBlockHeight: current, LastValidBlockHeight: lastValid, Slot: slot}, *exceeded)
 }
 
 func TestBlockHeight_ExceededWhenCalled(t *testing.T) {
@@ -56,7 +56,7 @@ func TestBlockHeight_ExceededWhenCalled(t *testing.T) {
 
 	_, done, sub := h.startBlockHeight(t, "")
 
-	requireExceeded(t, requireResult(t, done), 101, 100)
+	requireExceeded(t, requireResult(t, done), 101, 100, 101)
 	h.events.waitFor(t, fmt.Sprintf("unsubscribe slotUnsubscribe [%d]", sub.SubID))
 }
 
@@ -79,7 +79,7 @@ func TestBlockHeight_ExceededAtEstimatedSlot(t *testing.T) {
 		h.slot(t, sub, slot)
 	}
 
-	requireExceeded(t, requireResult(t, done), 101, 100)
+	requireExceeded(t, requireResult(t, done), 101, 100, 201)
 	require.Len(t, h.rpc.callParams("getEpochInfo"), 2, "only slot 201 needs a recheck")
 }
 
@@ -106,7 +106,7 @@ func TestBlockHeight_ExceededAfterRecalibration(t *testing.T) {
 		h.slot(t, sub, slot)
 	}
 
-	requireExceeded(t, requireResult(t, done), 101, 100)
+	requireExceeded(t, requireResult(t, done), 101, 100, 202)
 	require.Len(t, h.rpc.callParams("getEpochInfo"), 3)
 }
 
@@ -263,7 +263,7 @@ func TestBlockHeight_ConcurrentStrategiesShareSlotSubscription(t *testing.T) {
 		height.Store(slot - 100)
 		h.slot(t, a, slot)
 	}
-	requireExceeded(t, requireResult(t, first), 101, 100)
+	requireExceeded(t, requireResult(t, first), 101, 100, 201)
 
 	// The second strategy still receives slots after the first one closed
 	// its subscription.
@@ -272,7 +272,7 @@ func TestBlockHeight_ConcurrentStrategiesShareSlotSubscription(t *testing.T) {
 		height.Store(slot - 100)
 		h.slot(t, a, slot)
 	}
-	requireExceeded(t, requireResult(t, second), 106, 105)
+	requireExceeded(t, requireResult(t, second), 106, 105, 206)
 	h.events.waitFor(t, fmt.Sprintf("unsubscribe slotUnsubscribe [%d]", a.SubID))
 	require.Equal(t, 1, h.events.count(fmt.Sprintf("unsubscribe slotUnsubscribe [%d]", a.SubID)))
 }

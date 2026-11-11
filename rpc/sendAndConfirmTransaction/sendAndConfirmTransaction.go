@@ -162,11 +162,15 @@ func WaitForConfirmation(
 //   - an error that wraps confirmation.ErrBlockHeightExceeded if the blockhash
 //     expired first. At the confirmed or finalized commitment, the transaction
 //     can then no longer land, so it is safe to sign it again with a new
-//     blockhash. At processed, a switch to another fork can still bring it in.
+//     blockhash. At processed, a switch to another fork can still bring it in;
+//   - any other error, including ctx.Err(), if the outcome is unknown. Check
+//     the signature status before signing the transaction again.
 //
 // A transaction can still land in the block at lastValidBlockHeight + 1, the
 // block at which the expiry is reported. So before it reports the expiry,
-// this function checks the signature status once more.
+// this function reads the signature status until it is conclusive. If the
+// transaction landed below commitment, it waits until the transaction reaches
+// commitment or a later bank misses it.
 func SendAndConfirmTransactionWithBlockhashLifetime(
 	ctx context.Context,
 	rpcClient *rpc.Client,
@@ -199,11 +203,15 @@ func SendAndConfirmTransactionWithBlockhashLifetime(
 //   - an error that wraps confirmation.ErrInvalidNonce if the nonce advanced
 //     without the transaction;
 //   - an error that wraps confirmation.ErrNonceAccountNotFound if the nonce
-//     account does not exist.
+//     account does not exist;
+//   - any other error, including ctx.Err(), if the outcome is unknown. Check
+//     the signature status before signing the transaction again.
 //
 // A durable nonce transaction advances the nonce even when it fails. So before
-// it reports an invalid nonce, this function checks the signature status, as
-// kit does since its fix of this race (#1234).
+// it reports an invalid nonce, this function reads the signature status until
+// it is conclusive, as kit does since its fix of this race (#1234). If the
+// transaction landed below commitment, it waits until the transaction reaches
+// commitment or a later bank misses it.
 func SendAndConfirmDurableNonceTransaction(
 	ctx context.Context,
 	rpcClient *rpc.Client,
@@ -383,19 +391,38 @@ func send(
 	return rpcClient.SendTransactionWithOpts(ctx, transaction, opts)
 }
 
+const (
+	// statusPollInterval is the pause between two reads of the signature
+	// status after the lifetime of a transaction ended.
+	statusPollInterval = 500 * time.Millisecond
+	// maxUnusableStatuses is how many failed reads, or reads of a bank older
+	// than needed, in a row end the checks with an unknown outcome.
+	maxUnusableStatuses = 10
+)
+
 // recheckSignature returns err, the result of a lifetime strategy, unless err
-// reports that the lifetime ended (it wraps ended) while the transaction
-// landed. A lifetime can end with the transaction itself: a durable nonce
+// reports that the lifetime ended (it wraps ended) while the transaction may
+// have landed. A lifetime can end with the transaction itself: a durable nonce
 // transaction advances the nonce even when it fails, and a blockhash
-// transaction can land in the block at which its expiry is reported. The
-// signature status then decides, as in kit's fix of the durable nonce race
-// (#1234):
+// transaction can land in the block at which its expiry is reported. So the
+// signature status decides, as in kit's fix of the durable nonce race (#1234).
+// Unlike kit, the status is read again until it is conclusive, and an unknown
+// outcome is never reported as the end of the lifetime:
 //
-//   - not found, or the request failed: err;
-//   - at or above commitment: nil, or a *confirmation.TransactionError if the
-//     transaction failed;
-//   - below commitment: block until ctx is done, so that the signature
-//     strategy decides.
+//   - At or above commitment: nil, or a *confirmation.TransactionError if the
+//     transaction failed.
+//   - Below commitment: the transaction landed, maybe on a fork that will be
+//     dropped. The status is read again until it reaches commitment, or until
+//     a later bank misses the transaction.
+//   - Missing from a bank at least as recent as the end of the lifetime, and
+//     later than any bank that showed the transaction: err, because the
+//     transaction can no longer land.
+//   - maxUnusableStatuses failed reads, or reads of older banks, in a row: an
+//     error that wraps the last problem but not ended, because the outcome is
+//     unknown.
+//
+// The signature strategy keeps running meanwhile, and the first of the two to
+// decide wins.
 func recheckSignature(
 	ctx context.Context,
 	rpcClient *rpc.Client,
@@ -407,18 +434,75 @@ func recheckSignature(
 	if !errors.Is(err, ended) {
 		return err
 	}
-	out, statusErr := rpcClient.GetSignatureStatuses(ctx, false, signature)
-	if statusErr != nil || len(out.Value) == 0 || out.Value[0] == nil {
-		return err
-	}
-	status := out.Value[0]
-	if status.ConfirmationStatus != "" &&
-		rpc.CompareCommitment(rpc.CommitmentType(status.ConfirmationStatus), commitment) >= 0 {
-		if status.Err != nil {
-			return &confirmation.TransactionError{Signature: signature, Err: status.Err}
+	// A status that misses the transaction only counts if its bank is at
+	// least this recent.
+	minSlot := lifetimeEndSlot(err)
+	unusable := 0
+	var problem error
+	for {
+		status, slot, statusErr := readSignatureStatus(ctx, rpcClient, signature)
+		switch {
+		case statusErr != nil:
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
+			unusable, problem = unusable+1, statusErr
+		case status != nil && reachedCommitment(status, commitment):
+			if status.Err != nil {
+				return &confirmation.TransactionError{Signature: signature, Err: status.Err}
+			}
+			return nil
+		case status != nil:
+			// Below commitment: only a later bank that misses the
+			// transaction shows that its fork was dropped.
+			unusable = 0
+			minSlot = max(minSlot, slot+1)
+		case slot >= minSlot:
+			return err
+		default:
+			unusable, problem = unusable+1, fmt.Errorf("the status is from slot %d, before slot %d", slot, minSlot)
 		}
-		return nil
+		if unusable >= maxUnusableStatuses {
+			return fmt.Errorf("sendandconfirmtransaction: the status of transaction %s is unknown after its lifetime ended (%s): %w",
+				signature, err.Error(), problem)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(statusPollInterval):
+		}
 	}
-	<-ctx.Done()
-	return ctx.Err()
+}
+
+// readSignatureStatus returns the status of signature, nil if the node does
+// not know it, and the slot of the bank that the status was read from.
+func readSignatureStatus(ctx context.Context, rpcClient *rpc.Client, signature solana.Signature) (*rpc.SignatureStatusesResult, uint64, error) {
+	out, err := rpcClient.GetSignatureStatuses(ctx, false, signature)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(out.Value) != 1 {
+		return nil, 0, fmt.Errorf("got %d signature statuses for 1 signature", len(out.Value))
+	}
+	return out.Value[0], out.Context.Slot, nil
+}
+
+// reachedCommitment reports whether status is at or above commitment.
+func reachedCommitment(status *rpc.SignatureStatusesResult, commitment rpc.CommitmentType) bool {
+	return status.ConfirmationStatus != "" &&
+		rpc.CompareCommitment(rpc.CommitmentType(status.ConfirmationStatus), commitment) >= 0
+}
+
+// lifetimeEndSlot returns the slot at which a lifetime strategy saw the
+// lifetime end, or 0 if err does not tell.
+func lifetimeEndSlot(err error) uint64 {
+	var exceeded *confirmation.BlockHeightExceededError
+	if errors.As(err, &exceeded) {
+		return exceeded.Slot
+	}
+	var invalid *confirmation.InvalidNonceError
+	if errors.As(err, &invalid) {
+		return invalid.Slot
+	}
+	return 0
 }
