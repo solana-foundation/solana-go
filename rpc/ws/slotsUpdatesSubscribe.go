@@ -84,11 +84,7 @@ type SlotsUpdatesSubscription struct {
 // Recv returns the next notification. After the subscription closes, it
 // returns the buffered notifications first, and then the close error.
 func (sw *SlotsUpdatesSubscription) Recv(ctx context.Context) (*SlotsUpdatesResult, error) {
-	d, err := sw.sub.recv(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return d.(*SlotsUpdatesResult), nil
+	return recvAs[SlotsUpdatesResult](ctx, sw.sub)
 }
 
 // WaitSubscribed blocks until the server confirms the subscription. See

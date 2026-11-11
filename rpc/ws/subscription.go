@@ -19,23 +19,33 @@ package ws
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 	"sync"
 )
 
+// Subscription receives the notifications of one subscription. The typed
+// subscriptions, such as SlotSubscription, wrap it.
 type Subscription struct {
 	// req is the subscribe request. It is replaced when the request is sent
 	// again under a new id, always with the client lock held.
 	req *request
 	// subID is the server's subscription id. It is only meaningful once acked
 	// is true, because 0 is a valid id.
-	subID             uint64
-	stream            chan result
-	err               chan error
-	closeFunc         func(err error)
-	mu                sync.Mutex
-	closed            bool
-	unsubscribeMethod string
-	decoderFunc       decoderFunc
+	subID uint64
+	// notificationMethod is the method of the notifications of this
+	// subscription, such as slotNotification. Together with subID it keys the
+	// subscription in the client, so that a server that numbers ids per
+	// method cannot deliver the notifications of one method to another.
+	notificationMethod string
+	stream             chan result
+	err                chan error
+	closeFunc          func(err error)
+	mu                 sync.Mutex
+	closed             bool
+	unsubscribeMethod  string
+	decoderFunc        decoderFunc
 
 	// subscribed is closed once, when the server confirms the subscription or
 	// when the subscription closes first.
@@ -59,20 +69,41 @@ func newSubscription(
 	decoderFunc decoderFunc,
 ) *Subscription {
 	return &Subscription{
-		req:               req,
-		subID:             0,
-		stream:            make(chan result, 200),
-		err:               make(chan error, 1),
-		closeFunc:         closeFunc,
-		unsubscribeMethod: unsubscribeMethod,
-		decoderFunc:       decoderFunc,
-		subscribed:        make(chan struct{}),
+		req:                req,
+		subID:              0,
+		notificationMethod: notificationMethod(req.Method),
+		stream:             make(chan result, 200),
+		err:                make(chan error, 1),
+		closeFunc:          closeFunc,
+		unsubscribeMethod:  unsubscribeMethod,
+		decoderFunc:        decoderFunc,
+		subscribed:         make(chan struct{}),
 	}
 }
 
+// notificationMethod returns the method of the notifications that the
+// subscribe method subscribeMethod produces: slotSubscribe gives
+// slotNotification, as every method of the PubSub API does.
+func notificationMethod(subscribeMethod string) string {
+	return strings.TrimSuffix(subscribeMethod, "Subscribe") + "Notification"
+}
+
+// subscriptionKey identifies a confirmed subscription on the server: its
+// notification method and its server subscription id.
+type subscriptionKey struct {
+	method string
+	subID  uint64
+}
+
+func (s *Subscription) key() subscriptionKey {
+	return subscriptionKey{method: s.notificationMethod, subID: s.subID}
+}
+
 // Recv returns the next notification. After the subscription closes, Recv
-// first returns the notifications that are still buffered, and then the error
-// the subscription was closed with on every call.
+// first returns the notifications that are still buffered, and then an error
+// on every call. That error matches ErrSubscriptionClosed with errors.Is, and
+// it wraps the cause when the subscription was closed by one: a server error
+// reply, a decode error, or a full buffer.
 func (s *Subscription) Recv(ctx context.Context) (any, error) {
 	return s.recv(ctx)
 }
@@ -89,21 +120,31 @@ func (s *Subscription) recv(ctx context.Context) (any, error) {
 	}
 }
 
-// closeError returns the error the subscription was closed with, or
-// ErrSubscriptionClosed.
+// recvAs is recv for the typed subscriptions, whose decoder returns a *T.
+func recvAs[T any](ctx context.Context, s *Subscription) (*T, error) {
+	d, err := s.recv(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return d.(*T), nil
+}
+
+// closeError returns the error that Recv returns once the subscription is
+// closed. It always matches ErrSubscriptionClosed, so loops that stop on it
+// keep working, and it wraps the cause of the close when there is one.
 func (s *Subscription) closeError() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closeErr != nil {
-		return s.closeErr
+	if s.closeErr == nil || errors.Is(s.closeErr, ErrSubscriptionClosed) {
+		return ErrSubscriptionClosed
 	}
-	return ErrSubscriptionClosed
+	return fmt.Errorf("%w: %w", ErrSubscriptionClosed, s.closeErr)
 }
 
 // WaitSubscribed blocks until the server confirms the subscription. It returns
 // nil once the subscription is confirmed. If the subscription closes first, it
-// returns the close error, such as the server's error reply or
-// ErrSubscriptionClosed. If ctx is done first, it returns ctx.Err().
+// returns an error that matches ErrSubscriptionClosed and wraps the cause, such
+// as the server's error reply. If ctx is done first, it returns ctx.Err().
 //
 // Notifications are only sent after the server has registered the
 // subscription. Wait for it before reading state that a notification would
@@ -116,16 +157,18 @@ func (s *Subscription) WaitSubscribed(ctx context.Context) error {
 	case <-s.subscribed:
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.acked {
+		s.mu.Unlock()
 		return nil
 	}
-	if s.closeErr != nil {
-		return s.closeErr
-	}
-	return ErrSubscriptionClosed
+	s.mu.Unlock()
+	return s.closeError()
 }
 
+// Unsubscribe closes the subscription. Recv then returns the notifications
+// that are still buffered, followed by ErrSubscriptionClosed. The server side
+// is unsubscribed once no other subscription of the client shares its server
+// id. Calling Unsubscribe again has no effect.
 func (s *Subscription) Unsubscribe() {
 	s.closeFunc(ErrSubscriptionClosed)
 }

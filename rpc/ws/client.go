@@ -33,10 +33,23 @@ import (
 	"go.uber.org/zap"
 )
 
+// ErrSubscriptionClosed reports that a subscription is closed: by
+// Unsubscribe, by Client.Close, or because the connection ended. Subscribing
+// on a client whose connection ended returns it too, wrapped.
 var ErrSubscriptionClosed = errors.New("subscription closed")
 
 type result any
 
+// abandonedRequest describes a subscription that closed before the server
+// confirmed it.
+type abandonedRequest struct {
+	notificationMethod string
+	unsubscribeMethod  string
+}
+
+// Client is a client of the Solana PubSub WebSocket API. It is safe for
+// concurrent use, and one Client can serve many subscriptions at the same
+// time, including identical ones that the server gives the same id.
 type Client struct {
 	rpcURL        string
 	conn          *websocket.Conn
@@ -47,14 +60,16 @@ type Client struct {
 	// subscriptionByRequestID holds every open subscription, confirmed or
 	// not, by the id of its subscribe request.
 	subscriptionByRequestID map[uint64]*Subscription
-	// subscriptionByWSSubID holds the confirmed subscriptions by server
-	// subscription id. Validators such as Agave give identical subscriptions
-	// the same id, so one id can serve several subscriptions.
-	subscriptionByWSSubID map[uint64]map[*Subscription]struct{}
-	// abandonedRequests holds the unsubscribe method of each subscription
-	// that closed before the server confirmed it, by request id. The late
-	// confirmation is answered with an unsubscribe.
-	abandonedRequests map[uint64]string
+	// subscriptionByWSSubID holds the confirmed subscriptions by notification
+	// method and server subscription id. Validators such as Agave give
+	// identical subscriptions the same id, so one key can serve several
+	// subscriptions. The method is part of the key because some servers
+	// number their ids per method.
+	subscriptionByWSSubID map[subscriptionKey]map[*Subscription]struct{}
+	// abandonedRequests holds the methods of each subscription that closed
+	// before the server confirmed it, by request id. The late confirmation
+	// is answered with an unsubscribe.
+	abandonedRequests map[uint64]abandonedRequest
 	// readerDone is set once the read loop has exited. No subscription can be
 	// confirmed after that, so subscribe fails.
 	readerDone bool
@@ -83,8 +98,8 @@ func ConnectWithOptions(ctx context.Context, rpcEndpoint string, opt *Options) (
 	c = &Client{
 		rpcURL:                  rpcEndpoint,
 		subscriptionByRequestID: map[uint64]*Subscription{},
-		subscriptionByWSSubID:   map[uint64]map[*Subscription]struct{}{},
-		abandonedRequests:       map[uint64]string{},
+		subscriptionByWSSubID:   map[subscriptionKey]map[*Subscription]struct{}{},
+		abandonedRequests:       map[uint64]abandonedRequest{},
 	}
 
 	dialer := &websocket.Dialer{
@@ -236,7 +251,8 @@ func (c *Client) handleMessage(message []byte) {
 	}
 
 	subID, _ := getUint64WithOk(message, "params", "subscription")
-	c.handleSubscriptionMessage(subID, message)
+	method, _ := jsonparser.GetString(message, "method")
+	c.handleSubscriptionMessage(subscriptionKey{method: method, subID: subID}, message)
 }
 
 func (c *Client) handleNewSubscriptionMessage(requestID, subID uint64) {
@@ -250,12 +266,13 @@ func (c *Client) handleNewSubscriptionMessage(requestID, subID uint64) {
 		)
 	}
 
-	if method, abandoned := c.abandonedRequests[requestID]; abandoned {
+	if abandoned, ok := c.abandonedRequests[requestID]; ok {
 		// The subscription closed before this confirmation arrived. Release
 		// the server side, unless another subscription shares the id.
 		delete(c.abandonedRequests, requestID)
-		if len(c.subscriptionByWSSubID[subID]) == 0 {
-			if err := c.unsubscribe(subID, method); err != nil {
+		key := subscriptionKey{method: abandoned.notificationMethod, subID: subID}
+		if len(c.subscriptionByWSSubID[key]) == 0 {
+			if err := c.unsubscribe(subID, abandoned.unsubscribeMethod); err != nil {
 				zlog.Warn("unable to send rpc unsubscribe call", zap.Error(err))
 			}
 		}
@@ -283,10 +300,10 @@ func (c *Client) handleNewSubscriptionMessage(requestID, subID uint64) {
 		return
 	}
 	sub.staleIDs = nil
-	holders := c.subscriptionByWSSubID[subID]
+	holders := c.subscriptionByWSSubID[sub.key()]
 	if holders == nil {
 		holders = map[*Subscription]struct{}{}
-		c.subscriptionByWSSubID[subID] = holders
+		c.subscriptionByWSSubID[sub.key()] = holders
 	}
 	holders[sub] = struct{}{}
 
@@ -314,26 +331,30 @@ func (c *Client) resubscribe(sub *Subscription) {
 	}
 }
 
-func (c *Client) handleSubscriptionMessage(subID uint64, message []byte) {
+func (c *Client) handleSubscriptionMessage(key subscriptionKey, message []byte) {
 	if traceEnabled {
 		zlog.Debug("received subscription message",
-			zap.Uint64("subscription_id", subID),
+			zap.String("method", key.method),
+			zap.Uint64("subscription_id", key.subID),
 		)
 	}
 
 	c.lock.RLock()
-	holders := make([]*Subscription, 0, len(c.subscriptionByWSSubID[subID]))
-	for sub := range c.subscriptionByWSSubID[subID] {
+	holders := make([]*Subscription, 0, len(c.subscriptionByWSSubID[key]))
+	for sub := range c.subscriptionByWSSubID[key] {
 		holders = append(holders, sub)
 	}
 	c.lock.RUnlock()
 	if len(holders) == 0 {
-		zlog.Warn("unable to find subscription for ws message", zap.Uint64("subscription_id", subID))
+		zlog.Warn("unable to find subscription for ws message",
+			zap.String("method", key.method),
+			zap.Uint64("subscription_id", key.subID),
+		)
 		return
 	}
 
 	for _, sub := range holders {
-		c.deliver(sub, subID, message)
+		c.deliver(sub, key.subID, message)
 	}
 }
 
@@ -377,8 +398,8 @@ func (c *Client) closeAllSubscription(err error) {
 	}
 
 	c.subscriptionByRequestID = map[uint64]*Subscription{}
-	c.subscriptionByWSSubID = map[uint64]map[*Subscription]struct{}{}
-	c.abandonedRequests = map[uint64]string{}
+	c.subscriptionByWSSubID = map[subscriptionKey]map[*Subscription]struct{}{}
+	c.abandonedRequests = map[uint64]abandonedRequest{}
 }
 
 // closeSubscription closes the subscription whose subscribe request has the
@@ -428,19 +449,22 @@ func (c *Client) closeSubscriptionLocked(sub *Subscription, err error, rejected 
 	if !sub.acked {
 		if !rejected {
 			if c.abandonedRequests == nil {
-				c.abandonedRequests = map[uint64]string{}
+				c.abandonedRequests = map[uint64]abandonedRequest{}
 			}
-			c.abandonedRequests[sub.req.ID] = sub.unsubscribeMethod
+			c.abandonedRequests[sub.req.ID] = abandonedRequest{
+				notificationMethod: sub.notificationMethod,
+				unsubscribeMethod:  sub.unsubscribeMethod,
+			}
 		}
 		return
 	}
 
-	holders := c.subscriptionByWSSubID[sub.subID]
+	holders := c.subscriptionByWSSubID[sub.key()]
 	delete(holders, sub)
 	if len(holders) > 0 {
 		return
 	}
-	delete(c.subscriptionByWSSubID, sub.subID)
+	delete(c.subscriptionByWSSubID, sub.key())
 	if e := c.unsubscribe(sub.subID, sub.unsubscribeMethod); e != nil {
 		zlog.Warn("unable to send rpc unsubscribe call",
 			zap.Error(e),
@@ -456,11 +480,11 @@ func (c *Client) unsubscribe(subID uint64, method string) error {
 	req := newRequest([]any{subID}, method, nil, c.shortID)
 	data, err := req.encode()
 	if err != nil {
-		return fmt.Errorf("unable to encode unsubscription message for subID %d and method %s", subID, method)
+		return fmt.Errorf("unable to encode unsubscription message for subID %d and method %s: %w", subID, method, err)
 	}
 
 	if err := c.write(data); err != nil {
-		return fmt.Errorf("unable to send unsubscription message for subID %d and method %s", subID, method)
+		return fmt.Errorf("unable to send unsubscription message for subID %d and method %s: %w", subID, method, err)
 	}
 	for _, pending := range c.subscriptionByRequestID {
 		if pending.acked {

@@ -47,11 +47,7 @@ type RootSubscription struct {
 // Recv returns the next notification. After the subscription closes, it
 // returns the buffered notifications first, and then the close error.
 func (sw *RootSubscription) Recv(ctx context.Context) (*RootResult, error) {
-	d, err := sw.sub.recv(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return d.(*RootResult), nil
+	return recvAs[RootResult](ctx, sw.sub)
 }
 
 // WaitSubscribed blocks until the server confirms the subscription. See

@@ -176,11 +176,7 @@ type SignatureSubscription struct {
 // Recv returns the next notification. After the subscription closes, it
 // returns the buffered notifications first, and then the close error.
 func (sw *SignatureSubscription) Recv(ctx context.Context) (*SignatureResult, error) {
-	d, err := sw.sub.recv(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return d.(*SignatureResult), nil
+	return recvAs[SignatureResult](ctx, sw.sub)
 }
 
 // WaitSubscribed blocks until the server confirms the subscription. See

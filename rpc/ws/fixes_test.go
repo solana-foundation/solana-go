@@ -490,7 +490,7 @@ func TestSubscription_BufferSizes(t *testing.T) {
 func TestHandleMessage_SubscribeErrorSurfacesToSubscription(t *testing.T) {
 	c := &Client{
 		subscriptionByRequestID: map[uint64]*Subscription{},
-		subscriptionByWSSubID:   map[uint64]map[*Subscription]struct{}{},
+		subscriptionByWSSubID:   map[subscriptionKey]map[*Subscription]struct{}{},
 	}
 
 	req := &request{ID: 42}

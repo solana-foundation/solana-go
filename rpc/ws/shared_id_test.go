@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -35,6 +36,20 @@ func (m *mockWSServer) nextRequest(t *testing.T) wireRequest {
 		t.Fatal("timed out waiting for a client request")
 		return wireRequest{}
 	}
+}
+
+// endClientReads closes the server side of the connection for writing. The
+// next read of the client ends with EOF, while the client can still write to
+// the server. Closing the read side on the client instead does not end a
+// pending read on Windows.
+func (m *mockWSServer) endClientReads(t *testing.T) {
+	t.Helper()
+	m.connMu.Lock()
+	defer m.connMu.Unlock()
+	require.NotNil(t, m.conn, "no client connected")
+	tcpConn, ok := m.conn.NetConn().(*net.TCPConn)
+	require.True(t, ok, "want a TCP connection, got %T", m.conn.NetConn())
+	require.NoError(t, tcpConn.CloseWrite())
 }
 
 // ack confirms the subscribe request reqID under the server id subID.
@@ -258,9 +273,9 @@ func TestSubscribe_FailsAfterReadLoopExits(t *testing.T) {
 
 	sub := confirmedSubscription(t, c, m, 5)
 
-	// A read error, here an expired read deadline, ends the read loop while
-	// the connection stays open for writing.
-	require.NoError(t, c.conn.SetReadDeadline(time.Now()))
+	// A read error ends the read loop while the connection stays open for
+	// writing.
+	m.endClientReads(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_, err := sub.Recv(ctx)
@@ -292,7 +307,102 @@ func TestTypedRecv_ReturnsBufferedNotificationsBeforeCloseError(t *testing.T) {
 		for range 3 {
 			got, err := typed.Recv(context.Background())
 			require.ErrorIs(t, err, errClosed, "iteration %d: every later Recv returns the close error", i)
+			require.ErrorIs(t, err, ErrSubscriptionClosed, "iteration %d: the close error matches ErrSubscriptionClosed", i)
 			require.Nil(t, got)
 		}
+	}
+}
+
+// A loop that stops on ErrSubscriptionClosed and logs other errors must end
+// whatever closed the subscription: a decode error, a full buffer or a server
+// error reply. Before the fix the close error was returned once and
+// ErrSubscriptionClosed afterwards; now the close error is returned on every
+// call, so it has to match ErrSubscriptionClosed itself.
+func TestRecv_CloseErrorMatchesErrSubscriptionClosed(t *testing.T) {
+	m := newMockWSServer(t)
+	defer m.stop()
+	c := connectClient(t, m)
+	defer c.Close()
+
+	sub := confirmedSubscription(t, c, m, 3)
+	// A notification that fails to decode closes the subscription.
+	m.send(t, `{"jsonrpc":"2.0","method":"testNotification","params":{"subscription":3,"result":"not a slot"}}`)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	for i := range 3 {
+		_, err := sub.Recv(ctx)
+		require.ErrorIs(t, err, ErrSubscriptionClosed, "call %d", i)
+		require.ErrorContains(t, err, "unable to decode client response", "call %d: the cause stays reachable", i)
+	}
+	require.ErrorIs(t, sub.WaitSubscribed(ctx), nil, "the subscription was confirmed before it closed")
+}
+
+func TestWaitSubscribed_ServerErrorMatchesErrSubscriptionClosed(t *testing.T) {
+	m := newMockWSServer(t)
+	defer m.stop()
+	c := connectClient(t, m)
+	defer c.Close()
+
+	sub := newTestSubscription(t, c)
+	req := m.nextRequest(t)
+	m.send(t, fmt.Sprintf(`{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid params"},"id":%d}`, req.ID))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	err := sub.WaitSubscribed(ctx)
+	require.ErrorIs(t, err, ErrSubscriptionClosed)
+	require.ErrorContains(t, err, "rpc error (code -32602): Invalid params")
+	_, err = sub.Recv(ctx)
+	require.ErrorIs(t, err, ErrSubscriptionClosed)
+	require.ErrorContains(t, err, "Invalid params")
+}
+
+// Agave numbers subscription ids per connection, but a server that numbers
+// them per method would give two different subscriptions the same id. The
+// notification method tells them apart.
+func TestSubscriptionKey_IncludesMethod(t *testing.T) {
+	m := newMockWSServer(t)
+	defer m.stop()
+	c := connectClient(t, m)
+	defer c.Close()
+
+	slots := confirmedSubscription(t, c, m, 7)
+	roots, err := c.RootSubscribe()
+	require.NoError(t, err)
+	rootReq := m.nextRequest(t)
+	require.Equal(t, "rootSubscribe", rootReq.Method)
+	m.ack(t, rootReq.ID, 7) // the same id as the slot subscription
+
+	m.send(t, `{"jsonrpc":"2.0","method":"rootNotification","params":{"subscription":7,"result":42}}`)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	root, err := roots.Recv(ctx)
+	require.NoError(t, err)
+	require.Equal(t, RootResult(42), *root)
+
+	// The root notification was not delivered to the slot subscription: the
+	// next slot notification is the first thing it receives.
+	requireDelivered(t, m, 7, 100, slots)
+
+	// Each subscription unsubscribes its own id, under its own method.
+	roots.Unsubscribe()
+	req := m.nextRequest(t)
+	require.Equal(t, "rootUnsubscribe", req.Method)
+	require.Equal(t, []any{float64(7)}, req.Params)
+	requireDelivered(t, m, 7, 101, slots)
+	slots.Unsubscribe()
+	requireUnsubscribe(t, m.nextRequest(t), 7)
+}
+
+func TestNotificationMethod(t *testing.T) {
+	for subscribe, want := range map[string]string{
+		"slotSubscribe":         "slotNotification",
+		"accountSubscribe":      "accountNotification",
+		"slotsUpdatesSubscribe": "slotsUpdatesNotification",
+		"blockSubscribe":        "blockNotification",
+		"testSubscribe":         "testNotification",
+	} {
+		require.Equal(t, want, notificationMethod(subscribe), subscribe)
 	}
 }
