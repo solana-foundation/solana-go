@@ -19,6 +19,7 @@ The commands below call the remote of `solana-foundation/solana-go` `upstream`. 
 - NEVER rebase, force-push or tag `v2` without explicit user approval. A sync rewrites the history of a shared release branch. Only a maintainer starts it, and only a maintainer pushes it.
 - Everything lands on `main` first. Only a change that breaks the v1 API, or that touches code that exists only on `v2`, targets `v2` directly.
 - A change that is on `main` reaches `v2` with the next sync. Port it alone only when `v2` needs it before that, and name the original commit in the port.
+- A sync may drop a port only after you compared it with its original. A change that the port made for the v2 API exists nowhere else.
 - On `v2`, every import uses `github.com/solana-foundation/solana-go/v2`. No Go file may import `github.com/gagliardetto/solana-go`.
 - After you rewrite import paths, format the files. The new path sorts differently inside an import block.
 - Do not stop at the import paths. Code that comes from `main` may not fit the v2 API, so build and test everything.
@@ -109,6 +110,7 @@ Run all tests, not only the tests of the packages that the change touched. Fix w
 
 - The title is the title of the original commit, without its pull request number.
 - The body names the original: `(cherry picked from commit <sha>)`. The next sync needs this line to recognize the port.
+- When step 6 changed more than the imports, the body lists those changes. They exist only on `v2`, and the next sync has to keep them.
 
 ### A Pull Request for v2 Only
 
@@ -143,7 +145,22 @@ git merge-tree --write-tree --merge-base="$base" upstream/main upstream/v2
 
 Exit code 0 means no conflicts. If there are conflicts, the output names the files. `README.md` conflicts often, because both branches edit the same sections. A file that merges cleanly can still fail to build: look closely at `rpc/ws` and `rpc/sendAndConfirmTransaction`, where the v2 API differs.
 
-**3. Rebase the stack onto main.**
+**3. Check the ports in the stack.** A commit that was ported from `main` since the last sync is part of `main` now. Find the ports by the line that names their original:
+
+```sh
+git log --oneline --grep='cherry picked from commit' upstream/main..upstream/v2
+```
+
+Compare each port with its original before you rebase:
+
+```sh
+git range-diff <original>~1..<original> <port>~1..<port>
+```
+
+- A difference in the import path, or in the order of the imports, is expected. `main` has everything else of such a port.
+- Every other difference is a change that the port made for the v2 API. `main` does not have it, and rewriting imports does not bring it back. Write each one down: it has to survive the sync.
+
+**4. Rebase the stack onto main.**
 
 ```sh
 git rebase --onto upstream/main "$base" v2
@@ -151,9 +168,10 @@ git rebase --onto upstream/main "$base" v2
 
 - Name the branch at the end of the command. The form that ends on a commit leaves `HEAD` detached, and later commits then miss the branch.
 - In a conflict, keep the v2 API in the files that the stack changed, and keep the new behavior that `main` added. Read both sides before you choose. Do not take one side for a whole file.
-- A commit that was ported from `main` since the last sync is part of `main` now, so it leaves the stack. Its message says `(cherry picked from commit <sha>)`. Git drops it when it becomes empty. When the rebase stops on it with a conflict, skip it with `git rebase --skip`: `main` has the change, and step 4 fixes the import paths.
+- **A port without v2-specific changes** leaves the stack. Git drops it when it becomes empty. When the rebase stops on it with a conflict, skip it with `git rebase --skip`: `main` has the change, and step 5 fixes the import paths.
+- **A port with v2-specific changes** stays. Never skip it. When the rebase stops on it, resolve the conflict: take what `main` has for the parts that the original also changed, and keep every v2-specific change from your list. Then run `git rebase --continue`. The commit that remains holds only the v2-specific part.
 
-**4. Finish the module path.** Files that `main` added since the last sync still import the v1 path:
+**5. Finish the module path.** Files that `main` added since the last sync still import the v1 path:
 
 ```sh
 git grep -lz 'github.com/gagliardetto/solana-go' -- '*.go' |
@@ -166,7 +184,7 @@ git diff --name-only -z -- '*.go' | xargs -0 gofmt -w
 - Check the result: `git grep -n 'github.com/gagliardetto/solana-go' -- '*.go'` prints nothing.
 - Look at files that are not Go by hand. The README of `v2` names the v1 path on purpose in a few places.
 
-**5. Fit the new code to the v2 API.**
+**6. Fit the new code to the v2 API.**
 
 ```sh
 go build ./...
@@ -175,22 +193,26 @@ go vet ./...
 
 `go vet` also compiles the tests and the examples. Fix every error in the code that came from `main`. Do not change the v2 API to make the new code compile.
 
-**6. Run all checks.**
+**7. Run all checks.**
 
 ```sh
 go test ./... -race -count=1
 golangci-lint run
 ```
 
-**7. Compare before and after.**
+**8. Compare before and after.**
 
 ```sh
 git range-diff "$base"..<old-tip> upstream/main..v2
 ```
 
-Every commit of the stack should show up once, with only the changes that the conflicts required. To undo the sync, run `git reset --hard <old-tip>`.
+- Every commit of the stack should show up once, with only the changes that the conflicts required.
+- A commit that is missing has to be a port without v2-specific changes. Any other missing commit is lost work.
+- For every port that had v2-specific changes, check that each change on your list from step 3 is still in the code.
 
-**8. Hand over.** The maintainer commits the changes of steps 4 and 5, pushes and tags. Earlier syncs used these titles:
+To undo the sync, run `git reset --hard <old-tip>`.
+
+**9. Hand over.** The maintainer commits the changes of steps 5 and 6, pushes and tags. Earlier syncs used these titles:
 
 ```
 chore: complete /v2 module rename for files added on main since last sync
