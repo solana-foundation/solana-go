@@ -6,7 +6,11 @@ argument-hint: "[sync | <commit-or-pr>]"
 
 # Port Changes to v2
 
-solana-go ships two modules from two branches. `main` is v1, `github.com/gagliardetto/solana-go`. `v2` is `github.com/solana-foundation/solana-go/v2`. This skill covers the two ways a change reaches `v2`: the sync of `v2` with `main`, which maintainers do, and a pull request that targets `v2` directly.
+solana-go ships two modules from two branches. `main` is v1, `github.com/gagliardetto/solana-go`. `v2` is `github.com/solana-foundation/solana-go/v2`. This skill covers the three ways a change reaches `v2`:
+
+- **The sync** of `v2` with `main`, which maintainers do. It brings everything that is on `main`.
+- **A port of one change** that is already on `main`, when `v2` needs it before the next sync.
+- **A pull request for `v2` only**, for a change that cannot go to `main`.
 
 The commands below call the remote of `solana-foundation/solana-go` `upstream`. Use the name that your clone has.
 
@@ -14,6 +18,7 @@ The commands below call the remote of `solana-foundation/solana-go` `upstream`. 
 
 - NEVER rebase, force-push or tag `v2` without explicit user approval. A sync rewrites the history of a shared release branch. Only a maintainer starts it, and only a maintainer pushes it.
 - Everything lands on `main` first. Only a change that breaks the v1 API, or that touches code that exists only on `v2`, targets `v2` directly.
+- A change that is on `main` reaches `v2` with the next sync. Port it alone only when `v2` needs it before that, and name the original commit in the port.
 - On `v2`, every import uses `github.com/solana-foundation/solana-go/v2`. No Go file may import `github.com/gagliardetto/solana-go`.
 - After you rewrite import paths, format the files. The new path sorts differently inside an import block.
 - Do not stop at the import paths. Code that comes from `main` may not fit the v2 API, so build and test everything.
@@ -37,7 +42,77 @@ The commands below call the remote of `solana-foundation/solana-go` `upstream`. 
 
 This list goes stale. The stack of commits is the truth, so read it before you start.
 
+### Port One Change From main
+
+Use this for a commit that is already on `main`, when `v2` needs it before the next sync. Creating the branch and applying the change need approval first, as the `shipping-git` skill describes.
+
+**1. Find the commit, and check that v2 does not have it yet.**
+
+```sh
+git fetch upstream
+gh pr view <number> --json mergeCommit --jq .mergeCommit.oid   # for a pull request: its commit on main
+git merge-base --is-ancestor <commit> upstream/v2 && echo "already on v2"
+```
+
+**2. Read the change.** Run `git show --stat <commit>`, then read the full diff. Note which files are new, and whether the change touches code that differs on `v2`.
+
+Then check what the change builds on:
+
+```sh
+base=$(git merge-base upstream/main upstream/v2)
+git log --oneline "$base"..<commit>~1 -- <files of the change>
+```
+
+Every commit in this list is on `main`, is not on `v2`, and touches the same files. If the change needs one of them, port that one first, or wait for the sync.
+
+**3. Predict the conflicts without changing anything.**
+
+```sh
+git merge-tree --write-tree --name-only --merge-base=<commit>~1 upstream/v2 <commit>
+```
+
+Exit code 0 means that the change applies without conflicts. That does not mean that it builds.
+
+**4. Apply the change on a branch from v2.**
+
+```sh
+git switch -c <type>/<short-name>-v2 upstream/v2
+git cherry-pick --no-commit <commit>
+```
+
+- `--no-commit` stages the change and creates no commit, so the result stays open for review.
+- In a conflict, keep the v2 API and bring in the behavior of the change. Read both sides before you choose.
+
+**5. Adjust the imports.** The change comes with the v1 path, in the new files and in every import line that it touched:
+
+```sh
+git diff --cached --name-only --diff-filter=d -z -- '*.go' |
+  xargs -0 perl -pi -e 's{github\.com/gagliardetto/solana-go(?![\w-])}{github.com/solana-foundation/solana-go/v2}g'
+git diff --cached --name-only --diff-filter=d -z -- '*.go' | xargs -0 gofmt -w
+git grep -n 'github.com/gagliardetto/solana-go' -- '*.go'   # prints nothing
+```
+
+Code snippets in the README and in doc comments need the v2 path too.
+
+**6. Fit the change to the v2 API and run all checks.**
+
+```sh
+go build ./...
+go vet ./...
+go test ./... -race -count=1
+golangci-lint run
+```
+
+Run all tests, not only the tests of the packages that the change touched. Fix what does not fit in the ported code. Do not change the v2 API to make it compile.
+
+**7. Hand over.** The maintainer commits and opens the pull request with `v2` as the base.
+
+- The title is the title of the original commit, without its pull request number.
+- The body names the original: `(cherry picked from commit <sha>)`. The next sync needs this line to recognize the port.
+
 ### A Pull Request for v2 Only
+
+Use this for a change that is not on `main` and cannot go there. A change that is already on `main` is a port: see "Port One Change From main".
 
 1. Confirm that the change cannot go to `main`. Say what it breaks in v1, or which v2-only code it touches. If a compatible form exists, it goes to `main`. See the `go-api-compat` skill.
 2. Branch from `upstream/v2`.
@@ -76,6 +151,7 @@ git rebase --onto upstream/main "$base" v2
 
 - Name the branch at the end of the command. The form that ends on a commit leaves `HEAD` detached, and later commits then miss the branch.
 - In a conflict, keep the v2 API in the files that the stack changed, and keep the new behavior that `main` added. Read both sides before you choose. Do not take one side for a whole file.
+- A commit that was ported from `main` since the last sync is part of `main` now, so it leaves the stack. Its message says `(cherry picked from commit <sha>)`. Git drops it when it becomes empty. When the rebase stops on it with a conflict, skip it with `git rebase --skip`: `main` has the change, and step 4 fixes the import paths.
 
 **4. Finish the module path.** Files that `main` added since the last sync still import the v1 path:
 
@@ -134,5 +210,8 @@ When invoked as a command, follow these steps:
 
 1. Read the v2-only stack with `git log --oneline upstream/main..upstream/v2`, so that you know what differs today.
 2. For `sync`, follow "Sync v2 With main". Stop after each step that rewrites history, show the result and wait for approval.
-3. For one commit or pull request, follow "A Pull Request for v2 Only".
-4. Report what was ported, every conflict and how it was resolved, the results of the checks, and the old tip of `v2` for an undo.
+3. For one commit or pull request, first find out where the change is. `git merge-base --is-ancestor <commit> upstream/main` exits with 0 when it is on `main`.
+    - **It is on `main`**: follow "Port One Change From main".
+    - **It is not on `main`, and it cannot go there**, because it breaks the v1 API or touches code that only `v2` has: follow "A Pull Request for v2 Only".
+    - **It is not on `main`, but it can go there**: it goes to `main` first. Say so and stop.
+4. Report what was ported, every conflict and how it was resolved, the results of the checks, and, after a sync, the old tip of `v2` for an undo.
