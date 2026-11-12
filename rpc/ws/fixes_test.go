@@ -485,12 +485,12 @@ func TestSubscription_BufferSizes(t *testing.T) {
 // error reply to a subscribe request (an id but no result, e.g.
 // "Method not found") is delivered to the subscription instead of being
 // silently dropped, which would otherwise leave Recv blocked forever. It also
-// exercises the subID-0 guard in closeSubscription: the client has no live
-// connection here, so a stray unsubscribe write would panic.
+// checks that a rejected subscription sends no unsubscribe: the client has no
+// live connection here, so a stray unsubscribe write would panic.
 func TestHandleMessage_SubscribeErrorSurfacesToSubscription(t *testing.T) {
 	c := &Client{
 		subscriptionByRequestID: map[uint64]*Subscription{},
-		subscriptionByWSSubID:   map[uint64]*Subscription{},
+		subscriptionByWSSubID:   map[subscriptionKey]map[*Subscription]struct{}{},
 	}
 
 	req := &request{ID: 42}

@@ -162,18 +162,16 @@ type BlockSubscription struct {
 	sub *Subscription
 }
 
+// Recv returns the next notification. After the subscription closes, it
+// returns the buffered notifications first, and then the close error.
 func (sw *BlockSubscription) Recv(ctx context.Context) (*BlockResult, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case d, ok := <-sw.sub.stream:
-		if !ok {
-			return nil, ErrSubscriptionClosed
-		}
-		return d.(*BlockResult), nil
-	case err := <-sw.sub.err:
-		return nil, err
-	}
+	return recvAs[BlockResult](ctx, sw.sub)
+}
+
+// WaitSubscribed blocks until the server confirms the subscription. See
+// Subscription.WaitSubscribed.
+func (sw *BlockSubscription) WaitSubscribed(ctx context.Context) error {
+	return sw.sub.WaitSubscribed(ctx)
 }
 
 func (sw *BlockSubscription) Err() <-chan error {

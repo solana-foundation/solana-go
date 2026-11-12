@@ -61,18 +61,16 @@ type VoteSubscription struct {
 	sub *Subscription
 }
 
+// Recv returns the next notification. After the subscription closes, it
+// returns the buffered notifications first, and then the close error.
 func (sw *VoteSubscription) Recv(ctx context.Context) (*VoteResult, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case d, ok := <-sw.sub.stream:
-		if !ok {
-			return nil, ErrSubscriptionClosed
-		}
-		return d.(*VoteResult), nil
-	case err := <-sw.sub.err:
-		return nil, err
-	}
+	return recvAs[VoteResult](ctx, sw.sub)
+}
+
+// WaitSubscribed blocks until the server confirms the subscription. See
+// Subscription.WaitSubscribed.
+func (sw *VoteSubscription) WaitSubscribed(ctx context.Context) error {
+	return sw.sub.WaitSubscribed(ctx)
 }
 
 func (sw *VoteSubscription) Err() <-chan error {
