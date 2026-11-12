@@ -585,12 +585,16 @@ var UseIntegerID = false
 
 var integerID = new(atomic.Uint64)
 
-var useFixedID = false
+// UseFixedID pins the id of every single request to 1, so no UUID or
+// counter value is generated per call. It takes precedence over UseIntegerID.
+// It only affects single requests: CallBatch still gives each request its
+// index as the id, and CallBatchRaw sends the ids the caller set.
+var UseFixedID = false
 
 const defaultFixedID = 1
 
 func newID() any {
-	if useFixedID {
+	if UseFixedID {
 		return defaultFixedID
 	}
 	if UseIntegerID {
