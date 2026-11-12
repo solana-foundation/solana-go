@@ -23,6 +23,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/confirmation"
 	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/gagliardetto/solana-go/rpc/jsonrpc"
 	"github.com/gagliardetto/solana-go/rpc/ws"
 )
 
@@ -171,6 +172,12 @@ func WaitForConfirmation(
 // this function reads the signature status until it is conclusive. If the
 // transaction landed below commitment, it waits until the transaction reaches
 // commitment or a later bank misses it.
+//
+// The recent status cache of the node decides, which every RPC node has. Only
+// a transaction that is sent again long after its blockhash expired, about 40
+// seconds or more, may have left that cache. The function then searches the
+// transaction history of the node too, and returns an error that wraps
+// ErrTransactionHistoryNotAvailable if the node keeps none.
 func SendAndConfirmTransactionWithBlockhashLifetime(
 	ctx context.Context,
 	rpcClient *rpc.Client,
@@ -204,6 +211,9 @@ func SendAndConfirmTransactionWithBlockhashLifetime(
 //     without the transaction;
 //   - an error that wraps confirmation.ErrNonceAccountNotFound if the nonce
 //     account does not exist;
+//   - an error that wraps ErrTransactionHistoryNotAvailable if the nonce
+//     advanced, and only the transaction history could tell whether this
+//     transaction did it, but the node keeps none (see below);
 //   - any other error, including ctx.Err(), if the outcome is unknown. Check
 //     the signature status before signing the transaction again.
 //
@@ -212,6 +222,14 @@ func SendAndConfirmTransactionWithBlockhashLifetime(
 // it is conclusive, as kit does since its fix of this race (#1234). If the
 // transaction landed below commitment, it waits until the transaction reaches
 // commitment or a later bank misses it.
+//
+// If the function saw the nonce still in the account less than about 100
+// seconds before it changed, the recent status cache of the node decides,
+// which every RPC node has. Otherwise the transaction may have landed long
+// ago: the account already held another nonce when the wait began, as when a
+// transaction is sent again after its result was lost, or the wait was long.
+// The function then searches the transaction history of the node too, as far
+// back as the node keeps it.
 func SendAndConfirmDurableNonceTransaction(
 	ctx context.Context,
 	rpcClient *rpc.Client,
@@ -391,6 +409,19 @@ func send(
 	return rpcClient.SendTransactionWithOpts(ctx, transaction, opts)
 }
 
+// ErrTransactionHistoryNotAvailable reports that the lifetime of a transaction
+// ended, and that the RPC node cannot tell whether the transaction landed
+// before that: its recent status cache does not know the transaction, the
+// transaction may have landed before the window of that cache, and the node
+// keeps no transaction history to search. An Agave node that runs without
+// --enable-rpc-transaction-history answers such a search with the JSON-RPC
+// error -32011, which the returned error wraps too.
+//
+// The outcome is unknown. Before signing the transaction again, check its
+// signature on a node that keeps the transaction history, with
+// GetSignatureStatuses and searchTransactionHistory set.
+var ErrTransactionHistoryNotAvailable = errors.New("transaction history is not available")
+
 const (
 	// statusPollInterval is the pause between two reads of the signature
 	// status after the lifetime of a transaction ended.
@@ -398,6 +429,18 @@ const (
 	// maxUnusableStatuses is how many failed reads, or reads of a bank older
 	// than needed, in a row end the checks with an unknown outcome.
 	maxUnusableStatuses = 10
+	// maxProcessingAge is how many blocks before its last valid block height
+	// a transaction can land at the earliest (MAX_PROCESSING_AGE in Agave).
+	maxProcessingAge = 150
+	// statusCacheWindow is how many slots back a miss in the recent status
+	// cache of a node is trusted. A node keeps a signature in that cache for
+	// 300 rooted blocks after the transaction landed (MAX_RECENT_BLOCKHASHES
+	// in Agave). The rest is a margin.
+	statusCacheWindow = 250
+	// rpcTransactionHistoryNotAvailable is the code of the JSON-RPC error of
+	// a node that is asked to search a transaction history it does not keep
+	// (JSON_RPC_SERVER_ERROR_TRANSACTION_HISTORY_NOT_AVAILABLE in Agave).
+	rpcTransactionHistoryNotAvailable = -32011
 )
 
 // recheckSignature returns err, the result of a lifetime strategy, unless err
@@ -416,10 +459,14 @@ const (
 //     a later bank misses the transaction.
 //   - Missing from a bank at least as recent as the end of the lifetime, and
 //     later than any bank that showed the transaction: err, because the
-//     transaction can no longer land. The recent status cache only covers the
-//     last minute or so of blocks, and a durable nonce transaction can be
-//     resent long after it landed, so a miss in that cache only counts after
-//     a search of the transaction history misses the transaction too.
+//     transaction can no longer land. A miss in the recent status cache only
+//     proves that while the cache must still hold the transaction if it
+//     landed (see statusCacheCovers), which is the usual case. Otherwise the
+//     transaction may have landed long ago, for example when it is sent again
+//     after its result was lost, and the miss only counts once a search of
+//     the transaction history misses the transaction too.
+//   - The node keeps no transaction history for that search: an error that
+//     wraps ErrTransactionHistoryNotAvailable but not ended.
 //   - maxUnusableStatuses failed reads, or reads of older banks, in a row: an
 //     error that wraps the last problem but not ended, because the outcome is
 //     unknown.
@@ -440,9 +487,9 @@ func recheckSignature(
 	// A status that misses the transaction only counts if its bank is at
 	// least this recent.
 	minSlot := lifetimeEndSlot(err)
-	// The recent status cache answers first. Once it misses the transaction,
-	// the next read searches the transaction history, and only a miss there
-	// is conclusive.
+	// The recent status cache answers first. If it misses the transaction but
+	// cannot prove that the transaction did not land, the reads that follow
+	// search the transaction history too.
 	searchHistory := false
 	unusable := 0
 	var problem error
@@ -452,6 +499,11 @@ func recheckSignature(
 		case statusErr != nil:
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return ctxErr
+			}
+			if searchHistory && isHistoryNotAvailable(statusErr) {
+				// The node will never answer this search, so do not retry.
+				return fmt.Errorf("sendandconfirmtransaction: %w, so it is unknown whether transaction %s landed before its lifetime ended (%s): %w",
+					ErrTransactionHistoryNotAvailable, signature, err.Error(), statusErr)
 			}
 			unusable, problem = unusable+1, statusErr
 		case status != nil && reachedCommitment(status, commitment):
@@ -466,13 +518,14 @@ func recheckSignature(
 			minSlot = max(minSlot, slot+1)
 		case slot < minSlot:
 			unusable, problem = unusable+1, fmt.Errorf("the status is from slot %d, before slot %d", slot, minSlot)
-		case !searchHistory:
-			// The recent status cache misses the transaction. It may have
-			// landed before the cache's window, so search the history next.
+		case searchHistory || statusCacheCovers(err, slot):
+			return err
+		default:
+			// The recent status cache misses the transaction, but the
+			// transaction may have landed before the window of that cache.
+			// Search the history next.
 			searchHistory = true
 			continue
-		default:
-			return err
 		}
 		if unusable >= maxUnusableStatuses {
 			return fmt.Errorf("sendandconfirmtransaction: the status of transaction %s is unknown after its lifetime ended (%s): %w",
@@ -505,6 +558,50 @@ func readSignatureStatus(ctx context.Context, rpcClient *rpc.Client, signature s
 func reachedCommitment(status *rpc.SignatureStatusesResult, commitment rpc.CommitmentType) bool {
 	return status.ConfirmationStatus != "" &&
 		rpc.CompareCommitment(rpc.CommitmentType(status.ConfirmationStatus), commitment) >= 0
+}
+
+// statusCacheCovers reports whether the recent status cache of the bank at
+// slot must still hold the transaction if it landed before its lifetime
+// ended with end. Only then does a miss in that cache prove that the
+// transaction did not land. The cache goes back statusCacheWindow slots, so
+// this needs a limit on how long ago the transaction can have landed:
+//
+//   - A blockhash transaction lands at most maxProcessingAge blocks before
+//     its last valid block height. From there, count the blocks to the bank
+//     that showed the expiry, and the slots on to the bank at slot.
+//   - A durable nonce transaction lands after the last slot at which the
+//     strategy saw its nonce in the account. There is no limit if the
+//     strategy never saw it, as when the transaction is sent again long
+//     after the nonce advanced.
+func statusCacheCovers(end error, slot uint64) bool {
+	var exceeded *confirmation.BlockHeightExceededError
+	if errors.As(end, &exceeded) {
+		past := distance(exceeded.LastValidBlockHeight, exceeded.CurrentBlockHeight)
+		since := distance(exceeded.Slot, slot)
+		// Check each part first, so that the sum cannot overflow.
+		return past <= statusCacheWindow && since <= statusCacheWindow &&
+			maxProcessingAge+past+since <= statusCacheWindow
+	}
+	var invalid *confirmation.InvalidNonceError
+	if errors.As(end, &invalid) {
+		return invalid.ValidSlot != 0 && distance(invalid.ValidSlot, slot) <= statusCacheWindow
+	}
+	return false
+}
+
+// distance returns to - from, or 0 if to is before from.
+func distance(from, to uint64) uint64 {
+	if to < from {
+		return 0
+	}
+	return to - from
+}
+
+// isHistoryNotAvailable reports whether err is the JSON-RPC error of a node
+// that keeps no transaction history.
+func isHistoryNotAvailable(err error) bool {
+	var rpcErr *jsonrpc.RPCError
+	return errors.As(err, &rpcErr) && rpcErr.Code == rpcTransactionHistoryNotAvailable
 }
 
 // lifetimeEndSlot returns the slot at which a lifetime strategy saw the

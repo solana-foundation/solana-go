@@ -17,6 +17,7 @@ package confirmation
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
@@ -75,8 +76,21 @@ func nonceInvalidation(
 		return err
 	}
 
+	// validSlot is the most recent slot at which the account was seen to hold
+	// the expected nonce. The notifications and the read both report to it.
+	var (
+		mu        sync.Mutex
+		validSlot uint64
+	)
+	valid := func(slot uint64) {
+		mu.Lock()
+		defer mu.Unlock()
+		validSlot = max(validSlot, slot)
+	}
 	invalid := func(actual solana.Hash, slot uint64) error {
-		return &InvalidNonceError{NonceAccount: nonceAccount, Expected: expected, Actual: actual, Slot: slot}
+		mu.Lock()
+		defer mu.Unlock()
+		return &InvalidNonceError{NonceAccount: nonceAccount, Expected: expected, Actual: actual, Slot: slot, ValidSlot: validSlot}
 	}
 	return firstOf(ctx,
 		func(ctx context.Context) error {
@@ -95,6 +109,7 @@ func nonceInvalidation(
 				if actual := solana.HashFromBytes(data[nonceValueOffset : nonceValueOffset+nonceValueLength]); actual != expected {
 					return invalid(actual, res.Context.Slot)
 				}
+				valid(res.Context.Slot)
 			}
 		},
 		// Step 2: with the subscription in place, read the nonce once to
@@ -119,6 +134,7 @@ func nonceInvalidation(
 			if actual := solana.HashFromBytes(data[:nonceValueLength]); actual != expected {
 				return invalid(actual, out.Context.Slot)
 			}
+			valid(out.Context.Slot)
 			return waitDone(ctx)
 		},
 	)

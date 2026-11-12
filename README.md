@@ -168,7 +168,7 @@ default:
 }
 ```
 
-Any other error, including a canceled context, means that the outcome is unknown: check the signature status before you sign the transaction again. Before it reports an expired blockhash or an advanced nonce, the helper reads the signature status until it is conclusive, because the transaction can still land in the block at which the expiry is seen. A transaction that the recent status cache does not know is looked up in the transaction history as well, so a durable nonce transaction that is resent long after it landed is still recognized.
+Any other error, including a canceled context, means that the outcome is unknown: check the signature status before you sign the transaction again. Before it reports an expired blockhash, the helper reads the signature status until it is conclusive, because the transaction can still land in the block at which the expiry is seen. The recent status cache answers this, so it works on every RPC node, with or without transaction history.
 
 When the commitment is below finalized and `PreflightCommitment` is empty, the transaction is simulated at the same commitment, as in the Kit. `RequestAndConfirmAirdrop` requests an airdrop on a test cluster and waits until it lands.
 
@@ -192,10 +192,13 @@ case errors.Is(err, confirmation.ErrInvalidNonce):
   // The nonce advanced without this transaction, so it can no longer land.
 case errors.Is(err, confirmation.ErrNonceAccountNotFound):
   // The nonce account does not exist.
+case errors.Is(err, confirm.ErrTransactionHistoryNotAvailable):
+  // The nonce advanced, and this node cannot tell whether this transaction
+  // did it. Check the signature on a node that keeps the transaction history.
 }
 ```
 
-A durable nonce transaction advances the nonce even when it fails, so before it reports an invalid nonce, `SendAndConfirmDurableNonceTransaction` checks whether the transaction itself landed.
+A durable nonce transaction advances the nonce even when it fails, so before it reports an invalid nonce, `SendAndConfirmDurableNonceTransaction` checks whether the transaction itself landed. The recent status cache answers this when the helper saw the nonce still in the account shortly before it changed. Otherwise the transaction may have landed long ago, for example when it is sent again after its result was lost, so the helper searches the transaction history of the node too. A node that keeps none (Agave without `--enable-rpc-transaction-history`) cannot answer, and the helper returns `ErrTransactionHistoryNotAvailable` instead of guessing.
 
 ## Address Lookup Tables
 

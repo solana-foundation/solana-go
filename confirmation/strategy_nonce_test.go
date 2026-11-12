@@ -49,20 +49,29 @@ func (h *harness) startNonce(t *testing.T, commitment rpc.CommitmentType) (conte
 	})
 }
 
+// accountNotification sends an account notification at slot 5.
 func (h *harness) accountNotification(t *testing.T, sub subscribeRequest, data []byte) {
 	t.Helper()
-	h.validator.notify(t, "accountNotification", sub.SubID,
-		stdjson.RawMessage(`{"context":{"slot":5},"value":`+accountJSON(data)+`}`))
+	h.accountNotificationAt(t, sub, 5, data)
 }
 
-// requireInvalidNonce asserts the error and the slot it came from: account
-// notifications of these tests are at slot 5, account reads at slot 1.
-func requireInvalidNonce(t *testing.T, err error, actual solana.Hash, slot uint64) {
+func (h *harness) accountNotificationAt(t *testing.T, sub subscribeRequest, slot uint64, data []byte) {
+	t.Helper()
+	h.validator.notify(t, "accountNotification", sub.SubID,
+		stdjson.RawMessage(fmt.Sprintf(`{"context":{"slot":%d},"value":%s}`, slot, accountJSON(data))))
+}
+
+// requireInvalidNonce asserts the error, the slot it came from, and the last
+// slot at which the nonce was seen valid, 0 for never. Account notifications
+// of these tests are at slot 5 unless stated, account reads at slot 1.
+func requireInvalidNonce(t *testing.T, err error, actual solana.Hash, slot, validSlot uint64) {
 	t.Helper()
 	require.ErrorIs(t, err, ErrInvalidNonce)
 	var invalid *InvalidNonceError
 	require.ErrorAs(t, err, &invalid)
-	require.Equal(t, InvalidNonceError{NonceAccount: testNonceAccount, Expected: testNonce, Actual: actual, Slot: slot}, *invalid)
+	require.Equal(t, InvalidNonceError{
+		NonceAccount: testNonceAccount, Expected: testNonce, Actual: actual, Slot: slot, ValidSlot: validSlot,
+	}, *invalid)
 }
 
 func TestNonce_CancelStopsAccountInfoRequest(t *testing.T) {
@@ -159,7 +168,8 @@ func TestNonce_InvalidWhenReadNonceDiffers(t *testing.T) {
 
 	_, done := h.startNonce(t, "")
 
-	requireInvalidNonce(t, requireResult(t, done), otherNonce, 1)
+	// The account never held the expected nonce while the strategy watched.
+	requireInvalidNonce(t, requireResult(t, done), otherNonce, 1, 0)
 }
 
 func TestNonce_PendsWhileNotifiedNonceMatches(t *testing.T) {
@@ -172,8 +182,9 @@ func TestNonce_PendsWhileNotifiedNonceMatches(t *testing.T) {
 	requirePending(t, done)
 	h.accountNotification(t, sub, nonceAccountData(otherNonce))
 
-	// Only the second notification ends the wait.
-	requireInvalidNonce(t, requireResult(t, done), otherNonce, 5)
+	// Only the second notification ends the wait, and the first one showed
+	// the nonce still valid at slot 5.
+	requireInvalidNonce(t, requireResult(t, done), otherNonce, 5, 5)
 }
 
 func TestNonce_InvalidWhenNotifiedNonceDiffers(t *testing.T) {
@@ -184,7 +195,37 @@ func TestNonce_InvalidWhenNotifiedNonceDiffers(t *testing.T) {
 	sub := h.validator.nextSubscribe(t)
 	h.accountNotification(t, sub, nonceAccountData(otherNonce))
 
-	requireInvalidNonce(t, requireResult(t, done), otherNonce, 5)
+	requireInvalidNonce(t, requireResult(t, done), otherNonce, 5, 0)
+}
+
+// The error reports the last slot at which the nonce was still valid, from
+// the read and from the notifications, so that a later check of the signature
+// status knows how far back the transaction can have landed.
+func TestNonce_ReportsLastSlotWithValidNonce(t *testing.T) {
+	t.Run("from the read", func(t *testing.T) {
+		h := newHarness(t)
+		h.rpc.on("getAccountInfo", accountInfo(testNonce[:]))
+
+		_, done := h.startNonce(t, "")
+		sub := h.validator.nextSubscribe(t)
+		h.events.waitFor(t, "rpc getAccountInfo")
+		requirePending(t, done) // the read at slot 1 has been handled by now
+		h.accountNotificationAt(t, sub, 9, nonceAccountData(otherNonce))
+
+		requireInvalidNonce(t, requireResult(t, done), otherNonce, 9, 1)
+	})
+	t.Run("the latest of several", func(t *testing.T) {
+		h := newHarness(t)
+		h.rpc.on("getAccountInfo", blockUntilCanceled(h.events, "getAccountInfo"))
+
+		_, done := h.startNonce(t, "")
+		sub := h.validator.nextSubscribe(t)
+		h.accountNotificationAt(t, sub, 7, nonceAccountData(testNonce))
+		h.accountNotificationAt(t, sub, 6, nonceAccountData(testNonce)) // out of order
+		h.accountNotificationAt(t, sub, 9, nonceAccountData(otherNonce))
+
+		requireInvalidNonce(t, requireResult(t, done), otherNonce, 9, 7)
+	})
 }
 
 func TestNonce_ShortDataIsInvalid(t *testing.T) {
@@ -194,7 +235,7 @@ func TestNonce_ShortDataIsInvalid(t *testing.T) {
 
 		_, done := h.startNonce(t, "")
 
-		requireInvalidNonce(t, requireResult(t, done), solana.Hash{}, 1)
+		requireInvalidNonce(t, requireResult(t, done), solana.Hash{}, 1, 0)
 	})
 	t.Run("closed account notification", func(t *testing.T) {
 		h := newHarness(t)
@@ -204,7 +245,7 @@ func TestNonce_ShortDataIsInvalid(t *testing.T) {
 		sub := h.validator.nextSubscribe(t)
 		h.accountNotification(t, sub, nil)
 
-		requireInvalidNonce(t, requireResult(t, done), solana.Hash{}, 5)
+		requireInvalidNonce(t, requireResult(t, done), solana.Hash{}, 5, 0)
 	})
 }
 

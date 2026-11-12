@@ -95,6 +95,12 @@ type InvalidNonceError struct {
 	// signature status is only conclusive if it reads a bank at least this
 	// recent. It is 0 when unknown.
 	Slot uint64
+	// ValidSlot is the most recent slot at which the strategy saw the account
+	// still hold Expected, or 0 if it never did. The nonce changed after that
+	// slot, so a transaction that used it landed after that slot, if it
+	// landed. That tells a check of the signature status how far back it has
+	// to look.
+	ValidSlot uint64
 }
 
 func (e *InvalidNonceError) Error() string {
