@@ -487,7 +487,10 @@ func (c *Client) unsubscribe(subID uint64, method string) error {
 		return fmt.Errorf("unable to send unsubscription message for subID %d and method %s: %w", subID, method, err)
 	}
 	for _, pending := range c.subscriptionByRequestID {
-		if pending.acked {
+		// Only a subscription of the same kind can be confirmed under this
+		// id: a server that numbers ids per method gives the same id to
+		// subscriptions of other kinds that stay live.
+		if pending.acked || pending.unsubscribeMethod != method {
 			continue
 		}
 		if pending.staleIDs == nil {
