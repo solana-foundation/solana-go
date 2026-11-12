@@ -1,0 +1,9 @@
+{
+  "targets": [
+    "CLAUDE.md"
+  ],
+  "skillsDirs": [
+    ".agents/skills",
+    ".claude/skills"
+  ]
+}
