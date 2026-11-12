@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.27.0](https://github.com/solana-foundation/solana-go/compare/v1.26.0...v1.27.0) (2026-11-12)
+
+
+### Features
+
+* **introspection:** add transaction introspection package ([#523](https://github.com/solana-foundation/solana-go/issues/523)) ([0987418](https://github.com/solana-foundation/solana-go/commit/098741868128ef93ad973cfc0d5b2e14fc5c675b))
+* **token:** add p-token (SIMD-0266) and missing SPL Token instructions ([#366](https://github.com/solana-foundation/solana-go/issues/366)) ([205ec59](https://github.com/solana-foundation/solana-go/commit/205ec59d924c2690d9c44c4e87e2dff9494c960d))
+* **transaction:** allow caller-supplied v1 sanitize limits (SIMD-0596) ([#517](https://github.com/solana-foundation/solana-go/issues/517)) ([a004d99](https://github.com/solana-foundation/solana-go/commit/a004d9960e36ab794ed545ead4625607ea47bae3))
+* **ws:** add WaitSubscribed and fix subscriptions that share a server id ([#525](https://github.com/solana-foundation/solana-go/issues/525)) ([046446c](https://github.com/solana-foundation/solana-go/commit/046446cd7eaaf0e6a832bd8e3703175b0a875e6c))
+
+
+### Bug Fixes
+
+* **message:** honor resolved lookups in checkPreconditions ([#522](https://github.com/solana-foundation/solana-go/issues/522)) ([5fac633](https://github.com/solana-foundation/solana-go/commit/5fac63395336192351c1b32da05923d302901ac6))
+* **token-2022:** send num_token_accounts in WithdrawWithheldTokensFromAccounts ([#518](https://github.com/solana-foundation/solana-go/issues/518)) ([a68eab8](https://github.com/solana-foundation/solana-go/commit/a68eab811312482beb29446a3ecc757decbe78bd))
+* **transaction:** keep read-only signers after merged writable signers ([#519](https://github.com/solana-foundation/solana-go/issues/519)) ([043fe6b](https://github.com/solana-foundation/solana-go/commit/043fe6b569a78f48188173862cdbf87f755cb116))
+
 ## [1.26.0](https://github.com/solana-foundation/solana-go/compare/v1.25.0...v1.26.0) (2026-10-28)
 
 
