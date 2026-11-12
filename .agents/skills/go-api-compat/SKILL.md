@@ -25,7 +25,7 @@ Check a change against the public API of the module with [`gorelease`](https://p
 - Changing the signature of an exported function or method. Adding a parameter, a result or a variadic parameter all count.
 - Changing the type of an exported struct field, constant or variable.
 - Adding a method to an exported interface. Every implementation outside the module stops compiling.
-- Changing a method from a value receiver to a pointer receiver, or the other way.
+- Changing a method from a value receiver to a pointer receiver. The value type loses the method, so it no longer satisfies the interfaces that need it.
 - Making a comparable struct not comparable, for example with a new slice, map or function field.
 
 ### What Is Safe
@@ -60,6 +60,7 @@ type TokenGroupState struct {
 - **Errors**: an error that callers match with `errors.Is` or `errors.As` has to keep matching. Wrapping it in more context is fine.
 - **Encoding**: the bytes for a valid input must not change, unless the old bytes were wrong. That is a `fix`, and the commit has to say so.
 - **Defaults**: a zero value or an empty option keeps its meaning.
+- **Receivers**: changing a pointer receiver to a value receiver compiles, but a call on a nil pointer then panics.
 - **Go version**: do not raise the `go` line of `go.mod` as a side effect. It drops users on older toolchains.
 
 ### Running gorelease
@@ -99,6 +100,19 @@ Suggested version: v1.27.0
 - `## incompatible changes` fail the CI check. Each line names the identifier and what changed.
 - A suggested version with a new minor number means the change is additive. When `gorelease` cannot suggest a version, there are incompatible changes.
 
+The output covers every change since the latest release, not only yours. It also lists what other pull requests merged to `main` since that release. To find your part, run `gorelease` on a copy of `main` too, and compare the two outputs:
+
+```sh
+tmp=$(mktemp -d)
+git archive upstream/main | tar -x -C "$tmp"
+(cd "$tmp" && gorelease > gorelease.txt)
+gorelease > "$tmp/branch.txt"   # on a clean tree, or on a copy of the working tree as above
+diff "$tmp/gorelease.txt" "$tmp/branch.txt"
+rm -rf "$tmp"
+```
+
+Use the name that your clone gives the remote of `solana-foundation/solana-go` in place of `upstream`. Lines that are only in the output for the branch come from your change.
+
 ## Command Process
 
 When invoked as a command, follow these steps:
@@ -111,6 +125,6 @@ When invoked as a command, follow these steps:
 
 1. Check that `gorelease` is installed with `command -v gorelease`. If it is not, install it with `go install golang.org/x/exp/cmd/gorelease@latest`.
 2. Run `gorelease` at the repo root, or `gorelease -base=<base-version>` when a version was given. When the working tree has uncommitted changes, run it on a copy of the tree, as described above.
-3. List every incompatible change by package.
+3. List every incompatible change by package. Compare with the output for `main`, as described above, and keep only the lines that come from the change.
 4. For each one, propose the compatible way to reach the same goal, using the patterns above.
 5. If a change cannot be made compatible, say so and point to the `v2` branch. Do not change any code that the user did not ask you to change.

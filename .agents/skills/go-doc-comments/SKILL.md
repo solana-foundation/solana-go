@@ -6,11 +6,11 @@ argument-hint: "[path] [--all]"
 
 # Add Missing Doc Comments
 
-Scan the given path (or the whole module when no path is given) and add the missing doc comments to all exported functions, types, methods, constants, variables and packages. pkg.go.dev renders these comments, so they are the API reference of the SDK.
+Scan the given path, or the Go files that the current branch adds or changes when no path is given, and add the missing doc comments to the exported functions, types, methods, constants, variables and packages. pkg.go.dev renders these comments, so they are the API reference of the SDK.
 
 ## Key Rules
 
-- Every exported function, type, method, constant, variable and package MUST have a doc comment.
+- Every exported function, type, method, constant, variable and package that you add or change MUST have a doc comment.
 - Start the comment with the name it documents and write full sentences: `// Transfer moves lamports ...`, `// Package rpc ...`.
 - Say what the function returns and when it fails. Name the sentinel or typed errors that callers can match.
 - State units and encodings where they matter: lamports or SOL, slot or block height, base58 or base64.
@@ -129,18 +129,18 @@ When invoked as a command, follow these steps:
 
 ### Arguments
 
-- `[path]` (optional): narrow the scan to a path, such as `rpc/ws` or `programs/token`.
+- `[path]` (optional): the path to scan, such as `rpc/ws` or `programs/token`. The default is the Go files that the current branch adds or changes.
 - `[--all]` (optional): also scan identifiers that are not exported.
 
 ### Steps
 
-1. If a path is given, scan only that path. If not, scan the whole module.
+1. If a path is given, scan only that path. If not, scan the `.go` files that the current branch adds or changes: `git diff --name-only main... -- '*.go'` and the uncommitted files from `git status --short`. Never default to the whole module: most of its exported identifiers have no doc comment yet, so the result would be too large to review.
 2. Look at the `.go` files. Skip `*_test.go` files and files that start with a `// Code generated` line.
-3. Find the exported identifiers without a doc comment: functions, methods on exported types, types, constants, variables, and the package clause when no file of the package has a package comment.
+3. Find the exported identifiers without a doc comment: functions, methods on exported types, types, constants, variables, and the package clause when no file of the package has a package comment. Without a path, take only the identifiers that the branch adds or changes, not every identifier in those files.
 4. If `--all` is passed, also find the identifiers that are not exported.
 5. For each one:
     - Read the code to understand what it does. This may take several files.
     - For a type that mirrors an on-chain layout or an RPC response, check the Rust definition before you describe it.
     - Write the comment in the style above.
-6. Present all changes clearly, grouped by file. Apply them without asking for further approval.
+6. Present all changes clearly, grouped by file. Apply them without asking for further approval, unless they cover more than one package: then list the identifiers first and wait for approval.
 7. Run `gofmt -l` on the changed files and `go build ./...` to confirm that nothing but comments changed.

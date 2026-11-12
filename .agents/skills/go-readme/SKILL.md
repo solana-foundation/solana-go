@@ -52,7 +52,22 @@ A new feature section goes with the other feature sections, before `Examples`.
 - Use the endpoint constants of the `rpc` package, such as `rpc.DevNet_RPC`, and not literal URLs.
 - Use clear variable names, not `foo` and `bar`.
 - Never put a real private key or a seed phrase in a snippet.
-- Check that a new snippet compiles before you propose it. Build it as a `main` package in a temporary directory inside the module, and remove the directory after that.
+- Check that a new snippet compiles before you propose it, as described in the next section.
+
+### Check That a Snippet Compiles
+
+Build the snippet without adding a file to the repo. Save it outside the repo, then map it with an overlay into a package directory that does not exist:
+
+```sh
+tmp=$(mktemp -d)
+# Save the snippet as "$tmp/main.go".
+printf '{"Replace": {"readmesnippet/main.go": "%s/main.go"}}\n' "$tmp" > "$tmp/overlay.json"
+go build -overlay "$tmp/overlay.json" -o /dev/null ./readmesnippet/
+rm -rf "$tmp"
+```
+
+- Run this at the repo root. The snippet then builds against the code in the working tree, not against a released version.
+- `go vet` does not work this way, because it needs the directory on disk. `go build` is enough to show that the snippet compiles.
 
 ### Runnable Examples
 

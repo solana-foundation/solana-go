@@ -96,7 +96,7 @@ gh pr create --base main --title "feat(rpc): add getTransactionsForAddress" --bo
 ```
 
 - The base is `main`, unless the change is breaking or exists only on `v2`.
-- The title is a Conventional Commit. Pull requests are squash-merged, so the title becomes the commit on `main` and a line of the changelog.
+- The title is a Conventional Commit. Pull requests are squash-merged, and the squash commit becomes a line of the changelog. For its title, GitHub proposes the title of the only commit when there is one, and the PR title when there are more. So when a pull request has one commit, give the commit and the pull request the same title.
 - There is no pull request template. State the problem, then the changes, then how you tested them. Recent pull requests use the headings `#### Problem` and `#### Summary of Changes`.
 - Never describe a security problem that is not fixed yet in a public pull request. See `SECURITY.md`.
 

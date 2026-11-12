@@ -77,10 +77,11 @@ Exit code 0 means that the change applies without conflicts. That does not mean 
 **4. Apply the change on a branch from v2.**
 
 ```sh
-git switch -c <type>/<short-name>-v2 upstream/v2
+git switch --no-track -c <type>/<short-name>-v2 upstream/v2
 git cherry-pick --no-commit <commit>
 ```
 
+- `--no-track` keeps `upstream/v2` from becoming the upstream of the new branch. With some `push.default` settings, a plain `git push` would otherwise go to `v2`. Push the branch to your fork with `git push -u origin HEAD`.
 - `--no-commit` stages the change and creates no commit, so the result stays open for review.
 - In a conflict, keep the v2 API and bring in the behavior of the change. Read both sides before you choose.
 
@@ -117,7 +118,7 @@ Run all tests, not only the tests of the packages that the change touched. Fix w
 Use this for a change that is not on `main` and cannot go there. A change that is already on `main` is a port: see "Port One Change From main".
 
 1. Confirm that the change cannot go to `main`. Say what it breaks in v1, or which v2-only code it touches. If a compatible form exists, it goes to `main`. See the `go-api-compat` skill.
-2. Branch from `upstream/v2`.
+2. Branch from `upstream/v2` with `git switch --no-track -c <type>/<short-name> upstream/v2`. See "Port One Change From main" for why `--no-track` matters.
 3. Use the v2 import path in every file.
 4. Run `go test ./... -race -count=1` and `golangci-lint run`.
 5. Open the pull request with `v2` as the base. Write the title as a Conventional Commit, although `commit-lint` does not run there.
@@ -131,11 +132,15 @@ Do this only when the user asks for a sync. Every step that creates or rewrites 
 
 ```sh
 git fetch upstream
+git fetch upstream v2:v2                      # create the local v2, or fast-forward it
+git rev-parse v2 upstream/v2                  # the two hashes must be equal
 base=$(git merge-base upstream/main upstream/v2)
 git log --oneline "$base"..upstream/main      # new on main since the last sync
 git log --oneline upstream/main..upstream/v2  # the v2-only stack
 git rev-parse upstream/v2                     # write this down: the old tip
 ```
+
+The rebase in step 4 rewrites the local `v2`, so it has to start at the same commit as `upstream/v2`. `git fetch upstream v2:v2` creates the local branch or moves it forward. It refuses when the local `v2` has commits that `upstream/v2` does not have, and when `v2` is checked out. In both cases stop and ask. Never reset the local `v2` without approval: its extra commits may be someone's work.
 
 **2. Predict the conflicts without changing anything.**
 
@@ -143,7 +148,9 @@ git rev-parse upstream/v2                     # write this down: the old tip
 git merge-tree --write-tree --merge-base="$base" upstream/main upstream/v2
 ```
 
-Exit code 0 means no conflicts. If there are conflicts, the output names the files. `README.md` conflicts often, because both branches edit the same sections. A file that merges cleanly can still fail to build: look closely at `rpc/ws` and `rpc/sendAndConfirmTransaction`, where the v2 API differs.
+This predicts one merge of the two branches, but the rebase in step 4 replays the stack one commit at a time. So the result is a guide, not a promise: the rebase can stop on a commit where the merge found no conflict, and a merge conflict can disappear when the commits are replayed one by one. Exit code 0 means that the merge has no conflicts. Otherwise the output names the files that conflict. The rebase is the real test, and `git rebase --abort` undoes it while it runs.
+
+`README.md` conflicts often, because both branches edit the same sections. A file that merges cleanly can still fail to build: look closely at `rpc/ws` and `rpc/sendAndConfirmTransaction`, where the v2 API differs.
 
 **3. Check the ports in the stack.** A commit that was ported from `main` since the last sync is part of `main` now. Find the ports by the line that names their original:
 

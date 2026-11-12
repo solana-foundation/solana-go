@@ -11,7 +11,7 @@ Every instruction in `programs/<name>` has the same shape, and a new one has to 
 ## Key Rules
 
 - Read the Rust definition of the instruction first: its tag, its data layout and its account list. Then copy the shape of a neighboring instruction in the same package.
-- Register a new instruction everywhere in `instructions.go`: the id constant, `InstructionIDToName` and the `InstructionImplDef` variant list. Never insert an id in the middle of an `iota` block.
+- Register a new instruction everywhere in the package's registry file (`instructions.go`, or `instruction.go` in `compute-budget` and `tokenregistry`): the id constant, `InstructionIDToName` and the `InstructionImplDef` variant list. Never insert an id in the middle of an `iota` block.
 - The account order and the signer and writable flags must match the Rust docs exactly.
 - Test the exact bytes of `Data()` and decode those bytes back with `DecodeInstruction`. The round trip test is not enough.
 - On `main`, never change the name, the type or the signature of an existing exported identifier of an instruction.
@@ -21,7 +21,7 @@ Every instruction in `programs/<name>` has the same shape, and a new one has to 
 ### Files
 
 - `programs/<name>/<Instruction>.go` and `programs/<name>/<Instruction>_test.go`. The file is named after the Rust enum variant, in the same case: `WithdrawExcessLamports.go`.
-- `programs/<name>/instructions.go` holds the registry.
+- `programs/<name>/instructions.go` holds the registry. In `compute-budget` and `tokenregistry` this file is `instruction.go`.
 
 ### Packages Differ
 
@@ -54,7 +54,7 @@ Write the parts in the order that the neighbors use:
 
 ### Register the Instruction
 
-In `instructions.go`:
+In the registry file:
 
 1. **The id constant**, `Instruction_<Name>`, with a doc comment.
     - In an `iota` block, the position is the id. Only append. An id that is inserted in the middle shifts every id after it.
@@ -99,7 +99,7 @@ When invoked as a command, follow these steps:
 ### Steps
 
 1. Find the Rust definition at a release tag. Write down the tag, the data layout and the account list.
-2. Read `instructions.go` of the package and one neighboring instruction with a similar shape.
+2. Read the registry file of the package and one neighboring instruction with a similar shape.
 3. Write the instruction file.
 4. Register the instruction.
 5. Write the tests.
