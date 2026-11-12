@@ -41,9 +41,10 @@ func main() {
 		spew.Dump(resp)
 
 		var mint token.Mint
-		// Account{}.Data.GetBinary() returns the *decoded* binary data
-		// regardless the original encoding (it can handle them all).
-		err = bin.NewBinDecoder(resp.Value.Data.GetBinary()).Decode(&mint)
+		// resp.GetBinary() returns the *decoded* binary data
+		// regardless the original encoding (it can handle them all),
+		// and is nil-safe when the account is not found.
+		err = bin.NewBinDecoder(resp.GetBinary()).Decode(&mint)
 		if err != nil {
 			panic(err)
 		}
@@ -105,7 +106,7 @@ func main() {
 		spew.Dump(resp)
 
 		var mint token.Mint
-		err = bin.NewBinDecoder(resp.Value.Data.GetBinary()).Decode(&mint)
+		err = bin.NewBinDecoder(resp.GetBinary()).Decode(&mint)
 		if err != nil {
 			panic(err)
 		}

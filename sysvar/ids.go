@@ -21,7 +21,7 @@ import solana "github.com/gagliardetto/solana-go"
 // callers can fetch and decode with a single import, e.g.
 //
 //	resp, _ := rpcClient.GetAccountInfo(ctx, sysvar.ClockID)
-//	clock, _ := sysvar.DecodeClock(resp.Value.Data.GetBinary())
+//	clock, _ := sysvar.DecodeClock(resp.GetBinary())
 var (
 	ClockID           = solana.SysVarClockPubkey
 	EpochRewardsID    = solana.SysVarEpochRewardsPubkey

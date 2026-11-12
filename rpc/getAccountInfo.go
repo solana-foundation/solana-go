@@ -25,6 +25,7 @@ import (
 )
 
 // GetAccountInfo returns all information associated with the account of provided publicKey.
+// It returns ErrNotFound if the account does not exist.
 func (cl *Client) GetAccountInfo(ctx context.Context, account solana.PublicKey) (out *GetAccountInfoResult, err error) {
 	return cl.GetAccountInfoWithOpts(
 		ctx,
@@ -43,6 +44,9 @@ func (cl *Client) GetAccountDataInto(ctx context.Context, account solana.PublicK
 	if err != nil {
 		return err
 	}
+	if resp == nil || resp.Value == nil {
+		return ErrNotFound
+	}
 	return bin.NewBinDecoder(resp.Value.Data.GetBinary()).Decode(inVar)
 }
 
@@ -52,6 +56,9 @@ func (cl *Client) GetAccountDataBorshInto(ctx context.Context, account solana.Pu
 	resp, err := cl.GetAccountInfo(ctx, account)
 	if err != nil {
 		return err
+	}
+	if resp == nil || resp.Value == nil {
+		return ErrNotFound
 	}
 	return bin.NewBorshDecoder(resp.Value.Data.GetBinary()).Decode(inVar)
 }
@@ -88,6 +95,7 @@ type GetAccountInfoOpts struct {
 }
 
 // GetAccountInfoWithOpts returns all information associated with the account of provided publicKey.
+// It returns ErrNotFound if the account does not exist.
 // You can specify the encoding of the returned data with the encoding parameter.
 // You can limit the returned account data with the offset and length parameters.
 func (cl *Client) GetAccountInfoWithOpts(
@@ -103,6 +111,17 @@ func (cl *Client) GetAccountInfoWithOpts(
 		return nil, ErrNotFound
 	}
 	return out, nil
+}
+
+// GetAccountInfoMaybe returns account information with the raw RPC null-value semantics.
+// If the account does not exist, it returns a result with Value == nil and no error,
+// preserving the RPC context. Use GetAccountInfoWithOpts to receive ErrNotFound instead.
+func (cl *Client) GetAccountInfoMaybe(
+	ctx context.Context,
+	account solana.PublicKey,
+	opts *GetAccountInfoOpts,
+) (*GetAccountInfoResult, error) {
+	return cl.getAccountInfoWithOpts(ctx, account, opts)
 }
 
 func (cl *Client) getAccountInfoWithOpts(
