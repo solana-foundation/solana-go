@@ -51,3 +51,37 @@ func TestAuthorizedVotersAcceptsValidCount(t *testing.T) {
 		t.Fatalf("expected 1 voter, got %d", len(av.Voters))
 	}
 }
+
+// decodeEpochCredits must reject a huge length prefix instead of
+// make([]EpochCredit, count). Without the bound this panics with
+// "makeslice: len out of range".
+func TestDecodeEpochCreditsRejectsHugeCount(t *testing.T) {
+	_, err := decodeEpochCredits(bin.NewBinDecoder([]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}))
+	if err == nil {
+		t.Fatal("expected an error for an epoch-credit count beyond the remaining data, got nil")
+	}
+}
+
+// VoteStateV3.unmarshalBody must reject a huge vote count instead of
+// make([]LandedVote, count). Preamble before the count:
+// NodePubkey[32] | AuthorizedWithdrawer[32] | Commission u8.
+func TestVoteStateV3RejectsHugeVoteCount(t *testing.T) {
+	buf := make([]byte, 32+32+1)
+	buf = append(buf, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF)
+	var s VoteStateV3
+	if err := s.unmarshalBody(bin.NewBinDecoder(buf)); err == nil {
+		t.Fatal("expected an error for a V3 vote count beyond the remaining data, got nil")
+	}
+}
+
+// VoteStateV4.unmarshalBody must reject a huge vote count. Preamble before the
+// count: NodePubkey[32] | AuthorizedWithdrawer[32] | InflationRewardsCollector[32] |
+// BlockRevenueCollector[32] | u16 | u16 | u64 | Option<BLSPubkey> discriminant=0 (u8).
+func TestVoteStateV4RejectsHugeVoteCount(t *testing.T) {
+	buf := make([]byte, 32*4+2+2+8+1)
+	buf = append(buf, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF)
+	var s VoteStateV4
+	if err := s.unmarshalBody(bin.NewBinDecoder(buf)); err == nil {
+		t.Fatal("expected an error for a V4 vote count beyond the remaining data, got nil")
+	}
+}
