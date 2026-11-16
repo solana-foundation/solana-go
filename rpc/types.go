@@ -18,6 +18,7 @@
 package rpc
 
 import (
+	"cmp"
 	"encoding/base64"
 	"fmt"
 	"math/big"
@@ -532,6 +533,31 @@ const (
 	// The node will query its most recent block. Note that the block may still be skipped by the cluster.
 	CommitmentProcessed CommitmentType = "processed"
 )
+
+// CompareCommitment orders commitment levels from weakest to strongest:
+// processed, confirmed, finalized. It returns a negative number when a is
+// weaker than b, 0 when they are the same level, and a positive number when a
+// is stronger. Any other value is weaker than processed, so a status without a
+// known level never satisfies a required one.
+//
+// This is the comparator of @solana/rpc-types (commitmentComparator), which
+// throws on unknown values instead.
+func CompareCommitment(a, b CommitmentType) int {
+	return cmp.Compare(commitmentRank(a), commitmentRank(b))
+}
+
+func commitmentRank(c CommitmentType) int {
+	switch c {
+	case CommitmentProcessed:
+		return 1
+	case CommitmentConfirmed:
+		return 2
+	case CommitmentFinalized:
+		return 3
+	default:
+		return 0
+	}
+}
 
 type ParsedTransaction struct {
 	Signatures []solana.Signature `json:"signatures"`
