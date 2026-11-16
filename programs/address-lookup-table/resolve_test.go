@@ -181,3 +181,17 @@ func TestResolveMessageLookupsFromRPC_NilArgs(t *testing.T) {
 	msg := &solana.Message{}
 	require.Error(t, ResolveMessageLookupsFromRPC(context.Background(), nil, msg))
 }
+
+// Missing lookup tables must remain distinguishable from RPC and decoding failures.
+func TestGetAddressLookupTable_NotFound(t *testing.T) {
+	_, client := newRPCMock(t, func(method string, _ []byte) string {
+		require.Equal(t, "getAccountInfo", method)
+		return `{"context":{"slot":83986105},"value":null}`
+	})
+	state, err := GetAddressLookupTable(context.Background(), client, solana.PublicKey{})
+	require.ErrorIs(t, err, rpc.ErrNotFound)
+	require.Nil(t, state)
+	state, err = GetAddressLookupTableStateWithOpts(context.Background(), client, solana.PublicKey{}, &rpc.GetAccountInfoOpts{Commitment: rpc.CommitmentFinalized})
+	require.ErrorIs(t, err, rpc.ErrNotFound)
+	require.Nil(t, state)
+}

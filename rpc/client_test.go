@@ -142,6 +142,62 @@ func TestClient_GetAccountInfoWithOpts(t *testing.T) {
 	)
 }
 
+func TestClient_GetAccountInfo_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs5eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	out, err := client.GetAccountInfo(context.Background(), pubKey)
+	require.ErrorIs(t, err, ErrNotFound)
+	assert.Nil(t, out)
+}
+
+func TestClient_GetAccountInfoWithOpts_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs5eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	out, err := client.GetAccountInfoWithOpts(
+		context.Background(),
+		pubKey,
+		&GetAccountInfoOpts{},
+	)
+	require.ErrorIs(t, err, ErrNotFound)
+	assert.Nil(t, out)
+}
+
+func TestClient_GetAccountDataInto_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	var data struct{}
+	err := client.GetAccountDataInto(context.Background(), pubKey, &data)
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestClient_GetAccountDataBorshInto_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+
+	pubkeyString := "7xLk17EQQ5KLDLDe44wCmupJKJjTGd8hs3eSVVhCx932"
+	pubKey := solana.MustPublicKeyFromBase58(pubkeyString)
+	var data struct{}
+	err := client.GetAccountDataBorshInto(context.Background(), pubKey, &data)
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
 // mustAnyToJSON marshals the provided variable
 // to JSON bytes.
 func mustAnyToJSON(raw any) []byte {
@@ -3624,4 +3680,41 @@ func TestClient_GetRecentPrioritizationFees(t *testing.T) {
 	got := mustJSONToInterface(mustAnyToJSON(out))
 
 	assert.Equal(t, expected, got, "both deserialized values must be equal")
+}
+
+func TestClient_GetAccountInfoMaybe_NotFound(t *testing.T) {
+	responseBody := `{"context":{"slot":83986105},"value":null}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	client := New(server.URL)
+	for _, opts := range []*GetAccountInfoOpts{nil, {Commitment: CommitmentFinalized}} {
+		out, err := client.GetAccountInfoMaybe(context.Background(), solana.PublicKey{}, opts)
+		require.NoError(t, err)
+		require.NotNil(t, out)
+		assert.Equal(t, uint64(83986105), out.Context.Slot)
+		assert.Nil(t, out.Value)
+		assert.Nil(t, out.GetBinary())
+	}
+}
+
+func TestClient_GetAccountInfoMaybe_Found(t *testing.T) {
+	responseBody := `{"context":{"slot":42},"value":{"data":["dGVzdA==","base64"],"lamports":123,"owner":"11111111111111111111111111111111","executable":false,"rentEpoch":0}}`
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
+	defer closer()
+	out, err := New(server.URL).GetAccountInfoMaybe(context.Background(), solana.PublicKey{}, &GetAccountInfoOpts{Commitment: CommitmentFinalized})
+	require.NoError(t, err)
+	require.NotNil(t, out.Value)
+	assert.Equal(t, uint64(42), out.Context.Slot)
+	assert.Equal(t, []byte("test"), out.GetBinary())
+	params := server.RequestBody(t)["params"].([]any)
+	assert.Equal(t, map[string]any{"encoding": "base64", "commitment": "finalized"}, params[1])
+}
+
+func TestClient_GetAccountInfoMaybe_RPCError(t *testing.T) {
+	server, closer := mockJSONRPC(t, stdjson.RawMessage(`{"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"Invalid params"}}`))
+	defer closer()
+	out, err := New(server.URL).GetAccountInfoMaybe(context.Background(), solana.PublicKey{}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid params")
+	assert.Nil(t, out)
 }
