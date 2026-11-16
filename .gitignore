@@ -5,3 +5,8 @@ rpc/debug-utils.go
 .DS_Store
 
 solana-vault.json
+
+# LLM files
+.claude/worktrees
+.claude/settings.local.json
+.codex/config.toml
