@@ -72,6 +72,12 @@ func (av *AuthorizedVoters) UnmarshalWithDecoder(dec *bin.Decoder) error {
 	if err != nil {
 		return err
 	}
+	// Each AuthorizedVoter is a u64 epoch and a 32-byte pubkey (40 bytes). Reject a
+	// count larger than the remaining data can hold before allocating, so untrusted
+	// account bytes cannot drive a huge make (OOM / makeslice panic).
+	if count > uint64(dec.Remaining())/40 {
+		return fmt.Errorf("authorized voters: count %d exceeds remaining data (%d bytes)", count, dec.Remaining())
+	}
 	av.Voters = make([]AuthorizedVoter, count)
 	for i := range count {
 		av.Voters[i].Epoch, err = dec.ReadUint64(binary.LittleEndian)
@@ -185,6 +191,11 @@ func decodeEpochCredits(dec *bin.Decoder) ([]EpochCredit, error) {
 	count, err := dec.ReadUint64(binary.LittleEndian)
 	if err != nil {
 		return nil, err
+	}
+	// Each EpochCredit is three u64s (24 bytes). Reject a count larger than the
+	// remaining data can hold before allocating.
+	if count > uint64(dec.Remaining())/24 {
+		return nil, fmt.Errorf("epoch credits: count %d exceeds remaining data (%d bytes)", count, dec.Remaining())
 	}
 	out := make([]EpochCredit, count)
 	for i := range count {
@@ -323,6 +334,11 @@ func (s *VoteState1_14_11) unmarshalBody(dec *bin.Decoder) error {
 	if err != nil {
 		return err
 	}
+	// Each Lockout is a u64 slot and a u32 confirmation count (12 bytes). Reject a
+	// count larger than the remaining data can hold before allocating.
+	if count > uint64(dec.Remaining())/12 {
+		return fmt.Errorf("vote state 1_14_11: lockout count %d exceeds remaining data (%d bytes)", count, dec.Remaining())
+	}
 	s.Votes = make([]Lockout, count)
 	for i := range count {
 		if err := s.Votes[i].UnmarshalWithDecoder(dec); err != nil {
@@ -397,6 +413,11 @@ func (s *VoteStateV3) unmarshalBody(dec *bin.Decoder) error {
 	count, err := dec.ReadUint64(binary.LittleEndian)
 	if err != nil {
 		return err
+	}
+	// Each LandedVote is a u8 latency and a Lockout (13 bytes). Reject a count
+	// larger than the remaining data can hold before allocating.
+	if count > uint64(dec.Remaining())/13 {
+		return fmt.Errorf("vote state v3: vote count %d exceeds remaining data (%d bytes)", count, dec.Remaining())
 	}
 	s.Votes = make([]LandedVote, count)
 	for i := range count {
@@ -506,6 +527,11 @@ func (s *VoteStateV4) unmarshalBody(dec *bin.Decoder) error {
 	count, err := dec.ReadUint64(binary.LittleEndian)
 	if err != nil {
 		return err
+	}
+	// Each LandedVote is a u8 latency and a Lockout (13 bytes). Reject a count
+	// larger than the remaining data can hold before allocating.
+	if count > uint64(dec.Remaining())/13 {
+		return fmt.Errorf("vote state v4: vote count %d exceeds remaining data (%d bytes)", count, dec.Remaining())
 	}
 	s.Votes = make([]LandedVote, count)
 	for i := range count {
