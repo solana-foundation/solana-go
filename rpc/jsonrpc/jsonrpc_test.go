@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -844,9 +845,43 @@ func TestRpcBatchJsonResponseStruct(t *testing.T) {
 	Expect(int1).To(Equal(int64(1)))
 	Expect(int123).To(Equal(int64(123)))
 
-	// check if getByID works
-	res.GetByID(123).GetObject(&int123)
-	Expect(int123).To(Equal(int64(123)))
+	// check if getByID works. Use fresh targets so a failed lookup cannot
+	// pass on values the AsMap block above already decoded.
+	byID := res.GetByID(123)
+	require.NotNil(t, byID)
+	var gotByID int64
+	require.NoError(t, byID.GetObject(&gotByID))
+	Expect(gotByID).To(Equal(int64(123)))
+
+	// ids match across integer types, like the int ids CallBatch assigns
+	require.NotNil(t, res.GetByID(int64(1)))
+	require.NotNil(t, res.GetByID(uint8(1)))
+	require.NotNil(t, res.GetByID(stdjson.Number("1")))
+	require.Nil(t, res.GetByID(2))
+	require.Nil(t, res.GetByID("1"))
+
+	// the full unsigned and signed ranges match without wrapping
+	responseBody = `[{ "id":18446744073709551615,"result": 1},{ "id":-9223372036854775808,"result": 2},{ "id":-1,"result": 3}]`
+	res, err = rpcClient.CallBatch(context.Background(), RPCRequests{
+		NewRequest("something", 1, 2, 3),
+	})
+	<-requestChan
+	Expect(err).To(BeNil())
+	var boundary int64
+	maxUint := res.GetByID(uint64(math.MaxUint64))
+	require.NotNil(t, maxUint)
+	require.NoError(t, maxUint.GetObject(&boundary))
+	Expect(boundary).To(Equal(int64(1)))
+	minInt := res.GetByID(int64(math.MinInt64))
+	require.NotNil(t, minInt)
+	require.NoError(t, minInt.GetObject(&boundary))
+	Expect(boundary).To(Equal(int64(2)))
+	negOne := res.GetByID(-1)
+	require.NotNil(t, negOne)
+	require.NoError(t, negOne.GetObject(&boundary))
+	Expect(boundary).To(Equal(int64(3)))
+	require.Nil(t, res.GetByID(uint64(math.MaxUint64-1)))
+	require.Nil(t, res.GetByID(1))
 
 	// check if error occurred
 	responseBody = `[{ "result": null, "error": {"code": 123, "message": "something wrong"}}]`
