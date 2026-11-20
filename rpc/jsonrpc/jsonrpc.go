@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"reflect"
 	"sync/atomic"
@@ -333,13 +334,46 @@ func (res RPCResponses) AsMap() map[any]*RPCResponse {
 }
 
 // GetByID returns the response object of the given id, nil if it does not exist.
+//
+// Integer ids are compared by value, whatever their Go type: batch responses
+// are decoded with UseNumber, so a response id is a json.Number while the ids
+// CallBatch assigns to requests are ints.
 func (res RPCResponses) GetByID(id any) *RPCResponse {
+	wantInt, wantIsInt := idAsInt64(id)
 	for _, r := range res {
+		if wantIsInt {
+			if gotInt, ok := idAsInt64(r.ID); ok && gotInt == wantInt {
+				return r
+			}
+			continue
+		}
 		if r.ID == id {
 			return r
 		}
 	}
 	return nil
+}
+
+// idAsInt64 reports the integer value of a JSON-RPC id held as a json.Number
+// or as any Go integer type.
+func idAsInt64(id any) (int64, bool) {
+	if number, ok := id.(stdjson.Number); ok {
+		asInt64, err := number.Int64()
+		return asInt64, err == nil
+	}
+	value := reflect.ValueOf(id)
+	switch value.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return value.Int(), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		asUint64 := value.Uint()
+		if asUint64 > math.MaxInt64 {
+			return 0, false
+		}
+		return int64(asUint64), true
+	default:
+		return 0, false
+	}
 }
 
 // HasError returns true if one of the response objects has Error field != nil

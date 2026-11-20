@@ -844,9 +844,20 @@ func TestRpcBatchJsonResponseStruct(t *testing.T) {
 	Expect(int1).To(Equal(int64(1)))
 	Expect(int123).To(Equal(int64(123)))
 
-	// check if getByID works
-	res.GetByID(123).GetObject(&int123)
-	Expect(int123).To(Equal(int64(123)))
+	// check if getByID works. Use fresh targets so a failed lookup cannot
+	// pass on values the AsMap block above already decoded.
+	byID := res.GetByID(123)
+	require.NotNil(t, byID)
+	var gotByID int64
+	require.NoError(t, byID.GetObject(&gotByID))
+	Expect(gotByID).To(Equal(int64(123)))
+
+	// ids match across integer types, like the int ids CallBatch assigns
+	require.NotNil(t, res.GetByID(int64(1)))
+	require.NotNil(t, res.GetByID(uint8(1)))
+	require.NotNil(t, res.GetByID(stdjson.Number("1")))
+	require.Nil(t, res.GetByID(2))
+	require.Nil(t, res.GetByID("1"))
 
 	// check if error occurred
 	responseBody = `[{ "result": null, "error": {"code": 123, "message": "something wrong"}}]`
