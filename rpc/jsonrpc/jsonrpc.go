@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"reflect"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/davecgh/go-spew/spew"
@@ -339,10 +339,10 @@ func (res RPCResponses) AsMap() map[any]*RPCResponse {
 // are decoded with UseNumber, so a response id is a json.Number while the ids
 // CallBatch assigns to requests are ints.
 func (res RPCResponses) GetByID(id any) *RPCResponse {
-	wantInt, wantIsInt := idAsInt64(id)
+	want, wantIsInt := batchIDOf(id)
 	for _, r := range res {
 		if wantIsInt {
-			if gotInt, ok := idAsInt64(r.ID); ok && gotInt == wantInt {
+			if got, ok := batchIDOf(r.ID); ok && got == want {
 				return r
 			}
 			continue
@@ -354,26 +354,43 @@ func (res RPCResponses) GetByID(id any) *RPCResponse {
 	return nil
 }
 
-// idAsInt64 reports the integer value of a JSON-RPC id held as a json.Number
+// batchID is the value of an integer JSON-RPC id, held as a sign and a
+// magnitude so the whole int64 and uint64 ranges compare without wrapping.
+type batchID struct {
+	negative  bool
+	magnitude uint64
+}
+
+// batchIDOf reports the integer value of a JSON-RPC id held as a json.Number
 // or as any Go integer type.
-func idAsInt64(id any) (int64, bool) {
+func batchIDOf(id any) (batchID, bool) {
 	if number, ok := id.(stdjson.Number); ok {
-		asInt64, err := number.Int64()
-		return asInt64, err == nil
+		if asInt64, err := number.Int64(); err == nil {
+			return batchIDFromInt64(asInt64), true
+		}
+		// Ids above math.MaxInt64 do not fit in an int64.
+		if asUint64, err := strconv.ParseUint(number.String(), 10, 64); err == nil {
+			return batchID{magnitude: asUint64}, true
+		}
+		return batchID{}, false
 	}
 	value := reflect.ValueOf(id)
 	switch value.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return value.Int(), true
+		return batchIDFromInt64(value.Int()), true
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		asUint64 := value.Uint()
-		if asUint64 > math.MaxInt64 {
-			return 0, false
-		}
-		return int64(asUint64), true
+		return batchID{magnitude: value.Uint()}, true
 	default:
-		return 0, false
+		return batchID{}, false
 	}
+}
+
+func batchIDFromInt64(value int64) batchID {
+	if value < 0 {
+		// Negate in uint64 so math.MinInt64 does not overflow.
+		return batchID{negative: true, magnitude: -uint64(value)}
+	}
+	return batchID{magnitude: uint64(value)}
 }
 
 // HasError returns true if one of the response objects has Error field != nil
