@@ -80,7 +80,7 @@ More contracts to come.
 
 `solana-go` ships from two parallel branches:
 
-- **`main` (v1) — recommended default.** Backward-compatible improvements only. See the [latest release](https://github.com/solana-foundation/solana-go/releases/latest).
+- **`main` (v1) — recommended default.** Backward-compatible improvements only. Latest release: [v1.26.0](https://github.com/solana-foundation/solana-go/releases/tag/v1.26.0).
 - **`v2` — opt-in.** Same content as `main` plus breaking API cleanups. Latest: `v2.0.0-rc` (release candidate). See [About v2](#about-v2) below.
 
 Most users should stay on v1. Only choose v2 if you specifically want the changes listed in [About v2](#about-v2).
