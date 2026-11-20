@@ -559,6 +559,10 @@ func decodeResponseFromReader(r io.Reader, reply any) (err error) {
 		return err
 	}
 
+	if c == nil {
+		return json2.ErrNullResult
+	}
+
 	if c.Error != nil {
 		jsonErr := &json2.Error{}
 		if err := json.Unmarshal(*c.Error, jsonErr); err != nil {
@@ -570,7 +574,7 @@ func decodeResponseFromReader(r io.Reader, reply any) (err error) {
 		return jsonErr
 	}
 
-	if c.Params == nil {
+	if c.Params == nil || c.Params.Result == nil {
 		return json2.ErrNullResult
 	}
 
@@ -583,6 +587,10 @@ func decodeResponseFromMessage(r []byte, reply any) (err error) {
 		return err
 	}
 
+	if c == nil {
+		return json2.ErrNullResult
+	}
+
 	if c.Error != nil {
 		jsonErr := &json2.Error{}
 		if err := json.Unmarshal(*c.Error, jsonErr); err != nil {
@@ -594,7 +602,7 @@ func decodeResponseFromMessage(r []byte, reply any) (err error) {
 		return jsonErr
 	}
 
-	if c.Params == nil {
+	if c.Params == nil || c.Params.Result == nil {
 		return json2.ErrNullResult
 	}
 
