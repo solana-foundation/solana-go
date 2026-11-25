@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/davecgh/go-spew/spew"
@@ -333,13 +334,63 @@ func (res RPCResponses) AsMap() map[any]*RPCResponse {
 }
 
 // GetByID returns the response object of the given id, nil if it does not exist.
+//
+// Integer ids are compared by value, whatever their Go type: batch responses
+// are decoded with UseNumber, so a response id is a json.Number while the ids
+// CallBatch assigns to requests are ints.
 func (res RPCResponses) GetByID(id any) *RPCResponse {
+	want, wantIsInt := batchIDOf(id)
 	for _, r := range res {
+		if wantIsInt {
+			if got, ok := batchIDOf(r.ID); ok && got == want {
+				return r
+			}
+			continue
+		}
 		if r.ID == id {
 			return r
 		}
 	}
 	return nil
+}
+
+// batchID is the value of an integer JSON-RPC id, held as a sign and a
+// magnitude so the whole int64 and uint64 ranges compare without wrapping.
+type batchID struct {
+	negative  bool
+	magnitude uint64
+}
+
+// batchIDOf reports the integer value of a JSON-RPC id held as a json.Number
+// or as any Go integer type.
+func batchIDOf(id any) (batchID, bool) {
+	if number, ok := id.(stdjson.Number); ok {
+		if asInt64, err := number.Int64(); err == nil {
+			return batchIDFromInt64(asInt64), true
+		}
+		// Ids above math.MaxInt64 do not fit in an int64.
+		if asUint64, err := strconv.ParseUint(number.String(), 10, 64); err == nil {
+			return batchID{magnitude: asUint64}, true
+		}
+		return batchID{}, false
+	}
+	value := reflect.ValueOf(id)
+	switch value.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return batchIDFromInt64(value.Int()), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return batchID{magnitude: value.Uint()}, true
+	default:
+		return batchID{}, false
+	}
+}
+
+func batchIDFromInt64(value int64) batchID {
+	if value < 0 {
+		// Negate in uint64 so math.MinInt64 does not overflow.
+		return batchID{negative: true, magnitude: -uint64(value)}
+	}
+	return batchID{magnitude: uint64(value)}
 }
 
 // HasError returns true if one of the response objects has Error field != nil
