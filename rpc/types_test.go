@@ -42,6 +42,14 @@ func TestBlockRewardDeactivatedStake(t *testing.T) {
 	}
 }
 
+func TestBlockRewardRevenueSharing(t *testing.T) {
+	var reward BlockReward
+	err := stdjson.Unmarshal([]byte(`{"lamports":100,"rewardType":"BlockRevenueSharing"}`), &reward)
+	assert.NoError(t, err)
+	assert.Equal(t, RewardTypeBlockRevenueSharing, reward.RewardType)
+	assert.Equal(t, int64(100), reward.Lamports)
+}
+
 func TestData_base64_zstd(t *testing.T) {
 	val := "KLUv/QQAWQAAaGVsbG8td29ybGTcLcaB"
 	in := `["` + val + `", "base64+zstd"]`

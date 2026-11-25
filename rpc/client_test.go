@@ -1423,6 +1423,22 @@ func TestClient_GetInflationReward(t *testing.T) {
 	assert.Equal(t, expected, got, "both deserialized values must be equal")
 }
 
+func TestClient_GetInflationReward_BlockRewardAmount(t *testing.T) {
+	// Nodes predating separate block reward reporting omit the field.
+	response := `[{},{"blockRewardAmount":null},{"blockRewardAmount":0},{"blockRewardAmount":18446744073709551615}]`
+	server, closeServer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(response)))
+	defer closeServer()
+	out, err := New(server.URL).GetInflationReward(context.Background(), make([]solana.PublicKey, 4), nil)
+	require.NoError(t, err)
+	require.Len(t, out, 4)
+	assert.Nil(t, out[0].BlockRewardAmount)
+	assert.Nil(t, out[1].BlockRewardAmount)
+	require.NotNil(t, out[2].BlockRewardAmount)
+	assert.Zero(t, *out[2].BlockRewardAmount)
+	require.NotNil(t, out[3].BlockRewardAmount)
+	assert.Equal(t, ^uint64(0), *out[3].BlockRewardAmount)
+}
+
 func TestClient_GetInflationReward_WithCommissionBps(t *testing.T) {
 	responseBody := `[{"epoch":100,"effectiveSlot":43200000,"amount":2500000,"postBalance":1002500000,"commission":5,"commissionBps":500}]`
 	server, closer := mockJSONRPC(t, stdjson.RawMessage(wrapIntoRPC(responseBody)))
