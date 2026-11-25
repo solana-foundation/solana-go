@@ -75,6 +75,9 @@ type GetInflationRewardResult struct {
 	// Post balance of the account in lamports.
 	PostBalance uint64 `json:"postBalance"`
 
+	// Block rewards in lamports, when reported separately by the node.
+	BlockRewardAmount *uint64 `json:"blockRewardAmount,omitempty"`
+
 	// Vote account commission when the reward was credited.
 	Commission *uint8 `json:"commission,omitempty"`
 
