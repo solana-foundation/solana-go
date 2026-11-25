@@ -900,6 +900,26 @@ func ExampleClient_GetVersion() {
 	spew.Dump(out)
 }
 
+func ExampleClient_GetVatActiveSetRankMap() {
+	endpoint := rpc.TestNet_RPC
+	client := rpc.New(endpoint)
+
+	// The node has to run Agave v4.5.0-beta.0 or later.
+	out, err := client.GetVatActiveSetRankMap(
+		context.TODO(),
+		100,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+	if out.Value == nil {
+		fmt.Println("the epoch of the slot is unavailable")
+		return
+	}
+	spew.Dump(out)
+}
+
 func ExampleClient_GetVoteAccounts() {
 	endpoint := rpc.TestNet_RPC
 	client := rpc.New(endpoint)
