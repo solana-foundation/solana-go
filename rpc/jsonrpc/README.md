@@ -396,13 +396,13 @@ There are some helper methods for batch request results:
 func main() {
     // [...]
 
-    result.HasErrors() // returns true if one of the rpc response objects has Error field != nil
+    result.HasError() // returns true if one of the rpc response objects has Error field != nil
     resultMap := result.AsMap() // returns a map for easier retrieval of requests
 
     if response123, ok := resultMap[123]; ok {
       // response object with id 123 exists, use it here
       // response123.ID == 123
-      response123.GetObjectAs(&person)
+      response123.GetObject(&person)
       // ...
     }
 
