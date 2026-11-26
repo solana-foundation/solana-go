@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	stdjson "github.com/goccy/go-json"
+	"github.com/google/uuid"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/require"
 )
@@ -126,7 +127,7 @@ func TestRpcClient_Call(t *testing.T) {
 		Ingredients: []string{"rum", "cola"},
 	}
 
-	useFixedID = true
+	UseFixedID = true
 
 	rpcClient.Call(context.Background(), "missingParam")
 	Expect((<-requestChan).body).To(Equal(`{"method":"missingParam","id":1,"jsonrpc":"2.0"}`))
@@ -218,6 +219,48 @@ func TestRpcClient_Call(t *testing.T) {
 		Address *string `json:"address"`
 	}{"Alex", nil})
 	Expect((<-requestChan).body).To(Equal(`{"method":"structWithNullField","params":{"name":"Alex","address":null},"id":1,"jsonrpc":"2.0"}`))
+}
+
+func TestRpcClient_RequestID(t *testing.T) {
+	RegisterTestingT(t)
+	rpcClient := NewClient(httpServer.URL)
+
+	prevFixed, prevInteger := UseFixedID, UseIntegerID
+	defer func() { UseFixedID, UseIntegerID = prevFixed, prevInteger }()
+
+	requestID := func() any {
+		var body struct {
+			ID any `json:"id"`
+		}
+		Expect(stdjson.Unmarshal([]byte((<-requestChan).body), &body)).To(Succeed())
+		return body.ID
+	}
+
+	// UseFixedID pins every request id to 1, even when UseIntegerID is set.
+	UseFixedID, UseIntegerID = true, true
+	rpcClient.Call(context.Background(), "fixed")
+	Expect(requestID()).To(Equal(float64(1)))
+	rpcClient.Call(context.Background(), "fixed")
+	Expect(requestID()).To(Equal(float64(1)))
+
+	// With both flags off, ids are fresh UUID strings.
+	UseFixedID, UseIntegerID = false, false
+	rpcClient.Call(context.Background(), "uuid")
+	first := requestID()
+	rpcClient.Call(context.Background(), "uuid")
+	second := requestID()
+	Expect(first).To(BeAssignableToTypeOf(""))
+	Expect(uuid.Validate(first.(string))).To(Succeed())
+	Expect(second).NotTo(Equal(first))
+
+	// With only UseIntegerID, ids are increasing integers.
+	UseIntegerID = true
+	rpcClient.Call(context.Background(), "integer")
+	firstInt := requestID()
+	rpcClient.Call(context.Background(), "integer")
+	secondInt := requestID()
+	Expect(firstInt).To(BeAssignableToTypeOf(float64(0)))
+	Expect(secondInt).To(Equal(firstInt.(float64) + 1))
 }
 
 func TestRpcClient_CallBatch(t *testing.T) {
